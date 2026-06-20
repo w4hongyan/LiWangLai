@@ -16,7 +16,7 @@ class LiWangLaiApp extends StatelessWidget {
       title: '礼往来',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.theme,
-      home: const LiWangLaiHome(),
+      home: const StartupPage(),
     );
   }
 }
@@ -164,6 +164,7 @@ class GiftRecord {
     required this.method,
     required this.book,
     this.note = '',
+    this.itemDescription = '',
     this.partial = false,
     this.needReturn = false,
   });
@@ -179,6 +180,7 @@ class GiftRecord {
   final String method;
   final String book;
   final String note;
+  final String itemDescription;
   final bool partial;
   final bool needReturn;
 
@@ -194,6 +196,7 @@ class GiftRecord {
     String? method,
     String? book,
     String? note,
+    String? itemDescription,
     bool? partial,
     bool? needReturn,
   }) {
@@ -209,8 +212,59 @@ class GiftRecord {
       method: method ?? this.method,
       book: book ?? this.book,
       note: note ?? this.note,
+      itemDescription: itemDescription ?? this.itemDescription,
       partial: partial ?? this.partial,
       needReturn: needReturn ?? this.needReturn,
+    );
+  }
+}
+
+class LedgerTotals {
+  const LedgerTotals({required this.received, required this.given});
+
+  final int received;
+  final int given;
+
+  int get balance => received - given;
+
+  factory LedgerTotals.fromRecords(Iterable<GiftRecord> records) {
+    var received = 0;
+    var given = 0;
+    for (final record in records) {
+      if (record.direction == GiftDirection.received) {
+        received += record.amount;
+      } else {
+        given += record.amount;
+      }
+    }
+    return LedgerTotals(received: received, given: given);
+  }
+}
+
+class ReturnGiftSuggestion {
+  const ReturnGiftSuggestion({
+    required this.originalAmount,
+    required this.increasedAmount,
+  });
+
+  final int originalAmount;
+  final int increasedAmount;
+}
+
+class ReturnGiftAdvisor {
+  const ReturnGiftAdvisor._();
+
+  static ReturnGiftSuggestion forRecord({
+    required GiftRecord record,
+    required Iterable<GiftRecord> records,
+  }) {
+    // A return should start from the most recent gift, rather than a fabricated
+    // history total. The 25% option mirrors the prototype's 800 -> 1,000 cue.
+    final originalAmount = record.amount;
+    final increasedAmount = ((originalAmount * 1.25) / 100).ceil() * 100;
+    return ReturnGiftSuggestion(
+      originalAmount: originalAmount,
+      increasedAmount: increasedAmount,
     );
   }
 }
@@ -265,6 +319,7 @@ class _LiWangLaiHomeState extends State<LiWangLaiHome> {
               _records.insert(0, record);
             });
           },
+          onRecordRemoved: _removeRecord,
         ),
       ),
     );
@@ -274,6 +329,12 @@ class _LiWangLaiHomeState extends State<LiWangLaiHome> {
     setState(() {
       _records.insert(0, record);
       _tabIndex = 1;
+    });
+  }
+
+  void _removeRecord(GiftRecord record) {
+    setState(() {
+      _records.removeWhere((item) => item.id == record.id);
     });
   }
 
@@ -311,7 +372,11 @@ class _LiWangLaiHomeState extends State<LiWangLaiHome> {
             onRecordAdded: _addRecord,
             onRecordUpdated: _updateRecord,
           ),
-          const ProfilePage(),
+          ProfilePage(
+            records: _records,
+            onRecordAdded: _addRecord,
+            onRecordUpdated: _updateRecord,
+          ),
         ];
 
         if (isTablet) {
@@ -465,12 +530,11 @@ class HomePage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const received = 6800;
-    const given = 3200;
+    final totals = LedgerTotals.fromRecords(records);
 
     return PageFrame(
       title: '礼往来',
-      subtitle: '我家礼簿 · 乙巳年五月初四',
+      subtitle: '我家礼簿 · 今日往来',
       trailing: const HomeBellIcon(),
       child: LayoutBuilder(
         builder: (context, constraints) {
@@ -493,9 +557,9 @@ class HomePage extends StatelessWidget {
             child: Column(
               children: [
                 HeroLedgerCard(
-                  received: received,
-                  given: given,
-                  balance: received - given,
+                  received: totals.received,
+                  given: totals.given,
+                  balance: totals.balance,
                   height: veryCompact ? 112 : (compact ? 136 : 154),
                 ),
                 SizedBox(height: veryCompact ? 7 : (compact ? 8 : 10)),
@@ -610,12 +674,13 @@ class _LedgerPageState extends State<LedgerPage> {
       };
     }).toList();
 
-    final totalReceived = filtered
-        .where((record) => record.direction == GiftDirection.received)
-        .fold(0, (sum, record) => sum + record.amount);
-    final totalGiven = filtered
-        .where((record) => record.direction == GiftDirection.given)
-        .fold(0, (sum, record) => sum + record.amount);
+    final totals = LedgerTotals.fromRecords(filtered);
+    final latestRecord = filtered.isEmpty
+        ? null
+        : filtered.reduce(
+            (latest, record) =>
+                record.date.isAfter(latest.date) ? record : latest,
+          );
 
     return LedgerPageFrame(
       child: ListView(
@@ -625,7 +690,7 @@ class _LedgerPageState extends State<LedgerPage> {
           const SizedBox(height: 8),
           _buildFilterChips(),
           const SizedBox(height: 10),
-          _buildMonthSummary(totalReceived, totalGiven),
+          _buildMonthSummary(totals, latestRecord?.date ?? DateTime.now()),
           const SizedBox(height: 10),
           if (filtered.isEmpty)
             const EmptyState(title: '没有找到记录', subtitle: '换个筛选条件，或从"记一笔"开始入簿。')
@@ -633,6 +698,7 @@ class _LedgerPageState extends State<LedgerPage> {
             ...filtered.map(
               (record) => _LedgerRecordRow(
                 record: record,
+                records: widget.records,
                 onRecordAdded: widget.onRecordAdded,
                 onRecordUpdated: widget.onRecordUpdated,
               ),
@@ -683,7 +749,7 @@ class _LedgerPageState extends State<LedgerPage> {
   }
 
   Widget _buildFilterChips() {
-    final filters = ['全部', '收礼', '回礼', '喜事', '白事', '待补全'];
+    final filters = ['全部', '收礼', '回礼', '喜事', '白事', '待补全', '待回礼'];
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
       child: Row(
@@ -726,8 +792,8 @@ class _LedgerPageState extends State<LedgerPage> {
     );
   }
 
-  Widget _buildMonthSummary(int totalReceived, int totalGiven) {
-    final balance = totalReceived - totalGiven;
+  Widget _buildMonthSummary(LedgerTotals totals, DateTime month) {
+    final balance = totals.balance;
     final balanceText = balance >= 0
         ? '+${formatAmount(balance)}'
         : formatAmount(balance);
@@ -746,7 +812,7 @@ class _LedgerPageState extends State<LedgerPage> {
           ),
           const SizedBox(width: 8),
           Text(
-            '2026年6月',
+            '${month.year}年${month.month}月',
             style: const TextStyle(
               fontFamily: AppFonts.kaiti,
               fontSize: 13,
@@ -755,7 +821,7 @@ class _LedgerPageState extends State<LedgerPage> {
           ),
           const SizedBox(width: 12),
           Text(
-            '收礼: ${formatAmount(totalReceived)} 元',
+            '收礼: ${formatAmount(totals.received)} 元',
             style: TextStyle(
               fontFamily: AppFonts.kaiti,
               fontSize: 12,
@@ -764,7 +830,7 @@ class _LedgerPageState extends State<LedgerPage> {
           ),
           const SizedBox(width: 10),
           Text(
-            '回礼: ${formatAmount(totalGiven)} 元',
+            '回礼: ${formatAmount(totals.given)} 元',
             style: TextStyle(
               fontFamily: AppFonts.kaiti,
               fontSize: 12,
@@ -851,11 +917,13 @@ class LedgerPageFrame extends StatelessWidget {
 class _LedgerRecordRow extends StatelessWidget {
   const _LedgerRecordRow({
     required this.record,
+    required this.records,
     required this.onRecordAdded,
     required this.onRecordUpdated,
   });
 
   final GiftRecord record;
+  final List<GiftRecord> records;
   final ValueChanged<GiftRecord> onRecordAdded;
   final ValueChanged<GiftRecord> onRecordUpdated;
 
@@ -874,6 +942,7 @@ class _LedgerRecordRow extends StatelessWidget {
           MaterialPageRoute<void>(
             builder: (context) => RecordDetailPage(
               record: record,
+              records: records,
               onRecordAdded: onRecordAdded,
               onRecordUpdated: onRecordUpdated,
             ),
@@ -977,12 +1046,13 @@ class _AddRecordPageState extends State<AddRecordPage> {
   final _nameController = TextEditingController();
   final _amountController = TextEditingController();
   final _noteController = TextEditingController();
+  final _itemController = TextEditingController();
   GiftDirection _direction = GiftDirection.received;
   EventTone _tone = EventTone.red;
   String _relation = '';
   String _event = '婚礼';
   String _method = '现金';
-  DateTime _date = DateTime(2025, 5, 16);
+  DateTime _date = DateTime.now();
 
   @override
   void initState() {
@@ -992,6 +1062,7 @@ class _AddRecordPageState extends State<AddRecordPage> {
       _nameController.text = r.name;
       _amountController.text = r.amount.toString();
       _noteController.text = r.note;
+      _itemController.text = r.itemDescription;
       _direction = r.direction;
       _tone = r.tone;
       _relation = r.relation;
@@ -1006,16 +1077,25 @@ class _AddRecordPageState extends State<AddRecordPage> {
     _nameController.dispose();
     _amountController.dispose();
     _noteController.dispose();
+    _itemController.dispose();
     super.dispose();
   }
 
   void _save() {
     final amount = int.tryParse(_amountController.text.trim());
     final name = _nameController.text.trim();
+    final itemDescription = _itemController.text.trim();
     if (name.isEmpty || amount == null || amount <= 0) {
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(const SnackBar(content: Text('请填写姓名和有效金额')));
+      return;
+    }
+    if (_method != '现金' && itemDescription.isEmpty) {
+      final label = _method == '礼品' ? '礼品名称' : '出力事项';
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('请填写$label')));
       return;
     }
 
@@ -1034,6 +1114,7 @@ class _AddRecordPageState extends State<AddRecordPage> {
         method: _method,
         book: widget.record?.book ?? '我家',
         note: _noteController.text.trim(),
+        itemDescription: itemDescription,
         partial: false,
         needReturn: _direction == GiftDirection.received,
       ),
@@ -1044,6 +1125,7 @@ class _AddRecordPageState extends State<AddRecordPage> {
     _nameController.clear();
     _amountController.clear();
     _noteController.clear();
+    _itemController.clear();
     ScaffoldMessenger.of(
       context,
     ).showSnackBar(const SnackBar(content: Text('已入簿')));
@@ -1166,8 +1248,8 @@ class _AddRecordPageState extends State<AddRecordPage> {
                   const _LedgerDivider(),
                   _LedgerTextRow(
                     fieldKey: const ValueKey('add-amount-field'),
-                    label: '金额',
-                    hintText: '请输入金额',
+                    label: _method == '现金' ? '金额' : '估算金额',
+                    hintText: _method == '现金' ? '请输入金额' : '请输入估算金额',
                     controller: _amountController,
                     keyboardType: TextInputType.number,
                     suffixText: '元',
@@ -1196,11 +1278,21 @@ class _AddRecordPageState extends State<AddRecordPage> {
                     selected: _method,
                     onSelected: (value) => setState(() => _method = value),
                   ),
+                  if (_method != '现金') ...[
+                    const _LedgerDivider(),
+                    _LedgerTextRow(
+                      fieldKey: const ValueKey('add-item-field'),
+                      label: _method == '礼品' ? '礼品名称' : '出力事项',
+                      hintText: _method == '礼品' ? '如：茶具一套' : '如：帮忙布置礼台',
+                      controller: _itemController,
+                    ),
+                  ],
                   const _LedgerDivider(),
                   _LedgerInfoRow(
                     label: '日期',
                     value: formatChineseDate(_date),
                     trailing: CupertinoIcons.chevron_right,
+                    onTap: _pickDate,
                   ),
                   _LedgerNoteRow(controller: _noteController),
                   const SizedBox(height: 10),
@@ -1234,6 +1326,19 @@ class _AddRecordPageState extends State<AddRecordPage> {
     final navigator = Navigator.of(context);
     if (navigator.canPop()) {
       navigator.pop();
+    }
+  }
+
+  Future<void> _pickDate() async {
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: _date,
+      firstDate: DateTime(2000),
+      lastDate: DateTime(2100),
+      helpText: '选择往来日期',
+    );
+    if (picked != null && mounted) {
+      setState(() => _date = picked);
     }
   }
 }
@@ -1502,16 +1607,18 @@ class _LedgerInfoRow extends StatelessWidget {
     required this.value,
     this.trailing,
     this.muted = false,
+    this.onTap,
   });
 
   final String label;
   final String value;
   final IconData? trailing;
   final bool muted;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
-    return _LedgerLine(
+    final row = _LedgerLine(
       label: label,
       trailing: trailing == null
           ? const SizedBox.shrink()
@@ -1529,6 +1636,7 @@ class _LedgerInfoRow extends StatelessWidget {
         ),
       ),
     );
+    return onTap == null ? row : InkWell(onTap: onTap, child: row);
   }
 }
 
@@ -1763,11 +1871,13 @@ class RecordDetailPage extends StatefulWidget {
   const RecordDetailPage({
     super.key,
     required this.record,
+    required this.records,
     required this.onRecordAdded,
     required this.onRecordUpdated,
   });
 
   final GiftRecord record;
+  final List<GiftRecord> records;
   final ValueChanged<GiftRecord> onRecordAdded;
   final ValueChanged<GiftRecord> onRecordUpdated;
 
@@ -1777,11 +1887,33 @@ class RecordDetailPage extends StatefulWidget {
 
 class _RecordDetailPageState extends State<RecordDetailPage> {
   late GiftRecord record;
+  late ReturnGiftSuggestion _suggestion;
+  late int _selectedReturnAmount;
 
   @override
   void initState() {
     super.initState();
     record = widget.record;
+    _refreshSuggestion();
+  }
+
+  List<GiftRecord> get _personRecords {
+    final records =
+        widget.records
+            .where(
+              (item) => item.name == record.name && item.book == record.book,
+            )
+            .toList()
+          ..sort((a, b) => b.date.compareTo(a.date));
+    return records.isEmpty ? [record] : records;
+  }
+
+  void _refreshSuggestion() {
+    _suggestion = ReturnGiftAdvisor.forRecord(
+      record: record,
+      records: _personRecords,
+    );
+    _selectedReturnAmount = _suggestion.originalAmount;
   }
 
   void _openEditor(
@@ -1799,6 +1931,7 @@ class _RecordDetailPageState extends State<RecordDetailPage> {
             if (updateCurrent || updated.id == record.id) {
               setState(() {
                 record = updated;
+                _refreshSuggestion();
               });
             }
             Navigator.of(context).pop();
@@ -1881,6 +2014,8 @@ class _RecordDetailPageState extends State<RecordDetailPage> {
   }
 
   Widget _buildInfoCard(Color avatarBg) {
+    final totals = LedgerTotals.fromRecords(_personRecords);
+    final pendingAmount = record.needReturn ? _suggestion.originalAmount : 0;
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -1975,11 +2110,20 @@ class _RecordDetailPageState extends State<RecordDetailPage> {
             ),
             child: Row(
               children: [
-                Expanded(child: _buildStatItem('我收礼', '6,800')),
+                Expanded(
+                  child: _buildStatItem('我收礼', formatAmount(totals.received)),
+                ),
                 Container(width: 1, height: 40, color: Colors.white24),
-                Expanded(child: _buildStatItem('我回礼', '5,200')),
+                Expanded(
+                  child: _buildStatItem('我回礼', formatAmount(totals.given)),
+                ),
                 Container(width: 1, height: 40, color: Colors.white24),
-                Expanded(child: _buildStatItem('待回礼建议', '1,600')),
+                Expanded(
+                  child: _buildStatItem(
+                    '待回礼建议',
+                    pendingAmount == 0 ? '—' : formatAmount(pendingAmount),
+                  ),
+                ),
               ],
             ),
           ),
@@ -2022,37 +2166,7 @@ class _RecordDetailPageState extends State<RecordDetailPage> {
   }
 
   Widget _buildRecordTimeline(BuildContext context) {
-    final history = [
-      record,
-      _historicalRecord(
-        suffix: 'return-2024',
-        event: '回礼',
-        direction: GiftDirection.given,
-        amount: 3200,
-        date: DateTime(2024, 6, 3),
-      ),
-      _historicalRecord(
-        suffix: 'move-2023',
-        event: '${record.name}乔迁之喜',
-        direction: GiftDirection.received,
-        amount: 2000,
-        date: DateTime(2023, 8, 15),
-      ),
-      _historicalRecord(
-        suffix: 'return-2023',
-        event: '回礼',
-        direction: GiftDirection.given,
-        amount: 2000,
-        date: DateTime(2023, 8, 28),
-      ),
-      _historicalRecord(
-        suffix: 'birthday-2021',
-        event: '${record.name}生日',
-        direction: GiftDirection.received,
-        amount: 800,
-        date: DateTime(2021, 7, 12),
-      ),
-    ];
+    final history = _personRecords;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -2075,28 +2189,6 @@ class _RecordDetailPageState extends State<RecordDetailPage> {
             updateCurrent: index == 0,
           ),
       ],
-    );
-  }
-
-  GiftRecord _historicalRecord({
-    required String suffix,
-    required String event,
-    required GiftDirection direction,
-    required int amount,
-    required DateTime date,
-  }) {
-    return GiftRecord(
-      id: '${record.id}-$suffix',
-      name: record.name,
-      relation: record.relation,
-      event: event,
-      direction: direction,
-      tone: record.tone,
-      amount: amount,
-      date: date,
-      method: '现金',
-      book: record.book,
-      needReturn: direction == GiftDirection.received,
     );
   }
 
@@ -2263,11 +2355,19 @@ class _RecordDetailPageState extends State<RecordDetailPage> {
           const SizedBox(height: 12),
           Row(
             children: [
-              _buildAmountOption('1,000元', true),
+              _buildAmountOption(
+                '${formatAmount(_suggestion.originalAmount)}元',
+                _selectedReturnAmount == _suggestion.originalAmount,
+                _suggestion.originalAmount,
+              ),
               const SizedBox(width: 10),
-              _buildAmountOption('1,200元', false),
+              _buildAmountOption(
+                '${formatAmount(_suggestion.increasedAmount)}元',
+                _selectedReturnAmount == _suggestion.increasedAmount,
+                _suggestion.increasedAmount,
+              ),
               const SizedBox(width: 10),
-              _buildAmountOption('自定义', false),
+              _buildAmountOption('自定义', false, null),
             ],
           ),
         ],
@@ -2275,29 +2375,38 @@ class _RecordDetailPageState extends State<RecordDetailPage> {
     );
   }
 
-  Widget _buildAmountOption(String amount, bool isSelected) {
+  Widget _buildAmountOption(String amount, bool isSelected, int? value) {
     return Expanded(
-      child: Container(
-        height: 44,
-        decoration: BoxDecoration(
-          color: isSelected
-              ? AppPalette.palaceRed
-              : AppPalette.whiteTone.withValues(alpha: 0.6),
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(
+      child: GestureDetector(
+        onTap: () {
+          if (value == null) {
+            _openReturnEditor(context, _selectedReturnAmount);
+          } else {
+            setState(() => _selectedReturnAmount = value);
+          }
+        },
+        child: Container(
+          height: 44,
+          decoration: BoxDecoration(
             color: isSelected
                 ? AppPalette.palaceRed
-                : AppPalette.line.withValues(alpha: 0.5),
+                : AppPalette.whiteTone.withValues(alpha: 0.6),
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(
+              color: isSelected
+                  ? AppPalette.palaceRed
+                  : AppPalette.line.withValues(alpha: 0.5),
+            ),
           ),
-        ),
-        child: Center(
-          child: Text(
-            amount,
-            style: TextStyle(
-              fontFamily: AppFonts.kaiti,
-              fontSize: 14,
-              fontWeight: FontWeight.w700,
-              color: isSelected ? Colors.white : AppPalette.ink,
+          child: Center(
+            child: Text(
+              amount,
+              style: TextStyle(
+                fontFamily: AppFonts.kaiti,
+                fontSize: 14,
+                fontWeight: FontWeight.w700,
+                color: isSelected ? Colors.white : AppPalette.ink,
+              ),
             ),
           ),
         ),
@@ -2307,30 +2416,7 @@ class _RecordDetailPageState extends State<RecordDetailPage> {
 
   Widget _buildReturnButton(BuildContext context) {
     return GestureDetector(
-      onTap: () {
-        final returnRecord = record.copyWith(
-          direction: GiftDirection.given,
-          event: '回礼',
-          amount: record.amount,
-          date: DateTime.now(),
-          method: '现金',
-          note: '',
-          partial: false,
-          needReturn: false,
-        );
-        Navigator.of(context).push(
-          MaterialPageRoute<void>(
-            builder: (context) => AddRecordPage(
-              record: returnRecord,
-              onSave: (newRecord) {
-                widget.onRecordAdded(newRecord);
-                Navigator.of(context).pop();
-                Navigator.of(context).pop();
-              },
-            ),
-          ),
-        );
-      },
+      onTap: () => _openReturnEditor(context, _selectedReturnAmount),
       child: Container(
         height: 50,
         decoration: BoxDecoration(
@@ -2359,6 +2445,33 @@ class _RecordDetailPageState extends State<RecordDetailPage> {
               letterSpacing: 1,
             ),
           ),
+        ),
+      ),
+    );
+  }
+
+  void _openReturnEditor(BuildContext context, int amount) {
+    final returnRecord = record.copyWith(
+      direction: GiftDirection.given,
+      event: '回礼',
+      amount: amount,
+      date: DateTime.now(),
+      method: '现金',
+      note: '',
+      itemDescription: '',
+      partial: false,
+      needReturn: false,
+    );
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (context) => AddRecordPage(
+          record: returnRecord,
+          onSave: (newRecord) {
+            widget.onRecordUpdated(record.copyWith(needReturn: false));
+            widget.onRecordAdded(newRecord);
+            Navigator.of(context).pop();
+            Navigator.of(context).pop();
+          },
         ),
       ),
     );
@@ -2451,6 +2564,7 @@ class _SearchOldPageState extends State<SearchOldPage> {
       MaterialPageRoute<void>(
         builder: (context) => RecordDetailPage(
           record: record,
+          records: widget.records,
           onRecordAdded: widget.onRecordAdded,
           onRecordUpdated: widget.onRecordUpdated,
         ),
@@ -2601,10 +2715,12 @@ class QuickDeskPage extends StatefulWidget {
     super.key,
     required this.records,
     required this.onRecordAdded,
+    required this.onRecordRemoved,
   });
 
   final List<GiftRecord> records;
   final ValueChanged<GiftRecord> onRecordAdded;
+  final ValueChanged<GiftRecord> onRecordRemoved;
 
   @override
   State<QuickDeskPage> createState() => _QuickDeskPageState();
@@ -2669,14 +2785,19 @@ class _QuickDeskPageState extends State<QuickDeskPage> {
 
   void _undoLast() {
     if (_sessionRecords.isEmpty) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('本场还没有可撤销的记录')));
       return;
     }
+    final record = _sessionRecords.first;
     setState(() {
       _sessionRecords.removeAt(0);
     });
+    widget.onRecordRemoved(record);
     ScaffoldMessenger.of(
       context,
-    ).showSnackBar(const SnackBar(content: Text('已撤销本场上一条显示')));
+    ).showSnackBar(const SnackBar(content: Text('已撤销本场上一条记录')));
   }
 
   @override
@@ -2872,22 +2993,72 @@ class _QuickDeskPageState extends State<QuickDeskPage> {
 }
 
 class ProfilePage extends StatelessWidget {
-  const ProfilePage({super.key});
+  const ProfilePage({
+    super.key,
+    required this.records,
+    required this.onRecordAdded,
+    required this.onRecordUpdated,
+  });
+
+  final List<GiftRecord> records;
+  final ValueChanged<GiftRecord> onRecordAdded;
+  final ValueChanged<GiftRecord> onRecordUpdated;
+
+  void _openPendingReturns(BuildContext context) {
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (context) => PendingReturnsPage(
+          records: records,
+          onRecordAdded: onRecordAdded,
+          onRecordUpdated: onRecordUpdated,
+        ),
+      ),
+    );
+  }
+
+  void _openPendingCompletions(BuildContext context) {
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (context) => PendingCompletionsPage(
+          records: records,
+          onRecordAdded: onRecordAdded,
+          onRecordUpdated: onRecordUpdated,
+        ),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
     return Column(
       children: [
-        const _ProfileHeader(),
+        _ProfileHeader(
+          onSettings: () => Navigator.of(context).push(
+            MaterialPageRoute<void>(builder: (context) => const SettingsPage()),
+          ),
+        ),
         Expanded(
           child: ListView(
             padding: const EdgeInsets.fromLTRB(18, 4, 18, 96),
             children: [
               const _ProfileHeroCard(),
               const SizedBox(height: 14),
-              const _ProfileAdNotice(compact: true),
+              _ProfileActionGrid(
+                pendingCompletionCount: records
+                    .where((record) => record.partial)
+                    .length,
+                pendingReturnCount: records
+                    .where(
+                      (record) =>
+                          record.needReturn &&
+                          record.direction == GiftDirection.received,
+                    )
+                    .length,
+                onPendingCompletions: () => _openPendingCompletions(context),
+                onPendingReturns: () => _openPendingReturns(context),
+              ),
               const SizedBox(height: 14),
-              const _ProfileSettingsSection(
+              _ProfileSettingsSection(
                 title: '账本管理',
                 items: [
                   _ProfileSettingItem(
@@ -2896,12 +3067,18 @@ class ProfilePage extends StatelessWidget {
                     value: '张晓明家庭礼簿',
                   ),
                   _ProfileSettingItem(
-                    icon: CupertinoIcons.cloud_download,
-                    title: '本地备份与恢复',
+                    icon: CupertinoIcons.doc_text,
+                    title: '待补全',
+                    value:
+                        '${records.where((record) => record.partial).length}条',
+                    onTap: () => _openPendingCompletions(context),
                   ),
                   _ProfileSettingItem(
-                    icon: CupertinoIcons.square_arrow_up,
-                    title: '导出礼簿',
+                    icon: CupertinoIcons.gift,
+                    title: '待回礼',
+                    value:
+                        '${records.where((record) => record.needReturn && record.direction == GiftDirection.received).length}人',
+                    onTap: () => _openPendingReturns(context),
                   ),
                 ],
               ),
@@ -2945,8 +3122,529 @@ class ProfilePage extends StatelessWidget {
   }
 }
 
+class _ProfileActionGrid extends StatelessWidget {
+  const _ProfileActionGrid({
+    required this.pendingCompletionCount,
+    required this.pendingReturnCount,
+    required this.onPendingCompletions,
+    required this.onPendingReturns,
+  });
+
+  final int pendingCompletionCount;
+  final int pendingReturnCount;
+  final VoidCallback onPendingCompletions;
+  final VoidCallback onPendingReturns;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 6),
+      decoration: BoxDecoration(
+        color: AppPalette.whiteTone.withValues(alpha: 0.74),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppPalette.line.withValues(alpha: 0.66)),
+      ),
+      child: Row(
+        children: [
+          const Expanded(
+            child: _ProfileAction(
+              icon: CupertinoIcons.book,
+              label: '多账本',
+              subtitle: '敬请期待',
+            ),
+          ),
+          Expanded(
+            child: _ProfileAction(
+              icon: CupertinoIcons.doc_text,
+              label: '待补全',
+              subtitle: '$pendingCompletionCount 条',
+              onTap: onPendingCompletions,
+            ),
+          ),
+          Expanded(
+            child: _ProfileAction(
+              icon: CupertinoIcons.gift,
+              label: '待回礼',
+              subtitle: '$pendingReturnCount 人',
+              onTap: onPendingReturns,
+            ),
+          ),
+          const Expanded(
+            child: _ProfileAction(
+              icon: CupertinoIcons.square_arrow_up,
+              label: '年度礼簿',
+              subtitle: '敬请期待',
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ProfileAction extends StatelessWidget {
+  const _ProfileAction({
+    required this.icon,
+    required this.label,
+    required this.subtitle,
+    this.onTap,
+  });
+
+  final IconData icon;
+  final String label;
+  final String subtitle;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      borderRadius: BorderRadius.circular(10),
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 4),
+        child: Column(
+          children: [
+            Icon(icon, color: AppPalette.palaceRed, size: 25),
+            const SizedBox(height: 7),
+            Text(
+              label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                fontFamily: AppFonts.kaiti,
+                fontWeight: FontWeight.w800,
+                fontSize: 13,
+              ),
+            ),
+            const SizedBox(height: 2),
+            Text(
+              subtitle,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                color: AppPalette.mutedInk,
+                fontFamily: AppFonts.kaiti,
+                fontSize: 11,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class PendingReturnsPage extends StatelessWidget {
+  const PendingReturnsPage({
+    super.key,
+    required this.records,
+    required this.onRecordAdded,
+    required this.onRecordUpdated,
+  });
+
+  final List<GiftRecord> records;
+  final ValueChanged<GiftRecord> onRecordAdded;
+  final ValueChanged<GiftRecord> onRecordUpdated;
+
+  @override
+  Widget build(BuildContext context) {
+    final pending =
+        records
+            .where(
+              (record) =>
+                  record.direction == GiftDirection.received &&
+                  record.needReturn,
+            )
+            .toList()
+          ..sort((a, b) => b.date.compareTo(a.date));
+
+    return Scaffold(
+      backgroundColor: AppPalette.paper,
+      body: SafeArea(
+        child: Column(
+          children: [
+            _SimplePageHeader(
+              title: '待回礼提醒',
+              onBack: () => Navigator.of(context).pop(),
+            ),
+            Expanded(
+              child: ListView(
+                padding: const EdgeInsets.fromLTRB(18, 8, 18, 24),
+                children: [
+                  _PendingReturnSummary(count: pending.length),
+                  const SizedBox(height: 18),
+                  const SectionHeader(title: '待回礼', action: '按最近往来'),
+                  const SizedBox(height: 8),
+                  if (pending.isEmpty)
+                    const EmptyState(
+                      title: '暂无待回礼记录',
+                      subtitle: '收到的礼金会在这里提示，回礼后即可归档。',
+                    )
+                  else
+                    for (final record in pending)
+                      _PendingReturnRow(
+                        record: record,
+                        onTap: () => Navigator.of(context).push(
+                          MaterialPageRoute<void>(
+                            builder: (context) => RecordDetailPage(
+                              record: record,
+                              records: records,
+                              onRecordAdded: onRecordAdded,
+                              onRecordUpdated: onRecordUpdated,
+                            ),
+                          ),
+                        ),
+                      ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class PendingCompletionsPage extends StatelessWidget {
+  const PendingCompletionsPage({
+    super.key,
+    required this.records,
+    required this.onRecordAdded,
+    required this.onRecordUpdated,
+  });
+
+  final List<GiftRecord> records;
+  final ValueChanged<GiftRecord> onRecordAdded;
+  final ValueChanged<GiftRecord> onRecordUpdated;
+
+  @override
+  Widget build(BuildContext context) {
+    final partialRecords = records.where((record) => record.partial).toList()
+      ..sort((a, b) => b.date.compareTo(a.date));
+
+    return Scaffold(
+      backgroundColor: AppPalette.paper,
+      body: SafeArea(
+        child: Column(
+          children: [
+            _SimplePageHeader(
+              title: '待补全',
+              onBack: () => Navigator.of(context).pop(),
+            ),
+            Expanded(
+              child: ListView(
+                padding: const EdgeInsets.fromLTRB(18, 8, 18, 24),
+                children: [
+                  Text(
+                    '礼台速记已为你保留姓名与金额，点开即可补全关系、事项与备注。',
+                    style: TextStyle(
+                      color: AppPalette.mutedInk.withValues(alpha: 0.9),
+                      fontFamily: AppFonts.kaiti,
+                      fontSize: 14,
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+                  if (partialRecords.isEmpty)
+                    const EmptyState(
+                      title: '暂无待补全记录',
+                      subtitle: '礼台速记会自动出现在这里，方便事后整理。',
+                    )
+                  else
+                    for (final record in partialRecords)
+                      _LedgerRecordRow(
+                        record: record,
+                        records: records,
+                        onRecordAdded: onRecordAdded,
+                        onRecordUpdated: onRecordUpdated,
+                      ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _SimplePageHeader extends StatelessWidget {
+  const _SimplePageHeader({required this.title, required this.onBack});
+
+  final String title;
+  final VoidCallback onBack;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: 64,
+      child: Row(
+        children: [
+          IconButton(
+            tooltip: '返回',
+            onPressed: onBack,
+            icon: const Icon(CupertinoIcons.chevron_left),
+          ),
+          Expanded(
+            child: Text(
+              title,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                fontFamily: AppFonts.kaiti,
+                fontSize: 22,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+          ),
+          const SizedBox(width: 48),
+        ],
+      ),
+    );
+  }
+}
+
+class _PendingReturnSummary extends StatelessWidget {
+  const _PendingReturnSummary({required this.count});
+
+  final int count;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 18),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [AppPalette.palaceRed, AppPalette.rouge],
+        ),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        children: [
+          const Icon(CupertinoIcons.gift, color: Color(0xFFFFE3B0), size: 28),
+          const SizedBox(width: 12),
+          const Expanded(
+            child: Text(
+              '知礼记情，妥帖应对',
+              style: TextStyle(
+                color: Color(0xFFFFE3B0),
+                fontFamily: AppFonts.kaiti,
+                fontSize: 16,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ),
+          Text(
+            '$count 人待回礼',
+            style: const TextStyle(
+              color: Colors.white,
+              fontFamily: AppFonts.kaiti,
+              fontSize: 18,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _PendingReturnRow extends StatelessWidget {
+  const _PendingReturnRow({required this.record, required this.onTap});
+
+  final GiftRecord record;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final suggestion = ReturnGiftAdvisor.forRecord(
+      record: record,
+      records: const [],
+    );
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(10),
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: AppPalette.whiteTone.withValues(alpha: 0.72),
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: AppPalette.line.withValues(alpha: 0.58)),
+          ),
+          child: Row(
+            children: [
+              CircleAvatar(
+                backgroundColor: AppPalette.palaceRed,
+                child: Text(
+                  record.name.characters.first,
+                  style: const TextStyle(color: Colors.white),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '${record.name} · ${record.event}',
+                      style: const TextStyle(
+                        fontFamily: AppFonts.kaiti,
+                        fontWeight: FontWeight.w900,
+                        fontSize: 16,
+                      ),
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      '上次随礼 ${formatAmount(record.amount)} 元 · 建议回礼 ${formatAmount(suggestion.increasedAmount)} 元',
+                      style: const TextStyle(
+                        color: AppPalette.mutedInk,
+                        fontFamily: AppFonts.kaiti,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const Icon(CupertinoIcons.chevron_right, size: 16),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class SettingsPage extends StatefulWidget {
+  const SettingsPage({super.key});
+
+  @override
+  State<SettingsPage> createState() => _SettingsPageState();
+}
+
+class _SettingsPageState extends State<SettingsPage> {
+  bool _hideAmounts = false;
+  bool _funeralPrivacy = true;
+  bool _notifications = true;
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: AppPalette.paper,
+      body: SafeArea(
+        child: Column(
+          children: [
+            _SimplePageHeader(
+              title: '设置与隐私',
+              onBack: () => Navigator.of(context).pop(),
+            ),
+            Expanded(
+              child: ListView(
+                padding: const EdgeInsets.fromLTRB(18, 8, 18, 24),
+                children: [
+                  const FormSectionLabel(label: '隐私与安全'),
+                  _SettingsToggleRow(
+                    title: '金额隐藏',
+                    subtitle: '在礼簿列表中隐藏金额',
+                    value: _hideAmounts,
+                    onChanged: (value) => setState(() => _hideAmounts = value),
+                  ),
+                  _SettingsToggleRow(
+                    title: '白榜隐私保护',
+                    subtitle: '白事记录仅在礼簿内显示',
+                    value: _funeralPrivacy,
+                    onChanged: (value) =>
+                        setState(() => _funeralPrivacy = value),
+                  ),
+                  const SizedBox(height: 14),
+                  const FormSectionLabel(label: '个性化与通知'),
+                  _SettingsToggleRow(
+                    title: '通知提醒',
+                    subtitle: '提醒即将到来的礼事',
+                    value: _notifications,
+                    onChanged: (value) =>
+                        setState(() => _notifications = value),
+                  ),
+                  const SizedBox(height: 14),
+                  const _ProfileSettingsSection(
+                    title: '关于与帮助',
+                    items: [
+                      _ProfileSettingItem(
+                        icon: CupertinoIcons.info_circle,
+                        title: '关于礼往来',
+                        value: 'MVP 1.0.0',
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _SettingsToggleRow extends StatelessWidget {
+  const _SettingsToggleRow({
+    required this.title,
+    required this.subtitle,
+    required this.value,
+    required this.onChanged,
+  });
+
+  final String title;
+  final String subtitle;
+  final bool value;
+  final ValueChanged<bool> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 1),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      decoration: BoxDecoration(
+        color: AppPalette.whiteTone.withValues(alpha: 0.72),
+        border: Border.all(color: AppPalette.line.withValues(alpha: 0.58)),
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: const TextStyle(
+                    fontFamily: AppFonts.kaiti,
+                    fontWeight: FontWeight.w900,
+                    fontSize: 16,
+                  ),
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  subtitle,
+                  style: const TextStyle(
+                    fontFamily: AppFonts.kaiti,
+                    color: AppPalette.mutedInk,
+                    fontSize: 12,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Switch(value: value, onChanged: onChanged),
+        ],
+      ),
+    );
+  }
+}
+
 class _ProfileHeader extends StatelessWidget {
-  const _ProfileHeader();
+  const _ProfileHeader({required this.onSettings});
+
+  final VoidCallback onSettings;
 
   @override
   Widget build(BuildContext context) {
@@ -2955,12 +3653,16 @@ class _ProfileHeader extends StatelessWidget {
       child: Stack(
         children: [
           Positioned(
-            right: 14,
-            top: 18,
-            child: Icon(
-              CupertinoIcons.gear_alt,
-              color: AppPalette.ink.withValues(alpha: 0.78),
-              size: 31,
+            right: 8,
+            top: 10,
+            child: IconButton(
+              tooltip: '设置与隐私',
+              onPressed: onSettings,
+              icon: Icon(
+                CupertinoIcons.gear_alt,
+                color: AppPalette.ink.withValues(alpha: 0.78),
+                size: 29,
+              ),
             ),
           ),
           const Positioned.fill(
@@ -3279,12 +3981,14 @@ class _ProfileSettingItem {
     required this.title,
     this.value,
     this.showDot = false,
+    this.onTap,
   });
 
   final IconData icon;
   final String title;
   final String? value;
   final bool showDot;
+  final VoidCallback? onTap;
 }
 
 class _ProfileSettingRow extends StatelessWidget {
@@ -3295,76 +3999,79 @@ class _ProfileSettingRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      height: 58,
-      padding: const EdgeInsets.symmetric(horizontal: 14),
-      decoration: BoxDecoration(
-        border: isLast
-            ? null
-            : Border(
-                bottom: BorderSide(
-                  color: AppPalette.line.withValues(alpha: 0.52),
+    return InkWell(
+      onTap: item.onTap,
+      child: Container(
+        height: 58,
+        padding: const EdgeInsets.symmetric(horizontal: 14),
+        decoration: BoxDecoration(
+          border: isLast
+              ? null
+              : Border(
+                  bottom: BorderSide(
+                    color: AppPalette.line.withValues(alpha: 0.52),
+                  ),
+                ),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 34,
+              height: 34,
+              decoration: BoxDecoration(
+                color: AppPalette.whiteTone.withValues(alpha: 0.7),
+                shape: BoxShape.circle,
+                border: Border.all(
+                  color: AppPalette.gold.withValues(alpha: 0.54),
                 ),
               ),
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 34,
-            height: 34,
-            decoration: BoxDecoration(
-              color: AppPalette.whiteTone.withValues(alpha: 0.7),
-              shape: BoxShape.circle,
-              border: Border.all(
-                color: AppPalette.gold.withValues(alpha: 0.54),
+              child: Icon(item.icon, color: const Color(0xFF8A642F), size: 19),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                item.title,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  color: AppPalette.ink,
+                  fontFamily: AppFonts.kaiti,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w900,
+                ),
               ),
             ),
-            child: Icon(item.icon, color: const Color(0xFF8A642F), size: 19),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Text(
-              item.title,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
-                color: AppPalette.ink,
-                fontFamily: AppFonts.kaiti,
-                fontSize: 16,
-                fontWeight: FontWeight.w900,
+            if (item.value != null) ...[
+              Text(
+                item.value!,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  color: AppPalette.mutedInk,
+                  fontFamily: AppFonts.kaiti,
+                  fontSize: 13,
+                ),
               ),
-            ),
-          ),
-          if (item.value != null) ...[
-            Text(
-              item.value!,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
-                color: AppPalette.mutedInk,
-                fontFamily: AppFonts.kaiti,
-                fontSize: 13,
-              ),
-            ),
-            if (item.showDot) ...[
+              if (item.showDot) ...[
+                const SizedBox(width: 7),
+                Container(
+                  width: 7,
+                  height: 7,
+                  decoration: const BoxDecoration(
+                    color: AppPalette.palaceRed,
+                    shape: BoxShape.circle,
+                  ),
+                ),
+              ],
               const SizedBox(width: 7),
-              Container(
-                width: 7,
-                height: 7,
-                decoration: const BoxDecoration(
-                  color: AppPalette.palaceRed,
-                  shape: BoxShape.circle,
-                ),
-              ),
             ],
-            const SizedBox(width: 7),
+            Icon(
+              CupertinoIcons.chevron_right,
+              color: AppPalette.mutedInk.withValues(alpha: 0.78),
+              size: 18,
+            ),
           ],
-          Icon(
-            CupertinoIcons.chevron_right,
-            color: AppPalette.mutedInk.withValues(alpha: 0.78),
-            size: 18,
-          ),
-        ],
+        ),
       ),
     );
   }
@@ -3698,21 +4405,29 @@ class OrnateSubtitle extends StatelessWidget {
 }
 
 class DateLedgerLine extends StatelessWidget {
-  const DateLedgerLine({super.key});
+  const DateLedgerLine({super.key, DateTime? date}) : _date = date;
+
+  final DateTime? _date;
 
   @override
   Widget build(BuildContext context) {
+    final date = _date ?? DateTime.now();
+    const weekdays = ['一', '二', '三', '四', '五', '六', '日'];
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Row(
+        Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(CupertinoIcons.calendar, color: Color(0xFF7B5B30), size: 16),
-            SizedBox(width: 6),
+            const Icon(
+              CupertinoIcons.calendar,
+              color: Color(0xFF7B5B30),
+              size: 16,
+            ),
+            const SizedBox(width: 6),
             Text(
-              '2025年5月16日  星期五',
-              style: TextStyle(
+              '${formatChineseDate(date)}  星期${weekdays[date.weekday - 1]}',
+              style: const TextStyle(
                 color: AppPalette.ink,
                 fontSize: 14,
                 fontWeight: FontWeight.w700,
@@ -3726,7 +4441,7 @@ class DateLedgerLine extends StatelessWidget {
           children: [
             const SizedBox(width: 22),
             const Text(
-              '乙巳年四月十九',
+              '今日往来',
               style: TextStyle(color: AppPalette.mutedInk, fontSize: 12),
             ),
             const SizedBox(width: 8),
@@ -4532,7 +5247,7 @@ class HeroLedgerCard extends StatelessWidget {
               right: 0,
               top: height * 0.20,
               child: const Text(
-                '本年往来',
+                '往来概览',
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   color: Color(0xFFF5D184),
