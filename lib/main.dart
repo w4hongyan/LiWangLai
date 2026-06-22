@@ -1098,6 +1098,10 @@ class _AddRecordPageState extends State<AddRecordPage> {
       ).showSnackBar(SnackBar(content: Text('请填写$label')));
       return;
     }
+    final wasArchivedReceived =
+        widget.editExisting &&
+        widget.record?.direction == GiftDirection.received &&
+        widget.record?.needReturn == false;
 
     widget.onSave(
       GiftRecord(
@@ -1116,7 +1120,8 @@ class _AddRecordPageState extends State<AddRecordPage> {
         note: _noteController.text.trim(),
         itemDescription: itemDescription,
         partial: false,
-        needReturn: _direction == GiftDirection.received,
+        needReturn:
+            _direction == GiftDirection.received && !wasArchivedReceived,
       ),
     );
     if (!mounted) {
@@ -4405,13 +4410,13 @@ class OrnateSubtitle extends StatelessWidget {
 }
 
 class DateLedgerLine extends StatelessWidget {
-  const DateLedgerLine({super.key, DateTime? date}) : _date = date;
+  const DateLedgerLine({super.key, this.date});
 
-  final DateTime? _date;
+  final DateTime? date;
 
   @override
   Widget build(BuildContext context) {
-    final date = _date ?? DateTime.now();
+    final currentDate = date ?? DateTime.now();
     const weekdays = ['一', '二', '三', '四', '五', '六', '日'];
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -4426,7 +4431,7 @@ class DateLedgerLine extends StatelessWidget {
             ),
             const SizedBox(width: 6),
             Text(
-              '${formatChineseDate(date)}  星期${weekdays[date.weekday - 1]}',
+              '${formatChineseDate(currentDate)}  星期${weekdays[currentDate.weekday - 1]}',
               style: const TextStyle(
                 color: AppPalette.ink,
                 fontSize: 14,

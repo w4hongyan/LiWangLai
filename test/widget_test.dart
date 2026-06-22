@@ -106,18 +106,19 @@ void main() {
     expect(find.text('+900'), findsOneWidget);
   });
 
-  testWidgets('date ledger line receives its date instead of using a mock date', (
-    tester,
-  ) async {
-    await tester.pumpWidget(
-      MaterialApp(
-        theme: AppTheme.theme,
-        home: Scaffold(body: DateLedgerLine(date: DateTime(2026, 6, 20))),
-      ),
-    );
+  testWidgets(
+    'date ledger line receives its date instead of using a mock date',
+    (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AppTheme.theme,
+          home: Scaffold(body: DateLedgerLine(date: DateTime(2026, 6, 20))),
+        ),
+      );
 
-    expect(find.text('2026年6月20日  星期六'), findsOneWidget);
-  });
+      expect(find.text('2026年6月20日  星期六'), findsOneWidget);
+    },
+  );
 
   testWidgets('quick desk undo removes the saved record as well as the row', (
     tester,
@@ -400,5 +401,36 @@ void main() {
     expect(added!.direction, GiftDirection.given);
     expect(updated, isNotNull);
     expect(updated!.needReturn, isFalse);
+  });
+
+  testWidgets('editing an archived received gift keeps it out of reminders', (
+    tester,
+  ) async {
+    final archived = _record(
+      id: 'archived',
+      name: '张晓明',
+      direction: GiftDirection.received,
+      amount: 800,
+      needReturn: false,
+    );
+    GiftRecord? saved;
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.theme,
+        home: Scaffold(
+          body: AddRecordPage(
+            record: archived,
+            editExisting: true,
+            onSave: (record) => saved = record,
+          ),
+        ),
+      ),
+    );
+
+    tester.widget<SealButton>(find.byType(SealButton)).onPressed();
+    await tester.pump();
+
+    expect(saved, isNotNull);
+    expect(saved!.needReturn, isFalse);
   });
 }
