@@ -4,6 +4,10 @@
 <dict>
 	<key>CADisableMinimumFrameDurationOnPhone</key>
 	<true/>
+	<key>NSFaceIDUsageDescription</key>
+	<string>用于在打开 App 时通过 Face ID 解锁礼往来，保护你的人情往来记录。</string>
+	<key>NSUserNotificationUsageDescription</key>
+	<string>用于提醒你回礼前 N 天、亲友生日、白事周年等重要日子。</string>
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleDisplayName</key>

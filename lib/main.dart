@@ -2,23 +2,24 @@ import 'dart:math' as math;
 
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-void main() {
-  runApp(const LiWangLaiApp());
-}
+import 'app/app.dart' as app_router;
+import 'app/app_bootstrap.dart';
+import 'core/types.dart';
 
-class LiWangLaiApp extends StatelessWidget {
-  const LiWangLaiApp({super.key});
+// 方便测试 / 旧代码 import 'package:liwanglai/main.dart' 直接拿到类型。
+export 'core/types.dart';
 
-  @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
-      title: '礼往来',
-      debugShowCheckedModeBanner: false,
-      theme: AppTheme.theme,
-      home: const StartupPage(),
-    );
-  }
+void main() async {
+  final result = await bootstrap();
+  final container = buildContainer(result);
+  runApp(
+    UncontrolledProviderScope(
+      container: container,
+      child: const app_router.LiWangLaiApp(),
+    ),
+  );
 }
 
 class AppPalette {

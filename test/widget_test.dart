@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'package:liwanglai/core/types.dart';
 import 'package:liwanglai/main.dart';
 
 GiftRecord _record({
