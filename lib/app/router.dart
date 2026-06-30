@@ -1,9 +1,11 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../features/add_record/add_record_page.dart';
-import '../features/home/home_page.dart';
+import '../features/home/home_shell_page.dart';
+import '../features/ledger/ledger_book_management_page.dart';
 import '../features/ledger/ledger_page.dart';
 import '../features/lock/lock_page.dart';
 import '../features/profile/profile_page.dart';
@@ -13,13 +15,13 @@ import '../features/settings/settings_page.dart';
 import '../features/splash/splash_page.dart';
 import 'providers.dart';
 
-/// A-6 真路由。go_router + 嵌套 shell。
+/// A-6 真路由。go_router + StatefulShellRoute。
 /// 隐私锁未解锁时，全部路由跳转被拦截到 /lock。
 class AppRouter {
   AppRouter._();
 
   static final GoRouter router = GoRouter(
-    debugLogDiagnostics: true,
+    debugLogDiagnostics: kDebugMode,
     initialLocation: '/lock',
     redirect: (context, state) {
       // Splash 永远放行
@@ -50,7 +52,7 @@ class AppRouter {
       ),
       GoRoute(
         path: '/home',
-        builder: (context, state) => const HomePage(),
+        builder: (context, state) => const HomeShellPage(),
         routes: [
           GoRoute(
             path: 'ledger',
@@ -75,6 +77,10 @@ class AppRouter {
           GoRoute(
             path: 'settings',
             builder: (context, state) => const SettingsPage(),
+          ),
+          GoRoute(
+            path: 'ledger-books',
+            builder: (context, state) => const LedgerBookManagementPage(),
           ),
         ],
       ),

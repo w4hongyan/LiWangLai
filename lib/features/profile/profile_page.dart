@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../app/providers.dart';
-import '../../core/types.dart';
 import '../../main.dart' as app;
 
 class ProfilePage extends ConsumerWidget {

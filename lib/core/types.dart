@@ -4,7 +4,14 @@
 library;
 
 export '../domain/entities/gift_record.dart'
-    show GiftRecord, GiftDirection, EventTone, LedgerTotals;
+    show
+        GiftRecord,
+        GiftDirection,
+        EventTone,
+        GiftMethod,
+        GiftEntryMode,
+        GiftCompletionStatus,
+        LedgerTotals;
 export '../domain/entities/ledger_book.dart'
     show LedgerBook, LedgerBookType;
 export '../domain/entities/person.dart' show Person;

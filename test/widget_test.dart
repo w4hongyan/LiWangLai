@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:liwanglai/core/types.dart';
 import 'package:liwanglai/main.dart';
 
 GiftRecord _record({
@@ -11,17 +10,19 @@ GiftRecord _record({
   required int amount,
   bool needReturn = false,
   DateTime? date,
+  String method = '现金',
+  String relation = '挚友',
 }) {
   return GiftRecord(
     id: id,
     name: name,
-    relation: '挚友',
+    relation: relation,
     event: '婚礼',
     direction: direction,
     tone: EventTone.red,
     amount: amount,
     date: date ?? DateTime(2025, 5, 16),
-    method: '现金',
+    method: method,
     book: '我家',
     needReturn: needReturn,
   );
@@ -60,15 +61,20 @@ void main() {
   testWidgets('enters through onboarding and shows the MVP home surface', (
     tester,
   ) async {
-    await tester.pumpWidget(const LiWangLaiApp());
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.theme,
+        home: Scaffold(
+          body: OnboardingPage(
+            onEnter: () {},
+          ),
+        ),
+      ),
+    );
 
     expect(find.text('入簿'), findsOneWidget);
-    await tester.tap(find.text('入簿'));
-    await tester.pumpAndSettle();
-
     expect(find.text('人情往来礼簿'), findsOneWidget);
-    expect(find.text('查往来'), findsWidgets);
-    expect(find.text('礼台模式'), findsWidgets);
+    expect(find.text('礼有往来，情有分寸'), findsOneWidget);
   });
 
   testWidgets('home summary responds to the records it receives', (

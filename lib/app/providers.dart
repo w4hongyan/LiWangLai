@@ -50,6 +50,11 @@ final currentLedgerBookProvider = FutureProvider<LedgerBook?>((ref) async {
   return repo.findDefault();
 });
 
+final ledgerBooksStreamProvider = StreamProvider<List<LedgerBook>>((ref) {
+  final repo = ref.watch(ledgerBookRepositoryProvider);
+  return repo.watchAll();
+});
+
 /// ============ 数据流（按当前账本）============
 
 final recordsStreamProvider = StreamProvider<List<GiftRecord>>((ref) {

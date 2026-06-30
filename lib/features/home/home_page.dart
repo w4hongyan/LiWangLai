@@ -2,21 +2,34 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../app/providers.dart';
-import '../../domain/entities/gift_record.dart';
+import '../../core/types.dart';
 import '../../main.dart' as app;
 
-/// /home 首页（A-1 接通 recordsStreamProvider，验收：A-9 错误兜底）
+/// /home 首页（A-1 接通 recordsStreamProvider + remindersStreamProvider）
 class HomePage extends ConsumerWidget {
   const HomePage({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final recordsAsync = ref.watch(recordsStreamProvider);
+    final remindersAsync = ref.watch(remindersStreamProvider);
 
     final records = recordsAsync.when<List<GiftRecord>>(
       data: (list) => list,
       loading: () => const <GiftRecord>[],
       error: (_, _) => const <GiftRecord>[],
+    );
+
+    final reminders = remindersAsync.when<List<ReminderItem>>(
+      data: (list) => list
+          .map((r) => ReminderItem(
+                r.title,
+                '${r.date.month}月${r.date.day}日',
+                r.daysLeft,
+              ))
+          .toList(),
+      loading: () => const <ReminderItem>[],
+      error: (_, _) => const <ReminderItem>[],
     );
 
     return app.HomePage(
@@ -31,6 +44,7 @@ class HomePage extends ConsumerWidget {
           ),
         );
       },
+      reminders: reminders,
     );
   }
 }

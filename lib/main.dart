@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import 'app/app.dart' as app_router;
 import 'app/app_bootstrap.dart';
@@ -148,278 +149,7 @@ class AppTheme {
   }
 }
 
-enum GiftDirection { received, given }
 
-enum EventTone { red, white }
-
-class GiftRecord {
-  const GiftRecord({
-    required this.id,
-    required this.name,
-    required this.relation,
-    required this.event,
-    required this.direction,
-    required this.tone,
-    required this.amount,
-    required this.date,
-    required this.method,
-    required this.book,
-    this.note = '',
-    this.itemDescription = '',
-    this.partial = false,
-    this.needReturn = false,
-  });
-
-  final String id;
-  final String name;
-  final String relation;
-  final String event;
-  final GiftDirection direction;
-  final EventTone tone;
-  final int amount;
-  final DateTime date;
-  final String method;
-  final String book;
-  final String note;
-  final String itemDescription;
-  final bool partial;
-  final bool needReturn;
-
-  GiftRecord copyWith({
-    String? id,
-    String? name,
-    String? relation,
-    String? event,
-    GiftDirection? direction,
-    EventTone? tone,
-    int? amount,
-    DateTime? date,
-    String? method,
-    String? book,
-    String? note,
-    String? itemDescription,
-    bool? partial,
-    bool? needReturn,
-  }) {
-    return GiftRecord(
-      id: id ?? this.id,
-      name: name ?? this.name,
-      relation: relation ?? this.relation,
-      event: event ?? this.event,
-      direction: direction ?? this.direction,
-      tone: tone ?? this.tone,
-      amount: amount ?? this.amount,
-      date: date ?? this.date,
-      method: method ?? this.method,
-      book: book ?? this.book,
-      note: note ?? this.note,
-      itemDescription: itemDescription ?? this.itemDescription,
-      partial: partial ?? this.partial,
-      needReturn: needReturn ?? this.needReturn,
-    );
-  }
-}
-
-class LedgerTotals {
-  const LedgerTotals({required this.received, required this.given});
-
-  final int received;
-  final int given;
-
-  int get balance => received - given;
-
-  factory LedgerTotals.fromRecords(Iterable<GiftRecord> records) {
-    var received = 0;
-    var given = 0;
-    for (final record in records) {
-      if (record.direction == GiftDirection.received) {
-        received += record.amount;
-      } else {
-        given += record.amount;
-      }
-    }
-    return LedgerTotals(received: received, given: given);
-  }
-}
-
-class ReturnGiftSuggestion {
-  const ReturnGiftSuggestion({
-    required this.originalAmount,
-    required this.increasedAmount,
-  });
-
-  final int originalAmount;
-  final int increasedAmount;
-}
-
-class ReturnGiftAdvisor {
-  const ReturnGiftAdvisor._();
-
-  static ReturnGiftSuggestion forRecord({
-    required GiftRecord record,
-    required Iterable<GiftRecord> records,
-  }) {
-    // A return should start from the most recent gift, rather than a fabricated
-    // history total. The 25% option mirrors the prototype's 800 -> 1,000 cue.
-    final originalAmount = record.amount;
-    final increasedAmount = ((originalAmount * 1.25) / 100).ceil() * 100;
-    return ReturnGiftSuggestion(
-      originalAmount: originalAmount,
-      increasedAmount: increasedAmount,
-    );
-  }
-}
-
-class ReminderItem {
-  const ReminderItem(this.title, this.subtitle, this.daysLeft);
-
-  final String title;
-  final String subtitle;
-  final int daysLeft;
-}
-
-class StartupPage extends StatelessWidget {
-  const StartupPage({super.key});
-
-  void _enterApp(BuildContext context) {
-    Navigator.of(context).pushReplacement(
-      MaterialPageRoute<void>(builder: (context) => const LiWangLaiHome()),
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return OnboardingPage(onEnter: () => _enterApp(context));
-  }
-}
-
-class LiWangLaiHome extends StatefulWidget {
-  const LiWangLaiHome({super.key});
-
-  @override
-  State<LiWangLaiHome> createState() => _LiWangLaiHomeState();
-}
-
-class _LiWangLaiHomeState extends State<LiWangLaiHome> {
-  int _tabIndex = 0;
-  final List<GiftRecord> _records = List.of(SampleData.records);
-
-  void _selectTab(int index) {
-    setState(() {
-      _tabIndex = index;
-    });
-  }
-
-  void _openQuickDesk() {
-    Navigator.of(context).push(
-      MaterialPageRoute<void>(
-        builder: (context) => QuickDeskPage(
-          records: _records,
-          onRecordAdded: (record) {
-            setState(() {
-              _records.insert(0, record);
-            });
-          },
-          onRecordRemoved: _removeRecord,
-        ),
-      ),
-    );
-  }
-
-  void _addRecord(GiftRecord record) {
-    setState(() {
-      _records.insert(0, record);
-      _tabIndex = 1;
-    });
-  }
-
-  void _removeRecord(GiftRecord record) {
-    setState(() {
-      _records.removeWhere((item) => item.id == record.id);
-    });
-  }
-
-  void _updateRecord(GiftRecord record) {
-    setState(() {
-      final index = _records.indexWhere((item) => item.id == record.id);
-      if (index == -1) {
-        _records.insert(0, record);
-      } else {
-        _records[index] = record;
-      }
-      _tabIndex = 1;
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final isTablet = constraints.maxWidth >= 700;
-        final pages = [
-          HomePage(
-            records: _records,
-            onNavigate: _selectTab,
-            onOpenQuickDesk: _openQuickDesk,
-          ),
-          LedgerPage(
-            records: _records,
-            onRecordAdded: _addRecord,
-            onRecordUpdated: _updateRecord,
-          ),
-          AddRecordPage(onSave: _addRecord, onBack: () => _selectTab(0)),
-          SearchOldPage(
-            records: _records,
-            onRecordAdded: _addRecord,
-            onRecordUpdated: _updateRecord,
-          ),
-          ProfilePage(
-            records: _records,
-            onRecordAdded: _addRecord,
-            onRecordUpdated: _updateRecord,
-          ),
-        ];
-
-        if (isTablet) {
-          return AntiqueScaffold(
-            useSafeArea: _tabIndex != 2,
-            child: Row(
-              children: [
-                TabletRail(
-                  selectedIndex: _tabIndex,
-                  onSelected: _selectTab,
-                  onOpenQuickDesk: _openQuickDesk,
-                ),
-                Expanded(
-                  child: AnimatedSwitcher(
-                    duration: const Duration(milliseconds: 220),
-                    child: pages[_tabIndex],
-                  ),
-                ),
-              ],
-            ),
-          );
-        }
-
-        return AntiqueScaffold(
-          useSafeArea: _tabIndex != 2,
-          floatingActionButton: _tabIndex == 2
-              ? null
-              : CenterWriteButton(onTap: () => _selectTab(2)),
-          floatingActionButtonLocation:
-              FloatingActionButtonLocation.centerDocked,
-          bottomNavigationBar: _tabIndex == 2
-              ? null
-              : PhoneNavBar(selectedIndex: _tabIndex, onSelected: _selectTab),
-          child: AnimatedSwitcher(
-            duration: const Duration(milliseconds: 220),
-            child: pages[_tabIndex],
-          ),
-        );
-      },
-    );
-  }
-}
 
 class OnboardingPage extends StatelessWidget {
   const OnboardingPage({super.key, required this.onEnter});
@@ -523,11 +253,13 @@ class HomePage extends StatelessWidget {
     required this.records,
     required this.onNavigate,
     required this.onOpenQuickDesk,
+    this.reminders,
   });
 
   final List<GiftRecord> records;
   final ValueChanged<int> onNavigate;
   final VoidCallback onOpenQuickDesk;
+  final List<ReminderItem>? reminders;
 
   @override
   Widget build(BuildContext context) {
@@ -568,7 +300,7 @@ class HomePage extends StatelessWidget {
                   children: [
                     QuickAction(
                       imageAsset: AppAssets.iconSearchLedger,
-                      label: '查往来',
+                      label: '查旧账',
                       onTap: () => onNavigate(3),
                     ),
                     QuickAction(
@@ -590,13 +322,23 @@ class HomePage extends StatelessWidget {
                 ),
                 if (!veryCompact) ...[
                   SizedBox(height: compact ? 8 : 10),
-                  const SectionHeader(title: '即将到来', action: '全部'),
+                  SectionHeader(
+                    title: '即将到来',
+                    action: '全部',
+                    onActionTap: () => onNavigate(1),
+                  ),
                   const SizedBox(height: 7),
-                  const UpcomingReminderGrid(items: SampleData.reminders),
+                  UpcomingReminderGrid(
+                    items: reminders ?? SampleData.reminders,
+                  ),
                   SizedBox(height: compact ? 8 : 10),
                 ] else
                   const SizedBox(height: 7),
-                const SectionHeader(title: '最近往来', action: '全部'),
+                SectionHeader(
+                  title: '最近往来',
+                  action: '全部',
+                  onActionTap: () => onNavigate(1),
+                ),
                 const SizedBox(height: 3),
                 SizedBox(
                   height: ledgerHeight + landscapeReserve,
@@ -2502,6 +2244,13 @@ class SearchOldPage extends StatefulWidget {
 
 class _SearchOldPageState extends State<SearchOldPage> {
   String _query = '';
+  final _searchController = TextEditingController();
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -2522,8 +2271,7 @@ class _SearchOldPageState extends State<SearchOldPage> {
         padding: const EdgeInsets.fromLTRB(18, 10, 18, 96),
         children: [
           TextField(
-            controller: TextEditingController(text: _query)
-              ..selection = TextSelection.collapsed(offset: _query.length),
+            controller: _searchController,
             onChanged: (value) => setState(() => _query = value.trim()),
             decoration: const InputDecoration(
               prefixIcon: Icon(CupertinoIcons.search),
@@ -2775,6 +2523,8 @@ class _QuickDeskPageState extends State<QuickDeskPage> {
       note: _noteController.text.trim(),
       partial: true,
       needReturn: _direction == GiftDirection.received,
+      entryMode: GiftEntryMode.quickDesk,
+      completionStatus: GiftCompletionStatus.partial,
     );
     widget.onRecordAdded(record);
     setState(() {
@@ -3039,9 +2789,7 @@ class ProfilePage extends StatelessWidget {
     return Column(
       children: [
         _ProfileHeader(
-          onSettings: () => Navigator.of(context).push(
-            MaterialPageRoute<void>(builder: (context) => const SettingsPage()),
-          ),
+          onSettings: () => context.push('/home/settings'),
         ),
         Expanded(
           child: ListView(
@@ -3062,62 +2810,55 @@ class ProfilePage extends StatelessWidget {
                     .length,
                 onPendingCompletions: () => _openPendingCompletions(context),
                 onPendingReturns: () => _openPendingReturns(context),
+                onAnnualLedger: () => context.push('/home/settings'),
+                onMultiLedger: () => context.push('/home/ledger-books'),
               ),
               const SizedBox(height: 14),
               _ProfileSettingsSection(
-                title: '账本管理',
+                title: '功能入口',
                 items: [
                   _ProfileSettingItem(
-                    icon: CupertinoIcons.book,
-                    title: '当前账本',
-                    value: '张晓明家庭礼簿',
+                    icon: CupertinoIcons.cloud_download,
+                    title: '本地备份',
+                    subtitle: '数据备份与恢复',
+                    onTap: () => context.push('/home/settings'),
                   ),
                   _ProfileSettingItem(
-                    icon: CupertinoIcons.doc_text,
-                    title: '待补全',
-                    value:
-                        '${records.where((record) => record.partial).length}条',
-                    onTap: () => _openPendingCompletions(context),
+                    icon: CupertinoIcons.lock,
+                    title: '隐私锁',
+                    subtitle: '保护您的隐私',
+                    onTap: () => context.push('/home/settings'),
                   ),
-                  _ProfileSettingItem(
-                    icon: CupertinoIcons.gift,
-                    title: '待回礼',
-                    value:
-                        '${records.where((record) => record.needReturn && record.direction == GiftDirection.received).length}人',
-                    onTap: () => _openPendingReturns(context),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 14),
-              const _ProfileSettingsSection(
-                title: '个性化与通知',
-                items: [
                   _ProfileSettingItem(
                     icon: CupertinoIcons.paintbrush,
                     title: '主题风格',
-                    value: '杏花红',
+                    subtitle: '古韵 / 雅致 / 简约',
                     showDot: true,
                   ),
                   _ProfileSettingItem(
-                    icon: CupertinoIcons.bell,
-                    title: '通知提醒',
-                    value: '已开启',
+                    icon: CupertinoIcons.gift,
+                    title: '礼往来 Pro',
+                    subtitle: '会员中心与管理',
+                    onTap: () {
+                      showDialog<void>(
+                        context: context,
+                        builder: (context) => AlertDialog(
+                          title: const Text('Pro 功能开发中'),
+                          content: const Text(
+                            'Pro 多账本、云端备份、智能统计等功能正在开发中，敬请期待。',
+                          ),
+                          actions: [
+                            TextButton(
+                              onPressed: () => Navigator.of(context).pop(),
+                              child: const Text('知道了'),
+                            ),
+                          ],
+                        ),
+                      );
+                    },
                   ),
                 ],
               ),
-              const SizedBox(height: 14),
-              const _ProfileSettingsSection(
-                title: '关于与帮助',
-                items: [
-                  _ProfileSettingItem(
-                    icon: CupertinoIcons.info_circle,
-                    title: '关于礼往来',
-                    value: 'MVP 1.0.0',
-                  ),
-                ],
-              ),
-              const SizedBox(height: 14),
-              const _ProfileAdNotice(compact: false),
               const SizedBox(height: 14),
               const _ProfileProPanel(),
             ],
@@ -3134,12 +2875,16 @@ class _ProfileActionGrid extends StatelessWidget {
     required this.pendingReturnCount,
     required this.onPendingCompletions,
     required this.onPendingReturns,
+    required this.onAnnualLedger,
+    this.onMultiLedger,
   });
 
   final int pendingCompletionCount;
   final int pendingReturnCount;
   final VoidCallback onPendingCompletions;
   final VoidCallback onPendingReturns;
+  final VoidCallback onAnnualLedger;
+  final VoidCallback? onMultiLedger;
 
   @override
   Widget build(BuildContext context) {
@@ -3152,18 +2897,20 @@ class _ProfileActionGrid extends StatelessWidget {
       ),
       child: Row(
         children: [
-          const Expanded(
+          Expanded(
             child: _ProfileAction(
               icon: CupertinoIcons.book,
               label: '多账本',
-              subtitle: '敬请期待',
+              subtitle: '管理账本',
+              onTap: onMultiLedger,
             ),
           ),
           Expanded(
             child: _ProfileAction(
               icon: CupertinoIcons.doc_text,
               label: '待补全',
-              subtitle: '$pendingCompletionCount 条',
+              subtitle: '信息待完善',
+              badge: pendingCompletionCount,
               onTap: onPendingCompletions,
             ),
           ),
@@ -3171,15 +2918,17 @@ class _ProfileActionGrid extends StatelessWidget {
             child: _ProfileAction(
               icon: CupertinoIcons.gift,
               label: '待回礼',
-              subtitle: '$pendingReturnCount 人',
+              subtitle: '待回礼记录',
+              badge: pendingReturnCount,
               onTap: onPendingReturns,
             ),
           ),
-          const Expanded(
+          Expanded(
             child: _ProfileAction(
               icon: CupertinoIcons.square_arrow_up,
               label: '年度礼簿',
-              subtitle: '敬请期待',
+              subtitle: '生成年度礼簿',
+              onTap: onAnnualLedger,
             ),
           ),
         ],
@@ -3194,12 +2943,14 @@ class _ProfileAction extends StatelessWidget {
     required this.label,
     required this.subtitle,
     this.onTap,
+    this.badge = 0,
   });
 
   final IconData icon;
   final String label;
   final String subtitle;
   final VoidCallback? onTap;
+  final int badge;
 
   @override
   Widget build(BuildContext context) {
@@ -3210,7 +2961,32 @@ class _ProfileAction extends StatelessWidget {
         padding: const EdgeInsets.symmetric(vertical: 4),
         child: Column(
           children: [
-            Icon(icon, color: AppPalette.palaceRed, size: 25),
+            Stack(
+              clipBehavior: Clip.none,
+              children: [
+                Icon(icon, color: AppPalette.palaceRed, size: 25),
+                if (badge > 0)
+                  Positioned(
+                    right: -8,
+                    top: -6,
+                    child: Container(
+                      padding: const EdgeInsets.all(4),
+                      decoration: const BoxDecoration(
+                        color: AppPalette.palaceRed,
+                        shape: BoxShape.circle,
+                      ),
+                      child: Text(
+                        '$badge',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 10,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
             const SizedBox(height: 7),
             Text(
               label,
@@ -3520,133 +3296,6 @@ class _PendingReturnRow extends StatelessWidget {
   }
 }
 
-class SettingsPage extends StatefulWidget {
-  const SettingsPage({super.key});
-
-  @override
-  State<SettingsPage> createState() => _SettingsPageState();
-}
-
-class _SettingsPageState extends State<SettingsPage> {
-  bool _hideAmounts = false;
-  bool _funeralPrivacy = true;
-  bool _notifications = true;
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppPalette.paper,
-      body: SafeArea(
-        child: Column(
-          children: [
-            _SimplePageHeader(
-              title: '设置与隐私',
-              onBack: () => Navigator.of(context).pop(),
-            ),
-            Expanded(
-              child: ListView(
-                padding: const EdgeInsets.fromLTRB(18, 8, 18, 24),
-                children: [
-                  const FormSectionLabel(label: '隐私与安全'),
-                  _SettingsToggleRow(
-                    title: '金额隐藏',
-                    subtitle: '在礼簿列表中隐藏金额',
-                    value: _hideAmounts,
-                    onChanged: (value) => setState(() => _hideAmounts = value),
-                  ),
-                  _SettingsToggleRow(
-                    title: '白榜隐私保护',
-                    subtitle: '白事记录仅在礼簿内显示',
-                    value: _funeralPrivacy,
-                    onChanged: (value) =>
-                        setState(() => _funeralPrivacy = value),
-                  ),
-                  const SizedBox(height: 14),
-                  const FormSectionLabel(label: '个性化与通知'),
-                  _SettingsToggleRow(
-                    title: '通知提醒',
-                    subtitle: '提醒即将到来的礼事',
-                    value: _notifications,
-                    onChanged: (value) =>
-                        setState(() => _notifications = value),
-                  ),
-                  const SizedBox(height: 14),
-                  const _ProfileSettingsSection(
-                    title: '关于与帮助',
-                    items: [
-                      _ProfileSettingItem(
-                        icon: CupertinoIcons.info_circle,
-                        title: '关于礼往来',
-                        value: 'MVP 1.0.0',
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _SettingsToggleRow extends StatelessWidget {
-  const _SettingsToggleRow({
-    required this.title,
-    required this.subtitle,
-    required this.value,
-    required this.onChanged,
-  });
-
-  final String title;
-  final String subtitle;
-  final bool value;
-  final ValueChanged<bool> onChanged;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 1),
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-      decoration: BoxDecoration(
-        color: AppPalette.whiteTone.withValues(alpha: 0.72),
-        border: Border.all(color: AppPalette.line.withValues(alpha: 0.58)),
-        borderRadius: BorderRadius.circular(10),
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: const TextStyle(
-                    fontFamily: AppFonts.kaiti,
-                    fontWeight: FontWeight.w900,
-                    fontSize: 16,
-                  ),
-                ),
-                const SizedBox(height: 3),
-                Text(
-                  subtitle,
-                  style: const TextStyle(
-                    fontFamily: AppFonts.kaiti,
-                    color: AppPalette.mutedInk,
-                    fontSize: 12,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          Switch(value: value, onChanged: onChanged),
-        ],
-      ),
-    );
-  }
-}
-
 class _ProfileHeader extends StatelessWidget {
   const _ProfileHeader({required this.onSettings});
 
@@ -3832,115 +3481,6 @@ class _ProfileHeroCard extends StatelessWidget {
   }
 }
 
-class _ProfileAdNotice extends StatelessWidget {
-  const _ProfileAdNotice({required this.compact});
-
-  final bool compact;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: EdgeInsets.fromLTRB(
-        14,
-        compact ? 11 : 14,
-        14,
-        compact ? 11 : 14,
-      ),
-      decoration: BoxDecoration(
-        color: compact
-            ? AppPalette.whiteTone.withValues(alpha: 0.76)
-            : const Color(0xFFFFF3DD).withValues(alpha: 0.82),
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(
-          color: (compact ? AppPalette.line : AppPalette.gold).withValues(
-            alpha: compact ? 0.62 : 0.7,
-          ),
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: AppPalette.ink.withValues(alpha: 0.04),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: compact ? 34 : 42,
-            height: compact ? 34 : 42,
-            alignment: Alignment.center,
-            decoration: BoxDecoration(
-              color: AppPalette.palaceRed.withValues(alpha: 0.1),
-              shape: BoxShape.circle,
-              border: Border.all(
-                color: AppPalette.gold.withValues(alpha: 0.52),
-              ),
-            ),
-            child: Icon(
-              compact ? CupertinoIcons.sparkles : CupertinoIcons.rosette,
-              color: AppPalette.palaceRed,
-              size: compact ? 18 : 22,
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  compact ? '开通 Pro，去除广告' : '未开通 Pro 时会展示广告',
-                  style: const TextStyle(
-                    color: AppPalette.ink,
-                    fontFamily: AppFonts.kaiti,
-                    fontSize: 16,
-                    fontWeight: FontWeight.w900,
-                  ),
-                ),
-                const SizedBox(height: 3),
-                Text(
-                  compact
-                      ? '购买后享受无广告体验，并解锁备份、导出等能力。'
-                      : '购买 Pro 可立即关闭广告，保留清爽礼簿体验。',
-                  style: const TextStyle(
-                    color: AppPalette.mutedInk,
-                    fontFamily: AppFonts.kaiti,
-                    fontSize: 12,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 10),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
-            decoration: BoxDecoration(
-              color: AppPalette.palaceRed,
-              borderRadius: BorderRadius.circular(16),
-              boxShadow: [
-                BoxShadow(
-                  color: AppPalette.rouge.withValues(alpha: 0.18),
-                  blurRadius: 8,
-                  offset: const Offset(0, 3),
-                ),
-              ],
-            ),
-            child: const Text(
-              '购买',
-              style: TextStyle(
-                color: Color(0xFFFFE3B0),
-                fontFamily: AppFonts.kaiti,
-                fontSize: 13,
-                fontWeight: FontWeight.w900,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
 class _ProfileSettingsSection extends StatelessWidget {
   const _ProfileSettingsSection({required this.title, required this.items});
 
@@ -3985,14 +3525,14 @@ class _ProfileSettingItem {
   const _ProfileSettingItem({
     required this.icon,
     required this.title,
-    this.value,
+    this.subtitle,
     this.showDot = false,
     this.onTap,
   });
 
   final IconData icon;
   final String title;
-  final String? value;
+  final String? subtitle;
   final bool showDot;
   final VoidCallback? onTap;
 }
@@ -4035,40 +3575,56 @@ class _ProfileSettingRow extends StatelessWidget {
             ),
             const SizedBox(width: 12),
             Expanded(
-              child: Text(
-                item.title,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  color: AppPalette.ink,
-                  fontFamily: AppFonts.kaiti,
-                  fontSize: 16,
-                  fontWeight: FontWeight.w900,
-                ),
-              ),
+              child: item.subtitle != null
+                  ? Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          item.title,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            color: AppPalette.ink,
+                            fontFamily: AppFonts.kaiti,
+                            fontSize: 16,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          item.subtitle!,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            color: AppPalette.mutedInk,
+                            fontFamily: AppFonts.kaiti,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ],
+                    )
+                  : Text(
+                      item.title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: AppPalette.ink,
+                        fontFamily: AppFonts.kaiti,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
             ),
-            if (item.value != null) ...[
-              Text(
-                item.value!,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  color: AppPalette.mutedInk,
-                  fontFamily: AppFonts.kaiti,
-                  fontSize: 13,
+            if (item.showDot) ...[
+              Container(
+                width: 7,
+                height: 7,
+                decoration: const BoxDecoration(
+                  color: AppPalette.palaceRed,
+                  shape: BoxShape.circle,
                 ),
               ),
-              if (item.showDot) ...[
-                const SizedBox(width: 7),
-                Container(
-                  width: 7,
-                  height: 7,
-                  decoration: const BoxDecoration(
-                    color: AppPalette.palaceRed,
-                    shape: BoxShape.circle,
-                  ),
-                ),
-              ],
               const SizedBox(width: 7),
             ],
             Icon(
@@ -4169,7 +3725,26 @@ class _ProfileProPanel extends StatelessWidget {
             const SizedBox(height: 14),
             SizedBox(
               height: 46,
-              child: SealButton(label: '购买 Pro 去广告', onPressed: () {}),
+              child: SealButton(
+                label: '购买 Pro 去广告',
+                onPressed: () {
+                  showDialog<void>(
+                    context: context,
+                    builder: (context) => AlertDialog(
+                      title: const Text('Pro 功能开发中'),
+                      content: const Text(
+                        'Pro 去广告、多账本、云端备份等功能正在开发中，敬请期待。',
+                      ),
+                      actions: [
+                        TextButton(
+                          onPressed: () => Navigator.of(context).pop(),
+                          child: const Text('知道了'),
+                        ),
+                      ],
+                    ),
+                  );
+                },
+              ),
             ),
           ],
         ),
@@ -5519,14 +5094,20 @@ class ResponsiveWrap extends StatelessWidget {
 }
 
 class SectionHeader extends StatelessWidget {
-  const SectionHeader({super.key, required this.title, required this.action});
+  const SectionHeader({
+    super.key,
+    required this.title,
+    required this.action,
+    this.onActionTap,
+  });
 
   final String title;
   final String action;
+  final VoidCallback? onActionTap;
 
   @override
   Widget build(BuildContext context) {
-    return Row(
+    final row = Row(
       children: [
         const Text(
           '✣',
@@ -5554,6 +5135,8 @@ class SectionHeader extends StatelessWidget {
         ),
       ],
     );
+    if (onActionTap == null) return row;
+    return GestureDetector(onTap: onActionTap, child: row);
   }
 }
 
@@ -6905,155 +6488,6 @@ class RailButton extends StatelessWidget {
               ),
             ],
           ),
-        ),
-      ),
-    );
-  }
-}
-
-class PhoneNavBar extends StatelessWidget {
-  const PhoneNavBar({
-    super.key,
-    required this.selectedIndex,
-    required this.onSelected,
-  });
-
-  final int selectedIndex;
-  final ValueChanged<int> onSelected;
-
-  @override
-  Widget build(BuildContext context) {
-    return BottomAppBar(
-      color: AppPalette.paper.withValues(alpha: 0.96),
-      elevation: 8,
-      notchMargin: 4,
-      padding: EdgeInsets.zero,
-      shape: const CircularNotchedRectangle(),
-      child: Container(
-        height: 52,
-        decoration: const BoxDecoration(color: AppPalette.paper),
-        child: Padding(
-          padding: const EdgeInsets.only(top: 2),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: [
-              NavButton(
-                icon: CupertinoIcons.house,
-                label: '首页',
-                selected: selectedIndex == 0,
-                onTap: () => onSelected(0),
-              ),
-              NavButton(
-                icon: CupertinoIcons.book,
-                label: '礼簿',
-                selected: selectedIndex == 1,
-                onTap: () => onSelected(1),
-              ),
-              const SizedBox(width: 62),
-              NavButton(
-                icon: CupertinoIcons.search,
-                label: '查往来',
-                selected: selectedIndex == 3,
-                onTap: () => onSelected(3),
-              ),
-              NavButton(
-                icon: CupertinoIcons.person,
-                label: '我的',
-                selected: selectedIndex == 4,
-                onTap: () => onSelected(4),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class CenterWriteButton extends StatelessWidget {
-  const CenterWriteButton({super.key, required this.onTap});
-
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return Semantics(
-      button: true,
-      label: '记一笔',
-      child: GestureDetector(
-        onTap: onTap,
-        child: Transform.translate(
-          offset: const Offset(0, 40),
-          child: SizedBox(
-            width: 62,
-            height: 64,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  width: 48,
-                  height: 48,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    border: Border.all(color: AppPalette.paleGold, width: 1.2),
-                  ),
-                  child: ClipOval(
-                    child: Image.asset(
-                      AppAssets.iconWriteBrushNav,
-                      fit: BoxFit.cover,
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 1),
-                const Text(
-                  '记一笔',
-                  style: TextStyle(
-                    color: AppPalette.palaceRed,
-                    fontSize: 11,
-                    fontWeight: FontWeight.w900,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class NavButton extends StatelessWidget {
-  const NavButton({
-    super.key,
-    required this.icon,
-    required this.label,
-    required this.selected,
-    required this.onTap,
-  });
-
-  final IconData icon;
-  final String label;
-  final bool selected;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final color = selected ? AppPalette.palaceRed : AppPalette.mutedInk;
-    return Expanded(
-      child: InkWell(
-        onTap: onTap,
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(icon, color: color, size: 20),
-            const SizedBox(height: 1),
-            Text(
-              label,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(color: color, fontSize: 10),
-            ),
-          ],
         ),
       ),
     );

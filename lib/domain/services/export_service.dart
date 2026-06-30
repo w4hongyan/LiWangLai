@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:file_picker/file_picker.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 import 'package:pdf/pdf.dart';
@@ -230,5 +231,89 @@ class ExportService {
     final dir = await getTemporaryDirectory();
     final file = File(p.join(dir.path, name));
     return file.writeAsBytes(bytes, flush: true);
+  }
+
+  // ===== JSON 导入恢复 =====
+
+  /// 通过文件选择器选取 JSON 备份文件，返回解析后的记录列表。
+  /// 如果文件格式不正确会抛出 [ImportException]。
+  Future<List<GiftRecord>> pickAndImportJson() async {
+    try {
+      final result = await FilePicker.platform.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: ['json'],
+      );
+      if (result == null || result.files.isEmpty) {
+        return const [];
+      }
+      final file = File(result.files.single.path!);
+      return importFromJsonFile(file);
+    } catch (e, st) {
+      if (e is ImportException) rethrow;
+      AppLogger.instance.e('选取导入文件失败', error: e, stack: st);
+      throw ImportException('选取导入文件失败', cause: e, stackTrace: st);
+    }
+  }
+
+  /// 从指定文件导入 JSON 备份。
+  Future<List<GiftRecord>> importFromJsonFile(File file) async {
+    try {
+      final content = await file.readAsString();
+      return importFromJsonString(content);
+    } catch (e, st) {
+      if (e is ImportException) rethrow;
+      AppLogger.instance.e('读取导入文件失败', error: e, stack: st);
+      throw ImportException('读取导入文件失败', cause: e, stackTrace: st);
+    }
+  }
+
+  /// 从 JSON 字符串解析记录列表。
+  List<GiftRecord> importFromJsonString(String jsonString) {
+    try {
+      final dynamic decoded = jsonDecode(jsonString);
+      if (decoded is! Map<String, dynamic>) {
+        throw ImportException('JSON 格式错误：根节点必须是对象');
+      }
+      final schema = decoded['schema'] as int?;
+      if (schema == null || schema < 1) {
+        throw ImportException('JSON 格式错误：缺少有效的 schema 版本');
+      }
+      final app = decoded['app'] as String?;
+      if (app != 'liwanglai') {
+        throw ImportException('JSON 格式错误：不是礼往来的备份文件');
+      }
+      final recordsJson = decoded['records'];
+      if (recordsJson is! List) {
+        throw ImportException('JSON 格式错误：缺少 records 数组');
+      }
+      return recordsJson
+          .map((e) => _recordFromMap(e as Map<String, dynamic>))
+          .toList();
+    } on ImportException {
+      rethrow;
+    } catch (e, st) {
+      throw ImportException('JSON 解析失败：$e', cause: e, stackTrace: st);
+    }
+  }
+
+  GiftRecord _recordFromMap(Map<String, dynamic> m) {
+    return GiftRecord(
+      id: m['id'] as String? ?? DateTime.now().microsecondsSinceEpoch.toString(),
+      name: m['name'] as String? ?? '',
+      relation: m['relation'] as String? ?? '',
+      event: m['event'] as String? ?? '',
+      direction: GiftDirection.fromWire(m['direction'] as String?),
+      tone: EventTone.fromWire(m['tone'] as String?),
+      method: m['method'] as String? ?? '现金',
+      amount: (m['amount'] as num?)?.toInt() ?? 0,
+      date: DateTime.fromMillisecondsSinceEpoch(
+        (m['date'] as num?)?.toInt() ?? 0,
+      ),
+      book: m['book'] as String? ?? '我家',
+      note: m['note'] as String? ?? '',
+      itemDescription: m['itemDescription'] as String? ?? '',
+      partial: m['partial'] as bool? ?? false,
+      needReturn: m['needReturn'] as bool? ?? false,
+    );
   }
 }
