@@ -1,0 +1,13 @@
+{
+  "images": [
+    {
+      "filename": "plum_top_right.png",
+      "idiom": "universal",
+      "scale": "1x"
+    }
+  ],
+  "info": {
+    "author": "xcode",
+    "version": 1
+  }
+}

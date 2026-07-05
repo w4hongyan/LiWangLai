@@ -1,0 +1,230 @@
+import SwiftData
+import SwiftUI
+
+struct PersonDetailView: View {
+    @Environment(AppState.self) private var appState
+    @Environment(\.modelContext) private var modelContext
+    @Environment(\.dismiss) private var dismiss
+
+    let summary: PersonSummary?
+    @State private var editingRecord: GiftRecord?
+    @State private var quickAddType: GiftRecordType?
+    @State private var pendingDelete: GiftRecord?
+    @State private var showDeleteConfirm = false
+
+    private var records: [GiftRecord] {
+        summary?.records.sorted { $0.date > $1.date } ?? []
+    }
+
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 20) {
+                detailHeader
+
+                if let summary {
+                    overviewCard(summary)
+                    suggestionCard(summary)
+                    timelineCard(summary)
+                    quickButtons(summary)
+                } else {
+                    EmptyStateView(title: "没有找到这位往来人", message: "记录可能已被删除，回到礼簿看看其他往来。")
+                }
+            }
+            .padding(.horizontal, LWSpacing.page)
+            .padding(.top, 18)
+        }
+        .background(PaperTexture())
+        .navigationTitle("往来详情")
+        .navigationBarTitleDisplayMode(.inline)
+        .sheet(item: $editingRecord) { record in
+            NavigationStack {
+                AddRecordView(editingRecord: record)
+            }
+        }
+        .sheet(item: $quickAddType) { type in
+            NavigationStack {
+                AddRecordView(presetName: summary?.name ?? "", presetType: type)
+            }
+        }
+        .confirmationDialog("确认删除这条往来记录？", isPresented: $showDeleteConfirm, titleVisibility: .visible) {
+            Button("删除记录", role: .destructive) {
+                if let pendingDelete {
+                    RecordService.delete(pendingDelete, in: modelContext)
+                }
+                pendingDelete = nil
+            }
+            Button("取消", role: .cancel) {
+                pendingDelete = nil
+            }
+        }
+    }
+
+    private var detailHeader: some View {
+        HStack(alignment: .top) {
+            VStack(alignment: .leading, spacing: 8) {
+                Text(summary?.name ?? "往来详情")
+                    .font(.titleSong(40))
+                    .foregroundStyle(LWColors.ink)
+                Text("\(summary?.relationship.title ?? "") · 往来 \(summary?.records.count ?? 0) 次")
+                    .font(.bodySong(17))
+                    .foregroundStyle(LWColors.warmGold)
+            }
+            Spacer()
+            MountainDecoration()
+                .frame(width: 170, height: 72)
+        }
+    }
+
+    private func overviewCard(_ summary: PersonSummary) -> some View {
+        PaperCard {
+            overviewRow(icon: "gift", title: "我送出：", value: summary.totalGiven.yuanText, color: LWColors.cinnabar)
+            GoldLineDivider()
+            overviewRow(icon: "tray.and.arrow.down", title: "我收到：", value: summary.totalReceived.yuanText, color: LWColors.cinnabar)
+            GoldLineDivider()
+            overviewRow(icon: "clock", title: "最近一次：", value: "\(summary.latestRecord?.date.lwCompactMonthText ?? "-") \(summary.latestRecord?.eventType.title ?? "")", color: LWColors.ink)
+            GoldLineDivider()
+            overviewRow(icon: "checkmark.circle", title: "状态：", value: summary.statusText, color: summary.pendingReturnCount > 0 ? LWColors.cinnabar : LWColors.warmGold)
+        }
+    }
+
+    private func overviewRow(icon: String, title: String, value: String, color: Color) -> some View {
+        HStack(spacing: 14) {
+            Image(systemName: icon)
+                .font(.title3)
+                .foregroundStyle(LWColors.warmGold)
+                .frame(width: 28)
+            Text(title)
+                .font(.titleSong(20))
+                .foregroundStyle(LWColors.ink)
+            Text(value)
+                .font(.system(size: 20, weight: .medium, design: .serif))
+                .foregroundStyle(color)
+            Spacer()
+        }
+    }
+
+    private func suggestionCard(_ summary: PersonSummary) -> some View {
+        let lastReceived = records.first { $0.type == .received }
+        let lastGiven = records.first { $0.type == .given }
+        let base = lastReceived?.amountYuan ?? lastGiven?.amountYuan ?? 600
+
+        return PaperCard {
+            HStack {
+                Label("回礼参考", systemImage: "gift")
+                    .font(.titleSong(22))
+                    .foregroundStyle(LWColors.ink)
+                Spacer()
+                MountainDecoration()
+                    .frame(width: 72, height: 24)
+            }
+            adviceRow("上次他家给你：", value: lastReceived?.amountYuan.yuanText ?? "暂无")
+            adviceRow("你上次给他：", value: lastGiven?.amountYuan.yuanText ?? "暂无")
+            adviceRow("本地常见区间：", value: "\(max(100, base - 100).yuanText) - \((base + 200).yuanText)")
+            GoldLineDivider()
+            Label("建议： \(base.yuanText) 左右较稳妥", systemImage: "star.fill")
+                .font(.titleSong(21))
+                .foregroundStyle(LWColors.cinnabar)
+        }
+    }
+
+    private func adviceRow(_ title: String, value: String) -> some View {
+        HStack {
+            Text(title)
+                .font(.bodySong(17))
+                .foregroundStyle(LWColors.inkSoft)
+            Spacer()
+            Text(value)
+                .font(.bodySong(17))
+                .foregroundStyle(LWColors.ink)
+        }
+    }
+
+    private func timelineCard(_ summary: PersonSummary) -> some View {
+        PaperCard {
+            Text("往来记录")
+                .font(.titleSong(23))
+                .foregroundStyle(LWColors.ink)
+
+            ForEach(Array(records.enumerated()), id: \.element.id) { index, record in
+                HStack(alignment: .top, spacing: 14) {
+                    VStack(spacing: 0) {
+                        Circle()
+                            .fill(record.type.accentColor)
+                            .frame(width: 12, height: 12)
+                        Rectangle()
+                            .fill(index == records.count - 1 ? Color.clear : LWColors.goldPale.opacity(0.5))
+                            .frame(width: 1, height: 58)
+                    }
+                    SealStamp(text: record.type.shortTitle, size: 42, color: record.type.accentColor)
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(record.date.lwCompactMonthText)
+                            .font(.bodySong(15))
+                            .foregroundStyle(LWColors.muted)
+                        Text(record.type == .given ? "他家\(record.eventType.title)，我送礼" : "我家\(record.eventType.title)，他送礼")
+                            .font(.bodySong(18))
+                            .foregroundStyle(LWColors.ink)
+                        if !record.note.isEmpty {
+                            Text(record.note)
+                                .font(.bodySong(14))
+                                .foregroundStyle(LWColors.muted)
+                        }
+                    }
+                    Spacer()
+                    Text(record.amountYuan.yuanText)
+                        .font(.system(size: 19, weight: .medium, design: .serif))
+                        .foregroundStyle(record.type == .received ? LWColors.cinnabar : LWColors.ink)
+                    Menu {
+                        Button("编辑") {
+                            editingRecord = record
+                        }
+                        if record.needsReturn {
+                            Button("标记已回") {
+                                RecordService.markReturned(record, in: modelContext)
+                            }
+                        }
+                        Button("删除", role: .destructive) {
+                            pendingDelete = record
+                            showDeleteConfirm = true
+                        }
+                    } label: {
+                        Image(systemName: "ellipsis")
+                            .foregroundStyle(LWColors.muted)
+                    }
+                }
+            }
+        }
+    }
+
+    private func quickButtons(_ summary: PersonSummary) -> some View {
+        HStack(spacing: 12) {
+            Button {
+                quickAddType = .given
+            } label: {
+                Label("给他家送礼", systemImage: "gift")
+                    .frame(maxWidth: .infinity)
+            }
+            .buttonStyle(DetailActionStyle(color: LWColors.cinnabar))
+
+            Button {
+                quickAddType = .received
+            } label: {
+                Label("收到他家礼", systemImage: "tray.and.arrow.down")
+                    .frame(maxWidth: .infinity)
+            }
+            .buttonStyle(DetailActionStyle(color: LWColors.warmGold))
+        }
+        .font(.bodySong(18).weight(.semibold))
+    }
+}
+
+private struct DetailActionStyle: ButtonStyle {
+    let color: Color
+
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .foregroundStyle(.white)
+            .padding(.vertical, 16)
+            .background(color, in: RoundedRectangle(cornerRadius: LWRadius.button, style: .continuous))
+            .opacity(configuration.isPressed ? 0.82 : 1)
+    }
+}

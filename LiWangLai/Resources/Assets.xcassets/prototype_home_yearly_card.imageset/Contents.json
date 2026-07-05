@@ -1,0 +1,13 @@
+{
+  "images": [
+    {
+      "filename": "prototype_home_yearly_card.png",
+      "idiom": "universal",
+      "scale": "1x"
+    }
+  ],
+  "info": {
+    "author": "xcode",
+    "version": 1
+  }
+}

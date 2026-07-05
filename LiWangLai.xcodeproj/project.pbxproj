@@ -1,0 +1,592 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		0420CCA01C043800BF5943C6 /* EmptyStateView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E58150A5F72644593A8DF076 /* EmptyStateView.swift */; };
+		05071FEB9ACBCE548C1F2A47 /* SearchService.swift in Sources */ = {isa = PBXBuildFile; fileRef = B57F06FA33F2375655355DF6 /* SearchService.swift */; };
+		137F706FB910133B13F2DA0C /* RecordService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8B7795163A4D238E3214D8BB /* RecordService.swift */; };
+		1C30CB895469AFEDBE39E892 /* SealButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2D858DE306C89242F7E101D0 /* SealButton.swift */; };
+		210C1B10C55D5F090E2222BB /* DateFormatter+.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6BCA20FF8E0F56AA6EA98D62 /* DateFormatter+.swift */; };
+		32F62336DFD4CEDF5DE16CE2 /* GiftEventType.swift in Sources */ = {isa = PBXBuildFile; fileRef = 79B93D63F6B2ECBDAF7CD972 /* GiftEventType.swift */; };
+		3C7680F1BAA21B90271F3C52 /* PersonDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FB36E59F2F8C8243A999B1A5 /* PersonDetailView.swift */; };
+		3FDC5A4CB01AAF07CEB5A559 /* SourceHanSerifSC-SemiBold.otf in Resources */ = {isa = PBXBuildFile; fileRef = 7F441260A5F8286A5ADE790E /* SourceHanSerifSC-SemiBold.otf */; };
+		4134D328FB6300BA35D84B92 /* RelationshipType.swift in Sources */ = {isa = PBXBuildFile; fileRef = E874C65B333BEBA78CB66C15 /* RelationshipType.swift */; };
+		4587A042A9F0C5263D48A512 /* AddRecordView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BADEF26DC77D0F9E8BC22F8E /* AddRecordView.swift */; };
+		4F70ABC3CDBAC71C041759D4 /* AppState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 84FAAF596258E39924777891 /* AppState.swift */; };
+		536872E7449B3FE01E7E3911 /* SourceHanSerifSC-Regular.otf in Resources */ = {isa = PBXBuildFile; fileRef = 88A28EE1E9E7BB16B3535366 /* SourceHanSerifSC-Regular.otf */; };
+		65F2722B74D854625D17C7E3 /* LedgerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9E15F87B26660CC1336BBD14 /* LedgerView.swift */; };
+		676B4A988B43C18EB3151215 /* ExportService.swift in Sources */ = {isa = PBXBuildFile; fileRef = CABDF78E467E7380435E48EA /* ExportService.swift */; };
+		6A3B1EC189F3F5AC11151104 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 91B06E5931C8C180D89DD1DB /* SettingsView.swift */; };
+		6E2A6138BB52E071BBDD9CD5 /* ReminderItem.swift in Sources */ = {isa = PBXBuildFile; fileRef = 002246CD0FCD9E252FC539D4 /* ReminderItem.swift */; };
+		76F5EF7AF9240A58E27F56E3 /* ReminderService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00C354D615DEB433AAB18D7E /* ReminderService.swift */; };
+		7774D8C7E5A54B5454B8EEB2 /* Localizable.strings in Resources */ = {isa = PBXBuildFile; fileRef = A87405DF078F041AA2023D34 /* Localizable.strings */; };
+		7A0AE5D9F8E93625A0E92C09 /* RecordDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5991F72AC812A9460974E483 /* RecordDetailView.swift */; };
+		7C221EFD6C4148DA96E78C06 /* SearchField.swift in Sources */ = {isa = PBXBuildFile; fileRef = 570225CAA8C9413743BA742E /* SearchField.swift */; };
+		7E08A398FA0041D7CFC325DA /* GiftRecordType.swift in Sources */ = {isa = PBXBuildFile; fileRef = 900C0AFEC904DA3745AF8D29 /* GiftRecordType.swift */; };
+		7F4C67BD96608067822269F8 /* GiftEvent.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE001EC3EE743FC21C6F1299 /* GiftEvent.swift */; };
+		88B04895D7E802AD55748955 /* LWDesign.swift in Sources */ = {isa = PBXBuildFile; fileRef = 78FB73BC46A18352683DB461 /* LWDesign.swift */; };
+		90099015E803AE6CF651A96D /* HapticsManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 389E7EB8F364B96B03B68530 /* HapticsManager.swift */; };
+		9023147793A816116E2810E0 /* ReminderListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 26CBD04C3B4EDD7A0FDD5EE3 /* ReminderListView.swift */; };
+		9FAD324CD797A18858AE8ABD /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 50B737CB15DFC42FBB2C2E01 /* RootView.swift */; };
+		9FC67F9F356795A4898F85D9 /* RecordRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = F600812CB59C605364CA6CE8 /* RecordRow.swift */; };
+		A4C3F2CD6D5492B6D9450643 /* AmountTextField.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2475C77AAD6071CD55C2FC85 /* AmountTextField.swift */; };
+		AAD4BA4C5D51D57549CFAB93 /* Person.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2CB3E6DBAFAD2A0040AD4446 /* Person.swift */; };
+		AD35C9D4B8012A3F1D78173C /* QuickDeskView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 981D13EA73DAD3A5654AA021 /* QuickDeskView.swift */; };
+		B45FFBC59D966E489B049C58 /* PaperCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 88FCEBFDB9E3A4D012BB260C /* PaperCard.swift */; };
+		B6ACF48EB218A60391049449 /* HomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2D859984E0F666B1044E1A9 /* HomeView.swift */; };
+		BBB061182FC437AB1A249B3F /* PeopleView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 453F1FB35D5E8FEFFCB48830 /* PeopleView.swift */; };
+		BD230791C73980667F2F9F56 /* MockData.swift in Sources */ = {isa = PBXBuildFile; fileRef = AF30D2CE2BF1D2C9114AD68A /* MockData.swift */; };
+		C6A7861E7BE54AC851A2A6E2 /* GoldLineDivider.swift in Sources */ = {isa = PBXBuildFile; fileRef = A52D80E43E8911F028F16212 /* GoldLineDivider.swift */; };
+		CDD276BBD29984B497CCBB56 /* LiWangLaiApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 67093A0578D73452F784ADFB /* LiWangLaiApp.swift */; };
+		D0C76EE7F6396896DCB98867 /* CurrencyFormatter+.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7A7CE70B7FF42BEC84733F69 /* CurrencyFormatter+.swift */; };
+		F1FCAE33BA202FC6D2F53757 /* SealStamp.swift in Sources */ = {isa = PBXBuildFile; fileRef = CCE13A077FF21902B99EE56F /* SealStamp.swift */; };
+		F8CD93F5F3663402B87F8B04 /* RelationshipTag.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3F2D46C2F657E369B038C5F1 /* RelationshipTag.swift */; };
+		FA45898B2724979AE46887F1 /* GiftRecord.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1CFF2C07159B9F8A89BE8EAE /* GiftRecord.swift */; };
+		FD5933B27632956757E1C155 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 87DEEDAA2F456C026B90DC6E /* Assets.xcassets */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		002246CD0FCD9E252FC539D4 /* ReminderItem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReminderItem.swift; sourceTree = "<group>"; };
+		00C354D615DEB433AAB18D7E /* ReminderService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReminderService.swift; sourceTree = "<group>"; };
+		1CFF2C07159B9F8A89BE8EAE /* GiftRecord.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GiftRecord.swift; sourceTree = "<group>"; };
+		2475C77AAD6071CD55C2FC85 /* AmountTextField.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AmountTextField.swift; sourceTree = "<group>"; };
+		26CBD04C3B4EDD7A0FDD5EE3 /* ReminderListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReminderListView.swift; sourceTree = "<group>"; };
+		2CB3E6DBAFAD2A0040AD4446 /* Person.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Person.swift; sourceTree = "<group>"; };
+		2D858DE306C89242F7E101D0 /* SealButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SealButton.swift; sourceTree = "<group>"; };
+		389E7EB8F364B96B03B68530 /* HapticsManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HapticsManager.swift; sourceTree = "<group>"; };
+		3F2D46C2F657E369B038C5F1 /* RelationshipTag.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RelationshipTag.swift; sourceTree = "<group>"; };
+		453F1FB35D5E8FEFFCB48830 /* PeopleView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PeopleView.swift; sourceTree = "<group>"; };
+		50B737CB15DFC42FBB2C2E01 /* RootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootView.swift; sourceTree = "<group>"; };
+		56F7D561D29B244FE0103485 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		570225CAA8C9413743BA742E /* SearchField.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SearchField.swift; sourceTree = "<group>"; };
+		5991F72AC812A9460974E483 /* RecordDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecordDetailView.swift; sourceTree = "<group>"; };
+		67093A0578D73452F784ADFB /* LiWangLaiApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiWangLaiApp.swift; sourceTree = "<group>"; };
+		6BCA20FF8E0F56AA6EA98D62 /* DateFormatter+.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "DateFormatter+.swift"; sourceTree = "<group>"; };
+		78FB73BC46A18352683DB461 /* LWDesign.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LWDesign.swift; sourceTree = "<group>"; };
+		79B93D63F6B2ECBDAF7CD972 /* GiftEventType.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GiftEventType.swift; sourceTree = "<group>"; };
+		7A7CE70B7FF42BEC84733F69 /* CurrencyFormatter+.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "CurrencyFormatter+.swift"; sourceTree = "<group>"; };
+		7F441260A5F8286A5ADE790E /* SourceHanSerifSC-SemiBold.otf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "SourceHanSerifSC-SemiBold.otf"; sourceTree = "<group>"; };
+		84FAAF596258E39924777891 /* AppState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppState.swift; sourceTree = "<group>"; };
+		87DEEDAA2F456C026B90DC6E /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		88A28EE1E9E7BB16B3535366 /* SourceHanSerifSC-Regular.otf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "SourceHanSerifSC-Regular.otf"; sourceTree = "<group>"; };
+		88FCEBFDB9E3A4D012BB260C /* PaperCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PaperCard.swift; sourceTree = "<group>"; };
+		8B7795163A4D238E3214D8BB /* RecordService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecordService.swift; sourceTree = "<group>"; };
+		900C0AFEC904DA3745AF8D29 /* GiftRecordType.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GiftRecordType.swift; sourceTree = "<group>"; };
+		91B06E5931C8C180D89DD1DB /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
+		981D13EA73DAD3A5654AA021 /* QuickDeskView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuickDeskView.swift; sourceTree = "<group>"; };
+		9E15F87B26660CC1336BBD14 /* LedgerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LedgerView.swift; sourceTree = "<group>"; };
+		A52D80E43E8911F028F16212 /* GoldLineDivider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GoldLineDivider.swift; sourceTree = "<group>"; };
+		A87405DF078F041AA2023D34 /* Localizable.strings */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; path = Localizable.strings; sourceTree = "<group>"; };
+		AF30D2CE2BF1D2C9114AD68A /* MockData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MockData.swift; sourceTree = "<group>"; };
+		B57F06FA33F2375655355DF6 /* SearchService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SearchService.swift; sourceTree = "<group>"; };
+		B8F6C0CC53291E262CCC00AC /* LiWangLai.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = LiWangLai.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		BADEF26DC77D0F9E8BC22F8E /* AddRecordView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AddRecordView.swift; sourceTree = "<group>"; };
+		CABDF78E467E7380435E48EA /* ExportService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExportService.swift; sourceTree = "<group>"; };
+		CCE13A077FF21902B99EE56F /* SealStamp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SealStamp.swift; sourceTree = "<group>"; };
+		E58150A5F72644593A8DF076 /* EmptyStateView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EmptyStateView.swift; sourceTree = "<group>"; };
+		E874C65B333BEBA78CB66C15 /* RelationshipType.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RelationshipType.swift; sourceTree = "<group>"; };
+		F2D859984E0F666B1044E1A9 /* HomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeView.swift; sourceTree = "<group>"; };
+		F600812CB59C605364CA6CE8 /* RecordRow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecordRow.swift; sourceTree = "<group>"; };
+		FB36E59F2F8C8243A999B1A5 /* PersonDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PersonDetailView.swift; sourceTree = "<group>"; };
+		FE001EC3EE743FC21C6F1299 /* GiftEvent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GiftEvent.swift; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXGroup section */
+		06422863415824E8D232B08C /* RecordDetail */ = {
+			isa = PBXGroup;
+			children = (
+				FB36E59F2F8C8243A999B1A5 /* PersonDetailView.swift */,
+				5991F72AC812A9460974E483 /* RecordDetailView.swift */,
+			);
+			path = RecordDetail;
+			sourceTree = "<group>";
+		};
+		0972467D03E6000B61CB54A8 /* Views */ = {
+			isa = PBXGroup;
+			children = (
+				50B737CB15DFC42FBB2C2E01 /* RootView.swift */,
+				41F4423F534487D29948653B /* AddRecord */,
+				98B1EF151383036B9EA60F16 /* Home */,
+				40B5F0515FD8D16DC7C8E0F6 /* Ledger */,
+				DFB58E6BEEC45931F6632824 /* People */,
+				CEF15464A4EEDE9271A8AFD5 /* QuickDesk */,
+				06422863415824E8D232B08C /* RecordDetail */,
+				A1E5A9789CB634B0116CAA6E /* Reminders */,
+				F162004F427550AEC2E3711B /* Settings */,
+			);
+			path = Views;
+			sourceTree = "<group>";
+		};
+		1CB6F4A8B84E36A71C5092B4 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				B8F6C0CC53291E262CCC00AC /* LiWangLai.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		2C119A095AB6CD866E3091F2 /* Services */ = {
+			isa = PBXGroup;
+			children = (
+				CABDF78E467E7380435E48EA /* ExportService.swift */,
+				AF30D2CE2BF1D2C9114AD68A /* MockData.swift */,
+				8B7795163A4D238E3214D8BB /* RecordService.swift */,
+				00C354D615DEB433AAB18D7E /* ReminderService.swift */,
+				B57F06FA33F2375655355DF6 /* SearchService.swift */,
+			);
+			path = Services;
+			sourceTree = "<group>";
+		};
+		2F911B71CBE602E1E2C2FBA4 /* Utilities */ = {
+			isa = PBXGroup;
+			children = (
+				7A7CE70B7FF42BEC84733F69 /* CurrencyFormatter+.swift */,
+				6BCA20FF8E0F56AA6EA98D62 /* DateFormatter+.swift */,
+				389E7EB8F364B96B03B68530 /* HapticsManager.swift */,
+				78FB73BC46A18352683DB461 /* LWDesign.swift */,
+			);
+			path = Utilities;
+			sourceTree = "<group>";
+		};
+		3D176E5CC6024B37E5FF68B3 /* Models */ = {
+			isa = PBXGroup;
+			children = (
+				FE001EC3EE743FC21C6F1299 /* GiftEvent.swift */,
+				79B93D63F6B2ECBDAF7CD972 /* GiftEventType.swift */,
+				1CFF2C07159B9F8A89BE8EAE /* GiftRecord.swift */,
+				900C0AFEC904DA3745AF8D29 /* GiftRecordType.swift */,
+				2CB3E6DBAFAD2A0040AD4446 /* Person.swift */,
+				E874C65B333BEBA78CB66C15 /* RelationshipType.swift */,
+				002246CD0FCD9E252FC539D4 /* ReminderItem.swift */,
+			);
+			path = Models;
+			sourceTree = "<group>";
+		};
+		40B5F0515FD8D16DC7C8E0F6 /* Ledger */ = {
+			isa = PBXGroup;
+			children = (
+				9E15F87B26660CC1336BBD14 /* LedgerView.swift */,
+			);
+			path = Ledger;
+			sourceTree = "<group>";
+		};
+		41F4423F534487D29948653B /* AddRecord */ = {
+			isa = PBXGroup;
+			children = (
+				BADEF26DC77D0F9E8BC22F8E /* AddRecordView.swift */,
+			);
+			path = AddRecord;
+			sourceTree = "<group>";
+		};
+		447A164CA12CBDB19A1B10A5 /* App */ = {
+			isa = PBXGroup;
+			children = (
+				84FAAF596258E39924777891 /* AppState.swift */,
+				56F7D561D29B244FE0103485 /* Info.plist */,
+				67093A0578D73452F784ADFB /* LiWangLaiApp.swift */,
+			);
+			path = App;
+			sourceTree = "<group>";
+		};
+		55BE0B86D796449B150894C0 = {
+			isa = PBXGroup;
+			children = (
+				55F715B2097F3E504B9D0EB8 /* LiWangLai */,
+				1CB6F4A8B84E36A71C5092B4 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		55F715B2097F3E504B9D0EB8 /* LiWangLai */ = {
+			isa = PBXGroup;
+			children = (
+				447A164CA12CBDB19A1B10A5 /* App */,
+				5A21CE03A886A0A36EA00100 /* Components */,
+				3D176E5CC6024B37E5FF68B3 /* Models */,
+				7AB56940D59DC55C57125A03 /* Resources */,
+				2C119A095AB6CD866E3091F2 /* Services */,
+				2F911B71CBE602E1E2C2FBA4 /* Utilities */,
+				0972467D03E6000B61CB54A8 /* Views */,
+			);
+			path = LiWangLai;
+			sourceTree = "<group>";
+		};
+		5A21CE03A886A0A36EA00100 /* Components */ = {
+			isa = PBXGroup;
+			children = (
+				2475C77AAD6071CD55C2FC85 /* AmountTextField.swift */,
+				E58150A5F72644593A8DF076 /* EmptyStateView.swift */,
+				A52D80E43E8911F028F16212 /* GoldLineDivider.swift */,
+				88FCEBFDB9E3A4D012BB260C /* PaperCard.swift */,
+				F600812CB59C605364CA6CE8 /* RecordRow.swift */,
+				3F2D46C2F657E369B038C5F1 /* RelationshipTag.swift */,
+				2D858DE306C89242F7E101D0 /* SealButton.swift */,
+				CCE13A077FF21902B99EE56F /* SealStamp.swift */,
+				570225CAA8C9413743BA742E /* SearchField.swift */,
+			);
+			path = Components;
+			sourceTree = "<group>";
+		};
+		7AB56940D59DC55C57125A03 /* Resources */ = {
+			isa = PBXGroup;
+			children = (
+				87DEEDAA2F456C026B90DC6E /* Assets.xcassets */,
+				A87405DF078F041AA2023D34 /* Localizable.strings */,
+				A7421DC83C9BD249FB2EA7FD /* Fonts */,
+			);
+			path = Resources;
+			sourceTree = "<group>";
+		};
+		98B1EF151383036B9EA60F16 /* Home */ = {
+			isa = PBXGroup;
+			children = (
+				F2D859984E0F666B1044E1A9 /* HomeView.swift */,
+			);
+			path = Home;
+			sourceTree = "<group>";
+		};
+		A1E5A9789CB634B0116CAA6E /* Reminders */ = {
+			isa = PBXGroup;
+			children = (
+				26CBD04C3B4EDD7A0FDD5EE3 /* ReminderListView.swift */,
+			);
+			path = Reminders;
+			sourceTree = "<group>";
+		};
+		A7421DC83C9BD249FB2EA7FD /* Fonts */ = {
+			isa = PBXGroup;
+			children = (
+				88A28EE1E9E7BB16B3535366 /* SourceHanSerifSC-Regular.otf */,
+				7F441260A5F8286A5ADE790E /* SourceHanSerifSC-SemiBold.otf */,
+			);
+			path = Fonts;
+			sourceTree = "<group>";
+		};
+		CEF15464A4EEDE9271A8AFD5 /* QuickDesk */ = {
+			isa = PBXGroup;
+			children = (
+				981D13EA73DAD3A5654AA021 /* QuickDeskView.swift */,
+			);
+			path = QuickDesk;
+			sourceTree = "<group>";
+		};
+		DFB58E6BEEC45931F6632824 /* People */ = {
+			isa = PBXGroup;
+			children = (
+				453F1FB35D5E8FEFFCB48830 /* PeopleView.swift */,
+			);
+			path = People;
+			sourceTree = "<group>";
+		};
+		F162004F427550AEC2E3711B /* Settings */ = {
+			isa = PBXGroup;
+			children = (
+				91B06E5931C8C180D89DD1DB /* SettingsView.swift */,
+			);
+			path = Settings;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		1E1F36C73A2D74D8B22D5A77 /* LiWangLai */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 537BD33D6F3B0845CCFF46FA /* Build configuration list for PBXNativeTarget "LiWangLai" */;
+			buildPhases = (
+				0CDFDA20C9C84661EBC6B049 /* Sources */,
+				F06DCCDBC8DAA6C2B322F167 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = LiWangLai;
+			packageProductDependencies = (
+			);
+			productName = LiWangLai;
+			productReference = B8F6C0CC53291E262CCC00AC /* LiWangLai.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		5344B30E27443310EE172177 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = YES;
+				LastUpgradeCheck = 1430;
+				TargetAttributes = {
+					1E1F36C73A2D74D8B22D5A77 = {
+						DevelopmentTeam = "";
+					};
+				};
+			};
+			buildConfigurationList = 133389472739A1167186E313 /* Build configuration list for PBXProject "LiWangLai" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				Base,
+				en,
+			);
+			mainGroup = 55BE0B86D796449B150894C0;
+			minimizedProjectReferenceProxies = 1;
+			preferredProjectObjectVersion = 77;
+			productRefGroup = 1CB6F4A8B84E36A71C5092B4 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				1E1F36C73A2D74D8B22D5A77 /* LiWangLai */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		F06DCCDBC8DAA6C2B322F167 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				FD5933B27632956757E1C155 /* Assets.xcassets in Resources */,
+				7774D8C7E5A54B5454B8EEB2 /* Localizable.strings in Resources */,
+				536872E7449B3FE01E7E3911 /* SourceHanSerifSC-Regular.otf in Resources */,
+				3FDC5A4CB01AAF07CEB5A559 /* SourceHanSerifSC-SemiBold.otf in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		0CDFDA20C9C84661EBC6B049 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				4587A042A9F0C5263D48A512 /* AddRecordView.swift in Sources */,
+				A4C3F2CD6D5492B6D9450643 /* AmountTextField.swift in Sources */,
+				4F70ABC3CDBAC71C041759D4 /* AppState.swift in Sources */,
+				D0C76EE7F6396896DCB98867 /* CurrencyFormatter+.swift in Sources */,
+				210C1B10C55D5F090E2222BB /* DateFormatter+.swift in Sources */,
+				0420CCA01C043800BF5943C6 /* EmptyStateView.swift in Sources */,
+				676B4A988B43C18EB3151215 /* ExportService.swift in Sources */,
+				7F4C67BD96608067822269F8 /* GiftEvent.swift in Sources */,
+				32F62336DFD4CEDF5DE16CE2 /* GiftEventType.swift in Sources */,
+				FA45898B2724979AE46887F1 /* GiftRecord.swift in Sources */,
+				7E08A398FA0041D7CFC325DA /* GiftRecordType.swift in Sources */,
+				C6A7861E7BE54AC851A2A6E2 /* GoldLineDivider.swift in Sources */,
+				90099015E803AE6CF651A96D /* HapticsManager.swift in Sources */,
+				B6ACF48EB218A60391049449 /* HomeView.swift in Sources */,
+				88B04895D7E802AD55748955 /* LWDesign.swift in Sources */,
+				65F2722B74D854625D17C7E3 /* LedgerView.swift in Sources */,
+				CDD276BBD29984B497CCBB56 /* LiWangLaiApp.swift in Sources */,
+				BD230791C73980667F2F9F56 /* MockData.swift in Sources */,
+				B45FFBC59D966E489B049C58 /* PaperCard.swift in Sources */,
+				BBB061182FC437AB1A249B3F /* PeopleView.swift in Sources */,
+				AAD4BA4C5D51D57549CFAB93 /* Person.swift in Sources */,
+				3C7680F1BAA21B90271F3C52 /* PersonDetailView.swift in Sources */,
+				AD35C9D4B8012A3F1D78173C /* QuickDeskView.swift in Sources */,
+				7A0AE5D9F8E93625A0E92C09 /* RecordDetailView.swift in Sources */,
+				9FC67F9F356795A4898F85D9 /* RecordRow.swift in Sources */,
+				137F706FB910133B13F2DA0C /* RecordService.swift in Sources */,
+				F8CD93F5F3663402B87F8B04 /* RelationshipTag.swift in Sources */,
+				4134D328FB6300BA35D84B92 /* RelationshipType.swift in Sources */,
+				6E2A6138BB52E071BBDD9CD5 /* ReminderItem.swift in Sources */,
+				9023147793A816116E2810E0 /* ReminderListView.swift in Sources */,
+				76F5EF7AF9240A58E27F56E3 /* ReminderService.swift in Sources */,
+				9FAD324CD797A18858AE8ABD /* RootView.swift in Sources */,
+				1C30CB895469AFEDBE39E892 /* SealButton.swift in Sources */,
+				F1FCAE33BA202FC6D2F53757 /* SealStamp.swift in Sources */,
+				7C221EFD6C4148DA96E78C06 /* SearchField.swift in Sources */,
+				05071FEB9ACBCE548C1F2A47 /* SearchService.swift in Sources */,
+				6A3B1EC189F3F5AC11151104 /* SettingsView.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		01075F2225AC54D3A25685D4 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				DEVELOPMENT_TEAM = "";
+				INFOPLIST_FILE = LiWangLai/App/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.liwanglai.app;
+				SDKROOT = iphoneos;
+				SUPPORTS_MACCATALYST = NO;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		58A07EAFCB1148629E7B869A /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				CURRENT_PROJECT_VERSION = 1;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"$(inherited)",
+					"DEBUG=1",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				MARKETING_VERSION = 1.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 6.0;
+			};
+			name = Debug;
+		};
+		5E35403780FB83B19953B82B /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				CURRENT_PROJECT_VERSION = 1;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				MARKETING_VERSION = 1.0;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 6.0;
+			};
+			name = Release;
+		};
+		F0DC8FE7D219F4B4D91D8C10 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				DEVELOPMENT_TEAM = "";
+				INFOPLIST_FILE = LiWangLai/App/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.liwanglai.app;
+				SDKROOT = iphoneos;
+				SUPPORTS_MACCATALYST = NO;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		133389472739A1167186E313 /* Build configuration list for PBXProject "LiWangLai" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				58A07EAFCB1148629E7B869A /* Debug */,
+				5E35403780FB83B19953B82B /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		537BD33D6F3B0845CCFF46FA /* Build configuration list for PBXNativeTarget "LiWangLai" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				01075F2225AC54D3A25685D4 /* Debug */,
+				F0DC8FE7D219F4B4D91D8C10 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = 5344B30E27443310EE172177 /* Project object */;
+}

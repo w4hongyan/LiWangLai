@@ -1,0 +1,33 @@
+# Transparent Assets From 新原型
+
+| File | Kind | Size | Mode | Alpha |
+| --- | --- | ---: | --- | --- |
+| `phones/prototype_add_record_phone.png` | phone_cutout | 815x1635 | RGBA | 0-255 |
+| `phones/prototype_event_detail_phone.png` | phone_cutout | 821x1636 | RGBA | 0-255 |
+| `phones/prototype_home_phone.png` | phone_cutout | 815x1636 | RGBA | 0-255 |
+| `phones/prototype_ledger_phone.png` | phone_cutout | 816x1636 | RGBA | 0-255 |
+| `phones/prototype_people_phone.png` | phone_cutout | 819x1637 | RGBA | 0-255 |
+| `phones/prototype_profile_phone.png` | phone_cutout | 814x1636 | RGBA | 0-255 |
+| `phones/prototype_relationship_detail_phone.png` | phone_cutout | 816x1636 | RGBA | 0-255 |
+| `phones/prototype_return_reminder_phone.png` | phone_cutout | 817x1636 | RGBA | 0-255 |
+| `elements/prototype_app_icon_profile.png` | element | 122x112 | RGBA | 0-255 |
+| `elements/prototype_brand_title_home.png` | element | 232x86 | RGBA | 0-255 |
+| `elements/prototype_calendar_summary_art.png` | element | 180x102 | RGBA | 0-255 |
+| `elements/prototype_detail_bottom_actions.png` | element | 615x54 | RGBA | 0-255 |
+| `elements/prototype_event_header_card.png` | element | 617x180 | RGBA | 0-255 |
+| `elements/prototype_floating_add_button.png` | element | 89x92 | RGBA | 0-255 |
+| `elements/prototype_given_seal.png` | element | 64x65 | RGBA | 0-255 |
+| `elements/prototype_gold_clouds.png` | element | 96x38 | RGBA | 0-255 |
+| `elements/prototype_header_mountain_plum.png` | element | 335x192 | RGBA | 0-255 |
+| `elements/prototype_home_recent_card.png` | element | 617x314 | RGBA | 0-255 |
+| `elements/prototype_home_reminder_card.png` | element | 617x216 | RGBA | 0-255 |
+| `elements/prototype_home_subtitle.png` | element | 252x38 | RGBA | 0-255 |
+| `elements/prototype_home_yearly_card.png` | element | 617x238 | RGBA | 0-255 |
+| `elements/prototype_ledger_filter_chip_red.png` | element | 106x56 | RGBA | 0-255 |
+| `elements/prototype_mountain_header.png` | element | 335x87 | RGBA | 0-255 |
+| `elements/prototype_people_search_header.png` | element | 617x65 | RGBA | 0-255 |
+| `elements/prototype_plum_branch_corner.png` | element | 164x136 | RGBA | 0-255 |
+| `elements/prototype_received_seal.png` | element | 61x65 | RGBA | 0-255 |
+| `elements/prototype_red_save_button_add_record.png` | element | 616x61 | RGBA | 0-255 |
+| `elements/prototype_red_segment_selected.png` | element | 300x52 | RGBA | 0-255 |
+| `elements/prototype_write_card_icon.png` | element | 90x90 | RGBA | 0-255 |
