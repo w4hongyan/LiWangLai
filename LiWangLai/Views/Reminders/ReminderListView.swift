@@ -2,6 +2,7 @@ import SwiftData
 import SwiftUI
 
 struct ReminderListView: View {
+    @Environment(AppState.self) private var appState
     @Environment(\.modelContext) private var modelContext
     let records: [GiftRecord]
     @State private var filter: ReminderFilter = .all
@@ -19,59 +20,57 @@ struct ReminderListView: View {
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 20) {
-                HStack {
-                    Spacer()
-                    Text("回礼提醒")
-                        .font(.titleSong(24))
-                        .foregroundStyle(LWColors.ink)
-                    Spacer()
-                }
-                MountainDecoration()
-                    .frame(height: 68)
-                PaperCard {
+            VStack(alignment: .leading, spacing: 9) {
+                reminderHeader
+                PaperCard(padding: 12) {
                     HStack {
                         Image("lwl_gift_circle")
                             .resizable()
                             .scaledToFit()
-                            .frame(width: 64, height: 64)
-                        VStack(alignment: .leading, spacing: 8) {
+                            .frame(width: 52, height: 52)
+                        VStack(alignment: .leading, spacing: 5) {
                             Text("待处理")
-                                .font(.bodySong(18))
+                                .font(.bodySong(14))
                                 .foregroundStyle(LWColors.inkSoft)
                             Text("\(reminders.count) 项")
-                                .font(.system(size: 42, weight: .medium, design: .serif))
+                                .font(.amountKai(31))
                                 .foregroundStyle(LWColors.cinnabar)
                         }
                         Spacer()
                         Image("lwl_calendar_clock")
                             .resizable()
                             .scaledToFit()
-                            .frame(width: 104, height: 70)
+                            .frame(width: 86, height: 58)
                     }
                 }
                 filterChips
 
                 if reminders.isEmpty {
-                    EmptyStateView(title: "暂无提醒", message: "礼尚往来，心意常在。")
+                    EmptyStateView(title: "暂无提醒", message: emptyMessage, buttonTitle: records.isEmpty ? "记一笔" : nil) {
+                        appState.addPresetType = .received
+                        appState.selectedTab = .add
+                    }
                 } else {
                     ForEach(reminders) { item in
-                        PaperCard {
-                            HStack(spacing: 16) {
-                                SealStamp(text: item.record.type == .received ? "礼" : "记", size: 58, color: item.record.needsReturn ? LWColors.cinnabar : LWColors.warmGold)
-                                VStack(alignment: .leading, spacing: 8) {
+                        PaperCard(padding: 11) {
+                            HStack(spacing: 11) {
+                                SealStamp(text: item.record.type == .received ? "礼" : "记", size: 42, color: item.record.needsReturn ? LWColors.cinnabar : LWColors.warmGold)
+                                VStack(alignment: .leading, spacing: 5) {
                                     Text(item.title)
-                                        .font(.titleSong(22))
+                                        .font(.titleSong(15))
                                         .foregroundStyle(LWColors.ink)
+                                        .lineLimit(1)
                                     Label(item.subtitle, systemImage: item.isDateReminder ? "calendar" : "clock")
-                                        .font(.bodySong(15))
+                                        .font(.bodySong(11))
                                         .foregroundStyle(LWColors.muted)
+                                        .lineLimit(1)
                                 }
                                 Spacer()
                                 NavigationLink {
                                     RecordDetailView(record: item.record)
                                 } label: {
                                     Image(systemName: "chevron.right")
+                                        .font(.system(size: 11, weight: .semibold))
                                         .foregroundStyle(LWColors.muted)
                                 }
                             }
@@ -89,7 +88,7 @@ struct ReminderListView: View {
                                     Label("新增送礼记录", systemImage: "gift")
                                 }
                             }
-                            .font(.bodySong(16))
+                            .font(.bodySong(12))
                             .foregroundStyle(LWColors.cinnabar)
                         }
                     }
@@ -103,9 +102,48 @@ struct ReminderListView: View {
                     .padding(.vertical, 12)
             }
             .padding(.horizontal, LWSpacing.page)
-            .padding(.top, 24)
+            .padding(.top, -4)
+            .padding(.bottom, 10)
         }
         .background(PaperTexture())
+    }
+
+    private var emptyMessage: String {
+        if records.isEmpty {
+            return "先记下一笔收礼或送礼，系统会帮你整理需要处理的往来。"
+        }
+        switch filter {
+        case .all:
+            return "当前没有需要处理的提醒。"
+        case .returnGift:
+            return "没有待回礼记录，心里可以稍微松一口气。"
+        case .date:
+            return "还没有设置日期提醒。"
+        case .custom:
+            return "暂无自定义提醒。"
+        }
+    }
+
+    private var reminderHeader: some View {
+        ZStack(alignment: .topTrailing) {
+            MountainDecoration()
+                .frame(width: 180, height: 88)
+                .offset(x: 20, y: 0)
+                .opacity(0.36)
+                .allowsHitTesting(false)
+
+            VStack(alignment: .leading, spacing: 6) {
+                Text("回礼提醒")
+                    .font(.titleSong(30))
+                    .foregroundStyle(LWColors.ink)
+                Text("别忘心意往来")
+                    .font(.bodySong(13))
+                    .foregroundStyle(LWColors.warmGold)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.top, 10)
+        }
+        .frame(height: 94)
     }
 
     private var filterChips: some View {

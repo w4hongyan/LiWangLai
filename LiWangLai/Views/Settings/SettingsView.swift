@@ -6,7 +6,8 @@ struct SettingsView: View {
 
     @State private var exportURL: URL?
     @State private var showExportError = false
-    @State private var iCloudEnabled = false
+    @State private var exportErrorMessage = "请稍后再试，或检查设备存储空间。"
+    @State private var showAbout = false
 
     var body: some View {
         @Bindable var appState = appState
@@ -15,13 +16,11 @@ struct SettingsView: View {
             VStack(alignment: .leading, spacing: 6) {
                 settingsHeader
                 appCard
-                section(title: "数据与备份") {
-                    settingsToggle(icon: "icloud", title: "iCloud 同步", isOn: $iCloudEnabled, footnote: "预留入口，首版默认本地保存")
-                    settingsRow(icon: "externaldrive", title: "本地备份", subtitle: "导出后可自行保存到文件")
+                section(title: "数据") {
                     Button {
                         exportExcel()
                     } label: {
-                        settingsRowContent(icon: "tablecells", title: "导出 Excel", subtitle: "可用 Excel / Numbers 打开")
+                        settingsRowContent(icon: "tablecells", title: "导出 Excel", subtitle: records.isEmpty ? "暂无记录可导出" : "生成 .xlsx 文件，含完整往来字段")
                     }
                     .buttonStyle(.plain)
                 }
@@ -37,22 +36,15 @@ struct SettingsView: View {
                     }
                 }
 
-                section(title: "隐私安全") {
-                    settingsToggle(icon: "faceid", title: "Face ID 解锁", isOn: $appState.faceIDEnabled, footnote: "入口已预留，后续接入 LocalAuthentication")
-                    settingsRow(icon: "circle.grid.3x3", title: "打开时默认模糊金额", subtitle: "后续扩展")
-                }
-
                 themeSection
 
                 section(title: "其他") {
-                    NavigationLink {
-                        QuickDeskView()
+                    Button {
+                        showAbout = true
                     } label: {
-                        settingsRowContent(icon: "rectangle.split.2x1", title: "横屏记账台", subtitle: "现场连续入簿雏形")
+                        settingsRowContent(icon: "info.circle", title: "关于礼往来", subtitle: "版本 1.0")
                     }
                     .buttonStyle(.plain)
-                    settingsRow(icon: "bubble.left", title: "意见反馈", subtitle: "后续接入邮箱或表单")
-                    settingsRow(icon: "info.circle", title: "关于礼往来", subtitle: "版本 1.0")
                 }
 
                 Text("· 数据默认保存在你的设备中 ·")
@@ -69,7 +61,11 @@ struct SettingsView: View {
         .alert("导出失败", isPresented: $showExportError) {
             Button("知道了", role: .cancel) {}
         } message: {
-            Text("请稍后再试，或检查设备存储空间。")
+            Text(exportErrorMessage)
+        }
+        .sheet(isPresented: $showAbout) {
+            AboutView()
+                .presentationDetents([.height(270)])
         }
     }
 
@@ -170,10 +166,6 @@ struct SettingsView: View {
         }
     }
 
-    private func settingsRow(icon: String, title: String, subtitle: String? = nil) -> some View {
-        settingsRowContent(icon: icon, title: title, subtitle: subtitle)
-    }
-
     private func settingsRowContent(icon: String, title: String, subtitle: String? = nil) -> some View {
         HStack(spacing: 10) {
             Image(systemName: icon)
@@ -204,36 +196,6 @@ struct SettingsView: View {
         }
     }
 
-    private func settingsToggle(icon: String, title: String, isOn: Binding<Bool>, footnote: String? = nil) -> some View {
-        HStack(spacing: 10) {
-            Image(systemName: icon)
-                .font(.system(size: 15, weight: .medium))
-                .foregroundStyle(LWColors.warmGold)
-                .frame(width: 20)
-            VStack(alignment: .leading, spacing: 2) {
-                Text(title)
-                    .font(.bodySong(13))
-                    .foregroundStyle(LWColors.ink)
-                if let footnote {
-                    Text(footnote)
-                        .font(.bodySong(10))
-                        .foregroundStyle(LWColors.muted)
-                        .lineLimit(1)
-                }
-            }
-            Spacer()
-            Toggle("", isOn: isOn)
-                .labelsHidden()
-                .tint(LWColors.cinnabar)
-        }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 7)
-        .overlay(alignment: .bottom) {
-            GoldLineDivider()
-                .padding(.leading, 44)
-        }
-    }
-
     private func themeColor(_ theme: AppTheme) -> Color {
         switch theme {
         case .paper: theme.palette.paperDeep
@@ -246,7 +208,44 @@ struct SettingsView: View {
             exportURL = try ExportService.writeExcel(from: records)
             HapticsManager.success()
         } catch {
+            exportErrorMessage = (error as? LocalizedError)?.errorDescription ?? "请稍后再试，或检查设备存储空间。"
             showExportError = true
         }
+    }
+}
+
+private struct AboutView: View {
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        VStack(spacing: 12) {
+            Image("lwl_app_icon")
+                .resizable()
+                .scaledToFit()
+                .frame(width: 52, height: 52)
+            Text("礼往来")
+                .font(.titleSong(22))
+                .foregroundStyle(LWColors.ink)
+            Text("人情有数，往来有度")
+                .font(.bodySong(13))
+                .foregroundStyle(LWColors.warmGold)
+            Text("版本 1.0 · 数据默认保存在你的设备中")
+                .font(.bodySong(11))
+                .foregroundStyle(LWColors.muted)
+            Button {
+                dismiss()
+            } label: {
+                Text("知道了")
+                    .font(.bodySong(13).weight(.semibold))
+                    .foregroundStyle(.white)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 9)
+                    .background(LWColors.cinnabar, in: RoundedRectangle(cornerRadius: 12))
+            }
+            .buttonStyle(.plain)
+            .padding(.top, 4)
+        }
+        .padding(20)
+        .background(PaperTexture())
     }
 }

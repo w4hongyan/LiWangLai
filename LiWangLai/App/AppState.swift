@@ -7,7 +7,7 @@ final class AppState {
     var homeSearchText = ""
     var ledgerSearchText = ""
     var peopleSearchText = ""
-    var faceIDEnabled = false
+    var addPresetType: GiftRecordType = .received
     var selectedTheme: AppTheme = .paper {
         didSet {
             UserDefaults.standard.set(selectedTheme.rawValue, forKey: Self.themeKey)

@@ -131,7 +131,15 @@ extension Font {
     }
 
     static func bodySong(_ size: CGFloat) -> Font {
-        .custom("SourceHanSerifSC-Regular", size: size)
+        .custom("KaitiSC-Regular", size: size)
+    }
+
+    static func bodyKai(_ size: CGFloat) -> Font {
+        .custom("KaitiSC-Regular", size: size)
+    }
+
+    static func amountKai(_ size: CGFloat) -> Font {
+        .custom("KaitiSC-Regular", size: size)
     }
 }
 

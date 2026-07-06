@@ -150,7 +150,7 @@ struct HomeView: View {
                 .font(.bodySong(11))
                 .foregroundStyle(LWColors.ink)
             Text(value)
-                .font(.system(size: 13, weight: .medium, design: .serif))
+                .font(.amountKai(13))
                 .foregroundStyle(color == LWColors.muted ? LWColors.ink : color)
                 .minimumScaleFactor(0.72)
         }
@@ -219,7 +219,7 @@ struct HomeView: View {
             recentBadge(for: record)
             VStack(alignment: .leading, spacing: 3) {
                 Text("\(record.personName) · \(record.eventType.title)")
-                    .font(.titleSong(15))
+                    .font(.bodyKai(16))
                     .foregroundStyle(LWColors.ink)
                     .lineLimit(1)
                 Text(record.date.lwDayText)
@@ -229,7 +229,7 @@ struct HomeView: View {
             }
             Spacer(minLength: 8)
             Text(record.amountYuan.yuanText)
-                .font(.system(size: 13, weight: .semibold, design: .serif))
+                .font(.amountKai(13))
                 .foregroundStyle(record.type == .received ? LWColors.cinnabar : LWColors.ink)
             Image(systemName: "chevron.right")
                 .font(.system(size: 12, weight: .semibold))
@@ -260,16 +260,40 @@ struct HomeView: View {
                 .font(.titleSong(15))
                 .foregroundStyle(LWColors.ink)
             HStack(spacing: 9) {
-                quickAction("收礼", image: "gift", tab: .add)
-                quickAction("送礼", image: "gift", tab: .add)
+                quickAction("收礼", image: "gift", tab: .add, presetType: .received)
+                quickAction("送礼", image: "gift", tab: .add, presetType: .given)
+                hostedEventAction
                 quickAction("查旧账", image: "book", tab: .people)
-                quickAction("导出", image: "square.and.arrow.up", tab: .settings)
             }
         }
     }
 
-    private func quickAction(_ title: String, image: String, tab: AppTab) -> some View {
+    private var hostedEventAction: some View {
+        NavigationLink {
+            HostedEventsView()
+        } label: {
+            VStack(spacing: 4) {
+                SealStamp(text: "事", size: 22, color: LWColors.cinnabar)
+                Text("一场事")
+                    .font(.bodySong(12))
+                    .foregroundStyle(LWColors.ink)
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 8)
+            .background(
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .fill(Color.white.opacity(0.52))
+                    .overlay(RoundedRectangle(cornerRadius: 12).stroke(LWColors.cardStroke.opacity(0.35)))
+            )
+        }
+        .buttonStyle(.plain)
+    }
+
+    private func quickAction(_ title: String, image: String, tab: AppTab, presetType: GiftRecordType? = nil) -> some View {
         Button {
+            if let presetType {
+                appState.addPresetType = presetType
+            }
             appState.selectedTab = tab
         } label: {
             VStack(spacing: 4) {
@@ -313,9 +337,27 @@ struct HomeView: View {
                 .font(.titleSong(16))
                 .foregroundStyle(LWColors.ink)
             if filteredRecords.isEmpty {
-                Text("没有找到相关往来，换个姓名或事件试试。")
-                    .font(.bodySong(13))
-                    .foregroundStyle(LWColors.muted)
+                VStack(spacing: 8) {
+                    Text("没有找到相关往来")
+                        .font(.titleSong(15))
+                        .foregroundStyle(LWColors.ink)
+                    Text("换个姓名、事件或备注关键词试试。")
+                        .font(.bodySong(12))
+                        .foregroundStyle(LWColors.muted)
+                    Button {
+                        appState.homeSearchText = ""
+                    } label: {
+                        Text("清空搜索")
+                            .font(.bodySong(12).weight(.semibold))
+                            .foregroundStyle(.white)
+                            .padding(.horizontal, 16)
+                            .padding(.vertical, 7)
+                            .background(LWColors.cinnabar, in: RoundedRectangle(cornerRadius: 12))
+                    }
+                    .buttonStyle(.plain)
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 8)
             } else {
                 ForEach(filteredRecords.prefix(8)) { record in
                     NavigationLink {

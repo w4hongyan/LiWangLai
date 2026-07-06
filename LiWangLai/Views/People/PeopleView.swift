@@ -24,10 +24,25 @@ struct PeopleView: View {
                 relationshipFilters
 
                 if people.isEmpty {
-                    EmptyStateView(
-                        title: "还没有人情往来",
-                        message: "记下一笔后，就能按人查看完整往来脉络。"
-                    )
+                    if records.isEmpty {
+                        EmptyStateView(
+                            title: "还没有人情往来",
+                            message: "记下一笔后，就能按人查看完整往来脉络。",
+                            buttonTitle: "记一笔"
+                        ) {
+                            appState.addPresetType = .received
+                            appState.selectedTab = .add
+                        }
+                    } else {
+                        EmptyStateView(
+                            title: "没有找到这个人",
+                            message: "换个姓名，或清空关系筛选后再试。",
+                            buttonTitle: "清空筛选"
+                        ) {
+                            appState.peopleSearchText = ""
+                            relationshipFilter = nil
+                        }
+                    }
                 } else {
                     ForEach(people) { summary in
                         NavigationLink {
@@ -119,7 +134,7 @@ struct PeopleView: View {
                 VStack(alignment: .leading, spacing: 5) {
                     HStack {
                         Text(summary.name)
-                            .font(.titleSong(15))
+                            .font(.bodyKai(16))
                             .foregroundStyle(LWColors.ink)
                             .lineLimit(1)
                         Spacer()

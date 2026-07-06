@@ -11,10 +11,12 @@
 		05071FEB9ACBCE548C1F2A47 /* SearchService.swift in Sources */ = {isa = PBXBuildFile; fileRef = B57F06FA33F2375655355DF6 /* SearchService.swift */; };
 		137F706FB910133B13F2DA0C /* RecordService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8B7795163A4D238E3214D8BB /* RecordService.swift */; };
 		1C30CB895469AFEDBE39E892 /* SealButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2D858DE306C89242F7E101D0 /* SealButton.swift */; };
+		1F89C46EA7315F21B8624D9A /* ChineseDatePickerButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = 79F36EBD853946C49B86D215 /* ChineseDatePickerButton.swift */; };
 		210C1B10C55D5F090E2222BB /* DateFormatter+.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6BCA20FF8E0F56AA6EA98D62 /* DateFormatter+.swift */; };
 		32F62336DFD4CEDF5DE16CE2 /* GiftEventType.swift in Sources */ = {isa = PBXBuildFile; fileRef = 79B93D63F6B2ECBDAF7CD972 /* GiftEventType.swift */; };
 		3C7680F1BAA21B90271F3C52 /* PersonDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FB36E59F2F8C8243A999B1A5 /* PersonDetailView.swift */; };
 		3FDC5A4CB01AAF07CEB5A559 /* SourceHanSerifSC-SemiBold.otf in Resources */ = {isa = PBXBuildFile; fileRef = 7F441260A5F8286A5ADE790E /* SourceHanSerifSC-SemiBold.otf */; };
+		40D9605F16984AE3A7F42C1A /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 315D125FCE204F44A0E73471 /* PrivacyInfo.xcprivacy */; };
 		4134D328FB6300BA35D84B92 /* RelationshipType.swift in Sources */ = {isa = PBXBuildFile; fileRef = E874C65B333BEBA78CB66C15 /* RelationshipType.swift */; };
 		4587A042A9F0C5263D48A512 /* AddRecordView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BADEF26DC77D0F9E8BC22F8E /* AddRecordView.swift */; };
 		4F70ABC3CDBAC71C041759D4 /* AppState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 84FAAF596258E39924777891 /* AppState.swift */; };
@@ -29,6 +31,8 @@
 		7C221EFD6C4148DA96E78C06 /* SearchField.swift in Sources */ = {isa = PBXBuildFile; fileRef = 570225CAA8C9413743BA742E /* SearchField.swift */; };
 		7E08A398FA0041D7CFC325DA /* GiftRecordType.swift in Sources */ = {isa = PBXBuildFile; fileRef = 900C0AFEC904DA3745AF8D29 /* GiftRecordType.swift */; };
 		7F4C67BD96608067822269F8 /* GiftEvent.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE001EC3EE743FC21C6F1299 /* GiftEvent.swift */; };
+		D4C3B2A19081726354453627 /* EventDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9F0E8D7C6B5A4938271605F /* EventDetailView.swift */; };
+		D9E8F7A6B5C4938271605041 /* HostedEventsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8B7A69584736251403F2E1D /* HostedEventsView.swift */; };
 		88B04895D7E802AD55748955 /* LWDesign.swift in Sources */ = {isa = PBXBuildFile; fileRef = 78FB73BC46A18352683DB461 /* LWDesign.swift */; };
 		90099015E803AE6CF651A96D /* HapticsManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 389E7EB8F364B96B03B68530 /* HapticsManager.swift */; };
 		9023147793A816116E2810E0 /* ReminderListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 26CBD04C3B4EDD7A0FDD5EE3 /* ReminderListView.swift */; };
@@ -40,7 +44,6 @@
 		B45FFBC59D966E489B049C58 /* PaperCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 88FCEBFDB9E3A4D012BB260C /* PaperCard.swift */; };
 		B6ACF48EB218A60391049449 /* HomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2D859984E0F666B1044E1A9 /* HomeView.swift */; };
 		BBB061182FC437AB1A249B3F /* PeopleView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 453F1FB35D5E8FEFFCB48830 /* PeopleView.swift */; };
-		BD230791C73980667F2F9F56 /* MockData.swift in Sources */ = {isa = PBXBuildFile; fileRef = AF30D2CE2BF1D2C9114AD68A /* MockData.swift */; };
 		C6A7861E7BE54AC851A2A6E2 /* GoldLineDivider.swift in Sources */ = {isa = PBXBuildFile; fileRef = A52D80E43E8911F028F16212 /* GoldLineDivider.swift */; };
 		CDD276BBD29984B497CCBB56 /* LiWangLaiApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 67093A0578D73452F784ADFB /* LiWangLaiApp.swift */; };
 		D0C76EE7F6396896DCB98867 /* CurrencyFormatter+.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7A7CE70B7FF42BEC84733F69 /* CurrencyFormatter+.swift */; };
@@ -58,6 +61,7 @@
 		26CBD04C3B4EDD7A0FDD5EE3 /* ReminderListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReminderListView.swift; sourceTree = "<group>"; };
 		2CB3E6DBAFAD2A0040AD4446 /* Person.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Person.swift; sourceTree = "<group>"; };
 		2D858DE306C89242F7E101D0 /* SealButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SealButton.swift; sourceTree = "<group>"; };
+		315D125FCE204F44A0E73471 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		389E7EB8F364B96B03B68530 /* HapticsManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HapticsManager.swift; sourceTree = "<group>"; };
 		3F2D46C2F657E369B038C5F1 /* RelationshipTag.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RelationshipTag.swift; sourceTree = "<group>"; };
 		453F1FB35D5E8FEFFCB48830 /* PeopleView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PeopleView.swift; sourceTree = "<group>"; };
@@ -69,6 +73,7 @@
 		6BCA20FF8E0F56AA6EA98D62 /* DateFormatter+.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "DateFormatter+.swift"; sourceTree = "<group>"; };
 		78FB73BC46A18352683DB461 /* LWDesign.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LWDesign.swift; sourceTree = "<group>"; };
 		79B93D63F6B2ECBDAF7CD972 /* GiftEventType.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GiftEventType.swift; sourceTree = "<group>"; };
+		79F36EBD853946C49B86D215 /* ChineseDatePickerButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChineseDatePickerButton.swift; sourceTree = "<group>"; };
 		7A7CE70B7FF42BEC84733F69 /* CurrencyFormatter+.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "CurrencyFormatter+.swift"; sourceTree = "<group>"; };
 		7F441260A5F8286A5ADE790E /* SourceHanSerifSC-SemiBold.otf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "SourceHanSerifSC-SemiBold.otf"; sourceTree = "<group>"; };
 		84FAAF596258E39924777891 /* AppState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppState.swift; sourceTree = "<group>"; };
@@ -82,7 +87,8 @@
 		9E15F87B26660CC1336BBD14 /* LedgerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LedgerView.swift; sourceTree = "<group>"; };
 		A52D80E43E8911F028F16212 /* GoldLineDivider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GoldLineDivider.swift; sourceTree = "<group>"; };
 		A87405DF078F041AA2023D34 /* Localizable.strings */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; path = Localizable.strings; sourceTree = "<group>"; };
-		AF30D2CE2BF1D2C9114AD68A /* MockData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MockData.swift; sourceTree = "<group>"; };
+		A9F0E8D7C6B5A4938271605F /* EventDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EventDetailView.swift; sourceTree = "<group>"; };
+		C8B7A69584736251403F2E1D /* HostedEventsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HostedEventsView.swift; sourceTree = "<group>"; };
 		B57F06FA33F2375655355DF6 /* SearchService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SearchService.swift; sourceTree = "<group>"; };
 		B8F6C0CC53291E262CCC00AC /* LiWangLai.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = LiWangLai.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		BADEF26DC77D0F9E8BC22F8E /* AddRecordView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AddRecordView.swift; sourceTree = "<group>"; };
@@ -100,6 +106,8 @@
 		06422863415824E8D232B08C /* RecordDetail */ = {
 			isa = PBXGroup;
 			children = (
+				A9F0E8D7C6B5A4938271605F /* EventDetailView.swift */,
+				C8B7A69584736251403F2E1D /* HostedEventsView.swift */,
 				FB36E59F2F8C8243A999B1A5 /* PersonDetailView.swift */,
 				5991F72AC812A9460974E483 /* RecordDetailView.swift */,
 			);
@@ -134,7 +142,6 @@
 			isa = PBXGroup;
 			children = (
 				CABDF78E467E7380435E48EA /* ExportService.swift */,
-				AF30D2CE2BF1D2C9114AD68A /* MockData.swift */,
 				8B7795163A4D238E3214D8BB /* RecordService.swift */,
 				00C354D615DEB433AAB18D7E /* ReminderService.swift */,
 				B57F06FA33F2375655355DF6 /* SearchService.swift */,
@@ -219,6 +226,7 @@
 			isa = PBXGroup;
 			children = (
 				2475C77AAD6071CD55C2FC85 /* AmountTextField.swift */,
+				79F36EBD853946C49B86D215 /* ChineseDatePickerButton.swift */,
 				E58150A5F72644593A8DF076 /* EmptyStateView.swift */,
 				A52D80E43E8911F028F16212 /* GoldLineDivider.swift */,
 				88FCEBFDB9E3A4D012BB260C /* PaperCard.swift */,
@@ -236,6 +244,7 @@
 			children = (
 				87DEEDAA2F456C026B90DC6E /* Assets.xcassets */,
 				A87405DF078F041AA2023D34 /* Localizable.strings */,
+				315D125FCE204F44A0E73471 /* PrivacyInfo.xcprivacy */,
 				A7421DC83C9BD249FB2EA7FD /* Fonts */,
 			);
 			path = Resources;
@@ -331,6 +340,7 @@
 			knownRegions = (
 				Base,
 				en,
+				"zh-Hans",
 			);
 			mainGroup = 55BE0B86D796449B150894C0;
 			minimizedProjectReferenceProxies = 1;
@@ -351,6 +361,7 @@
 			files = (
 				FD5933B27632956757E1C155 /* Assets.xcassets in Resources */,
 				7774D8C7E5A54B5454B8EEB2 /* Localizable.strings in Resources */,
+				40D9605F16984AE3A7F42C1A /* PrivacyInfo.xcprivacy in Resources */,
 				536872E7449B3FE01E7E3911 /* SourceHanSerifSC-Regular.otf in Resources */,
 				3FDC5A4CB01AAF07CEB5A559 /* SourceHanSerifSC-SemiBold.otf in Resources */,
 			);
@@ -365,10 +376,12 @@
 			files = (
 				4587A042A9F0C5263D48A512 /* AddRecordView.swift in Sources */,
 				A4C3F2CD6D5492B6D9450643 /* AmountTextField.swift in Sources */,
+				1F89C46EA7315F21B8624D9A /* ChineseDatePickerButton.swift in Sources */,
 				4F70ABC3CDBAC71C041759D4 /* AppState.swift in Sources */,
 				D0C76EE7F6396896DCB98867 /* CurrencyFormatter+.swift in Sources */,
 				210C1B10C55D5F090E2222BB /* DateFormatter+.swift in Sources */,
 				0420CCA01C043800BF5943C6 /* EmptyStateView.swift in Sources */,
+				D4C3B2A19081726354453627 /* EventDetailView.swift in Sources */,
 				676B4A988B43C18EB3151215 /* ExportService.swift in Sources */,
 				7F4C67BD96608067822269F8 /* GiftEvent.swift in Sources */,
 				32F62336DFD4CEDF5DE16CE2 /* GiftEventType.swift in Sources */,
@@ -377,10 +390,10 @@
 				C6A7861E7BE54AC851A2A6E2 /* GoldLineDivider.swift in Sources */,
 				90099015E803AE6CF651A96D /* HapticsManager.swift in Sources */,
 				B6ACF48EB218A60391049449 /* HomeView.swift in Sources */,
+				D9E8F7A6B5C4938271605041 /* HostedEventsView.swift in Sources */,
 				88B04895D7E802AD55748955 /* LWDesign.swift in Sources */,
 				65F2722B74D854625D17C7E3 /* LedgerView.swift in Sources */,
 				CDD276BBD29984B497CCBB56 /* LiWangLaiApp.swift in Sources */,
-				BD230791C73980667F2F9F56 /* MockData.swift in Sources */,
 				B45FFBC59D966E489B049C58 /* PaperCard.swift in Sources */,
 				BBB061182FC437AB1A249B3F /* PeopleView.swift in Sources */,
 				AAD4BA4C5D51D57549CFAB93 /* Person.swift in Sources */,
@@ -420,7 +433,7 @@
 				PRODUCT_BUNDLE_IDENTIFIER = com.liwanglai.app;
 				SDKROOT = iphoneos;
 				SUPPORTS_MACCATALYST = NO;
-				TARGETED_DEVICE_FAMILY = "1,2";
+				TARGETED_DEVICE_FAMILY = 1;
 			};
 			name = Debug;
 		};
@@ -561,7 +574,7 @@
 				PRODUCT_BUNDLE_IDENTIFIER = com.liwanglai.app;
 				SDKROOT = iphoneos;
 				SUPPORTS_MACCATALYST = NO;
-				TARGETED_DEVICE_FAMILY = "1,2";
+				TARGETED_DEVICE_FAMILY = 1;
 			};
 			name = Release;
 		};

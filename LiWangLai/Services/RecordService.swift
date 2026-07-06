@@ -83,7 +83,14 @@ struct GiftRecordDraft: Equatable {
         !personName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && amountYuan > 0
     }
 
-    init(record: GiftRecord? = nil, personName: String = "", type: GiftRecordType = .received) {
+    init(
+        record: GiftRecord? = nil,
+        personName: String = "",
+        type: GiftRecordType = .received,
+        eventType: GiftEventType? = nil,
+        date: Date? = nil,
+        note: String = ""
+    ) {
         if let record {
             self.personName = record.personName
             self.type = record.type
@@ -100,6 +107,13 @@ struct GiftRecordDraft: Equatable {
         } else {
             self.personName = personName
             self.type = type
+            if let eventType {
+                self.eventType = eventType
+            }
+            if let date {
+                self.date = date
+            }
+            self.note = note
         }
     }
 }

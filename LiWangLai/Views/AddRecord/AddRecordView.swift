@@ -9,16 +9,36 @@ struct AddRecordView: View {
     var editingRecord: GiftRecord?
     var presetName: String = ""
     var presetType: GiftRecordType = .received
+    var presetEventType: GiftEventType?
+    var presetDate: Date?
+    var presetNote: String = ""
 
     @State private var draft: GiftRecordDraft
     @State private var showMore = false
     @State private var showSavedSeal = false
 
-    init(editingRecord: GiftRecord? = nil, presetName: String = "", presetType: GiftRecordType = .received) {
+    init(
+        editingRecord: GiftRecord? = nil,
+        presetName: String = "",
+        presetType: GiftRecordType = .received,
+        presetEventType: GiftEventType? = nil,
+        presetDate: Date? = nil,
+        presetNote: String = ""
+    ) {
         self.editingRecord = editingRecord
         self.presetName = presetName
         self.presetType = presetType
-        _draft = State(initialValue: GiftRecordDraft(record: editingRecord, personName: presetName, type: presetType))
+        self.presetEventType = presetEventType
+        self.presetDate = presetDate
+        self.presetNote = presetNote
+        _draft = State(initialValue: GiftRecordDraft(
+            record: editingRecord,
+            personName: presetName,
+            type: presetType,
+            eventType: presetEventType,
+            date: presetDate,
+            note: presetNote
+        ))
     }
 
     var body: some View {
@@ -154,9 +174,7 @@ struct AddRecordView: View {
                 HStack {
                     Text("日期")
                         .font(.titleSong(14))
-                    DatePicker("", selection: $draft.date, displayedComponents: .date)
-                        .labelsHidden()
-                        .tint(LWColors.cinnabar)
+                    ChineseDatePickerButton(date: $draft.date)
                 }
                 HStack {
                     quickDate("今天", date: .now)
@@ -223,7 +241,7 @@ struct AddRecordView: View {
                         .font(.bodySong(12))
                 }
                 fieldRow(title: "地点", icon: "mappin") {
-                    TextField("可后续补全", text: $draft.location)
+                    TextField("可选填", text: $draft.location)
                         .font(.bodySong(12))
                 }
                 Toggle(isOn: $draft.isReturned) {
@@ -232,12 +250,10 @@ struct AddRecordView: View {
                         .foregroundStyle(LWColors.ink)
                 }
                 .tint(LWColors.cinnabar)
-                DatePicker("回礼提醒", selection: Binding(
+                ChineseDatePickerButton(title: "回礼提醒", date: Binding(
                     get: { draft.returnReminderDate ?? Date() },
                     set: { draft.returnReminderDate = $0 }
-                ), displayedComponents: .date)
-                .font(.titleSong(13))
-                .tint(LWColors.cinnabar)
+                ))
 
                 Button {
                     draft.returnReminderDate = nil

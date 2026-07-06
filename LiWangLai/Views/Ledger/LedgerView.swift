@@ -54,8 +54,17 @@ struct LedgerView: View {
                 timeFilters
 
                 if filteredRecords.isEmpty {
-                    EmptyStateView(title: "还没有入簿", message: "第一笔人情往来，记下来才安心。", buttonTitle: "记一笔") {
-                        appState.selectedTab = .add
+                    if records.isEmpty {
+                        EmptyStateView(title: "还没有入簿", message: "第一笔人情往来，记下来才安心。", buttonTitle: "记一笔") {
+                            appState.addPresetType = .received
+                            appState.selectedTab = .add
+                        }
+                    } else {
+                        EmptyStateView(title: "没有符合条件的记录", message: "换个关键词，或清空筛选后再看看。", buttonTitle: "清空筛选") {
+                            appState.ledgerSearchText = ""
+                            typeFilter = .all
+                            timeFilter = .all
+                        }
                     }
                 } else {
                     ForEach(groupedRecords, id: \.0) { month, records in
@@ -69,6 +78,7 @@ struct LedgerView: View {
                                     .frame(width: 56, height: 18)
                                     .opacity(0.72)
                             }
+                            eventStrip(for: records, month: month)
                             PaperCard(padding: 11) {
                                 ForEach(records) { record in
                                     NavigationLink {
@@ -230,6 +240,67 @@ struct LedgerView: View {
                     .fill(isSelected ? LWColors.cinnabar : LWColors.card.opacity(0.78))
                     .overlay(Capsule().stroke(LWColors.cardStroke.opacity(0.55), lineWidth: 0.8))
             )
+    }
+
+    private func events(for records: [GiftRecord], month: String) -> [GiftEvent] {
+        let hostedRecords = records.filter { $0.type == .received }
+        return Dictionary(grouping: hostedRecords, by: \.eventTypeRawValue)
+            .map { _, records in
+                let sortedRecords = records.sorted { $0.date > $1.date }
+                return GiftEvent(
+                    title: sortedRecords.first?.eventType.title ?? "其他",
+                    monthKey: month,
+                    eventType: sortedRecords.first?.eventType,
+                    date: sortedRecords.first?.date,
+                    records: sortedRecords
+                )
+            }
+            .sorted { lhs, rhs in
+                (lhs.records.first?.date ?? .distantPast) > (rhs.records.first?.date ?? .distantPast)
+            }
+    }
+
+    @ViewBuilder
+    private func eventStrip(for records: [GiftRecord], month: String) -> some View {
+        let events = events(for: records, month: month)
+        if !events.isEmpty {
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 8) {
+                    ForEach(events) { event in
+                        NavigationLink {
+                            EventDetailView(event: event)
+                        } label: {
+                            eventCard(event)
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+            }
+        }
+    }
+
+    private func eventCard(_ event: GiftEvent) -> some View {
+        HStack(spacing: 8) {
+            SealStamp(text: "事", size: 30, color: LWColors.cinnabar)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(event.title)
+                    .font(.titleSong(13))
+                    .foregroundStyle(LWColors.ink)
+                Text("我家 · \(event.records.count) 笔 · \(event.totalAmount.yuanText)")
+                    .font(.bodySong(10))
+                    .foregroundStyle(LWColors.muted)
+            }
+            Image(systemName: "chevron.right")
+                .font(.system(size: 10, weight: .semibold))
+                .foregroundStyle(LWColors.muted.opacity(0.72))
+        }
+        .padding(.horizontal, 10)
+        .padding(.vertical, 7)
+        .background(
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .fill(Color.white.opacity(0.56))
+                .overlay(RoundedRectangle(cornerRadius: 12).stroke(LWColors.cardStroke.opacity(0.36)))
+        )
     }
 }
 

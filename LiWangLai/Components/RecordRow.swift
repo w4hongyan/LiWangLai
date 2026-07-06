@@ -9,7 +9,7 @@ struct RecordRow: View {
             recordBadge
             VStack(alignment: .leading, spacing: 3) {
                 Text("\(record.personName) · \(record.eventType.title)")
-                    .font(.titleSong(15))
+                    .font(.bodyKai(16))
                     .foregroundStyle(LWColors.ink)
                     .lineLimit(1)
                 Text(record.date.lwDayText)
@@ -20,7 +20,7 @@ struct RecordRow: View {
             Spacer()
             VStack(alignment: .trailing, spacing: 2) {
                 Text(record.amountYuan.yuanText)
-                    .font(.system(size: 13, weight: .semibold, design: .serif))
+                    .font(.amountKai(14))
                     .foregroundStyle(record.type == .received ? LWColors.cinnabar : LWColors.ink)
                 Text(record.isReturned ? "已回" : (record.type == .received ? "未回" : "已记"))
                     .font(.bodySong(10))

@@ -83,6 +83,16 @@ struct RecordDetailView: View {
         .background(PaperTexture())
         .navigationTitle("往来详情")
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                Button {
+                    showEdit = true
+                } label: {
+                    Label("编辑", systemImage: "pencil")
+                }
+                .foregroundStyle(LWColors.cinnabar)
+            }
+        }
         .sheet(isPresented: $showEdit) {
             NavigationStack {
                 AddRecordView(editingRecord: record)
@@ -104,7 +114,7 @@ struct RecordDetailView: View {
                 .foregroundStyle(LWColors.ink)
             Spacer()
             Text(value)
-                .font(isAmount ? .system(size: 20, weight: .semibold, design: .serif) : .bodySong(13))
+                .font(isAmount ? .amountKai(20) : .bodySong(13))
                 .foregroundStyle(isAmount ? LWColors.cinnabar : LWColors.inkSoft)
         }
     }

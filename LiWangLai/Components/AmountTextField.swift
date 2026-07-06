@@ -11,7 +11,7 @@ struct AmountTextField: View {
                 .font(.titleSong(currencySize))
             TextField("0", text: $amountText)
                 .keyboardType(.numberPad)
-                .font(.system(size: amountSize, weight: .semibold, design: .serif))
+                .font(.amountKai(amountSize))
                 .foregroundStyle(LWColors.ink)
                 .onChange(of: amountText) { _, newValue in
                     let filtered = String(newValue.filter(\.isNumber).prefix(7))

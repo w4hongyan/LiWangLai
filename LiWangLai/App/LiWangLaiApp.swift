@@ -7,6 +7,7 @@ struct LiWangLaiApp: App {
 
     var sharedModelContainer: ModelContainer = {
         let schema = Schema([
+            HostedGiftEvent.self,
             GiftRecord.self
         ])
         let configuration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
@@ -22,6 +23,7 @@ struct LiWangLaiApp: App {
         WindowGroup {
             RootView()
                 .environment(appState)
+                .environment(\.locale, Locale(identifier: "zh_Hans_CN"))
         }
         .modelContainer(sharedModelContainer)
     }

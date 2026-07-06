@@ -3,7 +3,6 @@ import SwiftUI
 
 struct RootView: View {
     @Environment(AppState.self) private var appState
-    @Environment(\.modelContext) private var modelContext
     @Query(sort: \GiftRecord.date, order: .reverse) private var records: [GiftRecord]
 
     var body: some View {
@@ -25,7 +24,7 @@ struct RootView: View {
                     }
                 case .add:
                     NavigationStack {
-                        AddRecordView()
+                        AddRecordView(presetType: appState.addPresetType)
                     }
                 case .people:
                     NavigationStack {
@@ -42,9 +41,6 @@ struct RootView: View {
             TabBar(selectedTab: $appState.selectedTab)
         }
         .animation(.easeInOut(duration: 0.18), value: activeTheme)
-        .task {
-            MockData.seedIfNeeded(context: modelContext, existingCount: records.count)
-        }
     }
 }
 
@@ -109,6 +105,6 @@ private struct TabBar: View {
 
 #Preview {
     RootView()
-        .modelContainer(for: GiftRecord.self, inMemory: true)
+        .modelContainer(for: [HostedGiftEvent.self, GiftRecord.self], inMemory: true)
         .environment(AppState())
 }

@@ -98,7 +98,7 @@ struct PersonDetailView: View {
                 .font(.titleSong(14))
                 .foregroundStyle(LWColors.ink)
             Text(value)
-                .font(.system(size: 14, weight: .medium, design: .serif))
+                .font(.amountKai(14))
                 .foregroundStyle(color)
             Spacer()
         }
@@ -162,7 +162,7 @@ struct PersonDetailView: View {
                             .font(.bodySong(11))
                             .foregroundStyle(LWColors.muted)
                         Text(record.type == .given ? "他家\(record.eventType.title)，我送礼" : "我家\(record.eventType.title)，他送礼")
-                            .font(.titleSong(15))
+                            .font(.bodyKai(15))
                             .foregroundStyle(LWColors.ink)
                         if !record.note.isEmpty {
                             Text(record.note)
@@ -172,7 +172,7 @@ struct PersonDetailView: View {
                     }
                     Spacer()
                     Text(record.amountYuan.yuanText)
-                        .font(.system(size: 14, weight: .medium, design: .serif))
+                        .font(.amountKai(14))
                         .foregroundStyle(record.type == .received ? LWColors.cinnabar : LWColors.ink)
                     Menu {
                         Button("编辑") {
