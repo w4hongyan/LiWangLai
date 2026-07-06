@@ -11,7 +11,7 @@ struct AddRecordView: View {
     var presetType: GiftRecordType = .received
 
     @State private var draft: GiftRecordDraft
-    @State private var showMore = true
+    @State private var showMore = false
     @State private var showSavedSeal = false
 
     init(editingRecord: GiftRecord? = nil, presetName: String = "", presetType: GiftRecordType = .received) {
@@ -24,20 +24,27 @@ struct AddRecordView: View {
     var body: some View {
         ZStack {
             ScrollView {
-                VStack(alignment: .leading, spacing: 18) {
-                    PageHeader(title: editingRecord == nil ? "入簿" : "改一笔", subtitle: "三秒记一笔")
+                VStack(alignment: .leading, spacing: 6) {
+                    addHeader
 
                     typePicker
                     mainForm
                     moreInfo
-                    suggestionCard
-                    SealButton(title: editingRecord == nil ? "保存入簿" : "保存修改", systemImage: "checkmark.seal", isDisabled: !draft.isValid) {
+                    SealButton(
+                        title: editingRecord == nil ? "保存入簿" : "保存修改",
+                        systemImage: "checkmark.seal",
+                        isDisabled: !draft.isValid,
+                        fontSize: 14,
+                        verticalPadding: 9,
+                        cornerRadius: 12
+                    ) {
                         save()
                     }
-                    .padding(.bottom, 24)
+                    .padding(.bottom, 10)
                 }
                 .padding(.horizontal, LWSpacing.page)
-                .padding(.top, 28)
+                .padding(.top, -4)
+                .padding(.bottom, 4)
             }
 
             if showSavedSeal {
@@ -58,6 +65,28 @@ struct AddRecordView: View {
         }
     }
 
+    private var addHeader: some View {
+        ZStack(alignment: .topTrailing) {
+            MountainDecoration()
+                .frame(width: 180, height: 88)
+                .offset(x: 20, y: 0)
+                .opacity(0.36)
+                .allowsHitTesting(false)
+
+            VStack(alignment: .leading, spacing: 6) {
+                Text(editingRecord == nil ? "入簿" : "改一笔")
+                    .font(.titleSong(30))
+                    .foregroundStyle(LWColors.ink)
+                Text("三秒记一笔")
+                    .font(.bodySong(13))
+                    .foregroundStyle(LWColors.warmGold)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.top, 10)
+        }
+        .frame(height: 94)
+    }
+
     private var typePicker: some View {
         HStack(spacing: 0) {
             ForEach(GiftRecordType.allCases) { type in
@@ -65,12 +94,12 @@ struct AddRecordView: View {
                     draft.type = type
                 } label: {
                     Text(type.title)
-                        .font(.bodySong(20).weight(.semibold))
+                        .font(.bodySong(12).weight(.semibold))
                         .foregroundStyle(draft.type == type ? .white : LWColors.ink)
                         .frame(maxWidth: .infinity)
-                        .padding(.vertical, 12)
+                        .padding(.vertical, 7)
                         .background(
-                            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                            RoundedRectangle(cornerRadius: 10, style: .continuous)
                                 .fill(draft.type == type ? type.accentColor : Color.clear)
                         )
                 }
@@ -79,40 +108,41 @@ struct AddRecordView: View {
         }
         .padding(3)
         .background(
-            RoundedRectangle(cornerRadius: 14, style: .continuous)
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
                 .fill(Color.white.opacity(0.58))
-                .overlay(RoundedRectangle(cornerRadius: 14).stroke(LWColors.cardStroke.opacity(0.4)))
+                .overlay(RoundedRectangle(cornerRadius: 12).stroke(LWColors.cardStroke.opacity(0.4)))
         )
     }
 
     private var mainForm: some View {
-        PaperCard {
+        PaperCard(padding: 12, spacing: 8) {
             fieldRow(title: "姓名", icon: "person") {
                 TextField("请输入姓名", text: $draft.personName)
-                    .font(.bodySong(18))
+                    .font(.bodySong(13))
                     .foregroundStyle(LWColors.ink)
                     .textInputAutocapitalization(.never)
             }
 
             GoldLineDivider()
 
-            VStack(alignment: .leading, spacing: 12) {
+            VStack(alignment: .leading, spacing: 6) {
                 HStack {
                     Text("金额")
-                        .font(.titleSong(20))
+                        .font(.titleSong(14))
                     Spacer()
                     Image(systemName: "number.square")
+                        .font(.system(size: 13, weight: .medium))
                         .foregroundStyle(LWColors.warmGold)
                 }
-                AmountTextField(amountText: $draft.amountText)
+                AmountTextField(amountText: $draft.amountText, currencySize: 20, amountSize: 30)
                 amountChips
             }
 
             GoldLineDivider()
 
-            VStack(alignment: .leading, spacing: 12) {
+            VStack(alignment: .leading, spacing: 6) {
                 Text("事件")
-                    .font(.titleSong(20))
+                    .font(.titleSong(14))
                 chipWrap(GiftEventType.allCases, selected: draft.eventType) { event in
                     draft.eventType = event
                 }
@@ -120,10 +150,10 @@ struct AddRecordView: View {
 
             GoldLineDivider()
 
-            VStack(alignment: .leading, spacing: 12) {
+            VStack(alignment: .leading, spacing: 6) {
                 HStack {
                     Text("日期")
-                        .font(.titleSong(20))
+                        .font(.titleSong(14))
                     DatePicker("", selection: $draft.date, displayedComponents: .date)
                         .labelsHidden()
                         .tint(LWColors.cinnabar)
@@ -144,10 +174,10 @@ struct AddRecordView: View {
                     draft.amountText = "\(amount)"
                 } label: {
                     Text("\(amount)")
-                        .font(.bodySong(16))
+                        .font(.bodySong(12))
                         .foregroundStyle(draft.amountYuan == amount ? .white : LWColors.ink)
                         .frame(maxWidth: .infinity)
-                        .padding(.vertical, 8)
+                        .padding(.vertical, 5)
                         .background(
                             Capsule()
                                 .fill(draft.amountYuan == amount ? LWColors.cinnabar : Color.white.opacity(0.62))
@@ -160,7 +190,7 @@ struct AddRecordView: View {
     }
 
     private var moreInfo: some View {
-        PaperCard {
+        PaperCard(padding: 12, spacing: 8) {
             Button {
                 withAnimation(.easeInOut(duration: 0.18)) {
                     showMore.toggle()
@@ -168,10 +198,11 @@ struct AddRecordView: View {
             } label: {
                 HStack {
                     Text("更多信息")
-                        .font(.titleSong(21))
+                        .font(.titleSong(14))
                         .foregroundStyle(LWColors.ink)
                     Spacer()
                     Image(systemName: showMore ? "chevron.up" : "chevron.down")
+                        .font(.system(size: 12, weight: .semibold))
                         .foregroundStyle(LWColors.muted)
                 }
             }
@@ -179,25 +210,25 @@ struct AddRecordView: View {
 
             if showMore {
                 GoldLineDivider()
-                VStack(alignment: .leading, spacing: 12) {
+                VStack(alignment: .leading, spacing: 6) {
                     Text("关系")
-                        .font(.titleSong(18))
+                        .font(.titleSong(14))
                     chipWrap(RelationshipType.allCases, selected: draft.relationship) { relationship in
                         draft.relationship = relationship
                     }
                 }
                 fieldRow(title: "备注", icon: "note.text") {
                     TextField(draft.eventType.notePlaceholder, text: $draft.note, axis: .vertical)
-                        .lineLimit(2...4)
-                        .font(.bodySong(16))
+                        .lineLimit(1...2)
+                        .font(.bodySong(12))
                 }
                 fieldRow(title: "地点", icon: "mappin") {
                     TextField("可后续补全", text: $draft.location)
-                        .font(.bodySong(16))
+                        .font(.bodySong(12))
                 }
                 Toggle(isOn: $draft.isReturned) {
                     Text("是否已回礼")
-                        .font(.titleSong(18))
+                        .font(.titleSong(13))
                         .foregroundStyle(LWColors.ink)
                 }
                 .tint(LWColors.cinnabar)
@@ -205,14 +236,14 @@ struct AddRecordView: View {
                     get: { draft.returnReminderDate ?? Date() },
                     set: { draft.returnReminderDate = $0 }
                 ), displayedComponents: .date)
-                .font(.titleSong(18))
+                .font(.titleSong(13))
                 .tint(LWColors.cinnabar)
 
                 Button {
                     draft.returnReminderDate = nil
                 } label: {
                     Label("不提醒", systemImage: "bell.slash")
-                        .font(.bodySong(15))
+                        .font(.bodySong(12))
                         .foregroundStyle(LWColors.muted)
                 }
                 .buttonStyle(.plain)
@@ -221,15 +252,15 @@ struct AddRecordView: View {
     }
 
     private var suggestionCard: some View {
-        PaperCard(padding: 16) {
-            HStack(alignment: .top, spacing: 12) {
-                SealStamp(text: "礼", size: 44, color: LWColors.warmGold)
-                VStack(alignment: .leading, spacing: 6) {
+        PaperCard(padding: 12) {
+            HStack(alignment: .top, spacing: 10) {
+                SealStamp(text: "礼", size: 36, color: LWColors.warmGold)
+                VStack(alignment: .leading, spacing: 4) {
                     Text("保存后可在往来详情里查看历史与回礼参考。")
-                        .font(.bodySong(16))
+                        .font(.bodySong(13))
                         .foregroundStyle(LWColors.inkSoft)
                     Text("建议：下次回礼可参考 \(draft.amountYuan.yuanText) 左右。")
-                        .font(.bodySong(16))
+                        .font(.bodySong(13))
                         .foregroundStyle(LWColors.cinnabar)
                 }
             }
@@ -241,10 +272,10 @@ struct AddRecordView: View {
             SealStamp(text: "已", size: 92)
                 .scaleEffect(showSavedSeal ? 1 : 0.7)
             Text("已入簿")
-                .font(.titleSong(28))
+                .font(.titleSong(22))
                 .foregroundStyle(LWColors.ink)
             Text("\(draft.personName) · \(draft.eventType.title) · \(draft.type.title) \(draft.amountYuan.yuanText)")
-                .font(.bodySong(17))
+                .font(.bodySong(13))
                 .foregroundStyle(LWColors.inkSoft)
         }
         .padding(28)
@@ -255,11 +286,12 @@ struct AddRecordView: View {
     private func fieldRow<Content: View>(title: String, icon: String, @ViewBuilder content: () -> Content) -> some View {
         HStack(spacing: 12) {
             Text(title)
-                .font(.titleSong(19))
+                .font(.titleSong(13))
                 .foregroundStyle(LWColors.ink)
-                .frame(width: 52, alignment: .leading)
+                .frame(width: 42, alignment: .leading)
             content()
             Image(systemName: icon)
+                .font(.system(size: 13, weight: .medium))
                 .foregroundStyle(LWColors.warmGold)
         }
     }
@@ -269,10 +301,10 @@ struct AddRecordView: View {
             draft.date = date
         } label: {
             Text(title)
-                .font(.bodySong(15))
+                .font(.bodySong(12))
                 .foregroundStyle(Calendar.current.isDate(draft.date, inSameDayAs: date) ? LWColors.cinnabar : LWColors.ink)
-                .padding(.horizontal, 18)
-                .padding(.vertical, 8)
+                .padding(.horizontal, 13)
+                .padding(.vertical, 5)
                 .background(
                     Capsule()
                         .fill(Color.white.opacity(0.56))
@@ -283,16 +315,29 @@ struct AddRecordView: View {
     }
 
     private func chipWrap<T: Identifiable & CaseIterable & Equatable>(_ values: T.AllCases, selected: T, action: @escaping (T) -> Void) -> some View where T.AllCases: RandomAccessCollection, T: TitleProviding {
-        LazyVGrid(columns: [GridItem(.adaptive(minimum: 72), spacing: 8)], alignment: .leading, spacing: 8) {
+        LazyVGrid(columns: [GridItem(.adaptive(minimum: 40), spacing: 5)], alignment: .leading, spacing: 5) {
             ForEach(values) { value in
                 Button {
                     action(value)
                 } label: {
-                    RelationshipTag(title: value.title, isSelected: value == selected)
+                    addChipTag(value.title, isSelected: value == selected)
                 }
                 .buttonStyle(.plain)
             }
         }
+    }
+
+    private func addChipTag(_ title: String, isSelected: Bool) -> some View {
+        Text(title)
+            .font(.bodySong(11))
+            .foregroundStyle(isSelected ? .white : LWColors.ink)
+            .padding(.horizontal, 7)
+            .padding(.vertical, 5)
+            .background(
+                Capsule()
+                    .fill(isSelected ? LWColors.cinnabar : LWColors.card.opacity(0.78))
+                    .overlay(Capsule().stroke(LWColors.cardStroke.opacity(0.55), lineWidth: 0.8))
+            )
     }
 
     private func save() {

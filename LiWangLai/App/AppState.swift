@@ -7,9 +7,23 @@ final class AppState {
     var homeSearchText = ""
     var ledgerSearchText = ""
     var peopleSearchText = ""
-    var prefersHiddenAmounts = false
     var faceIDEnabled = false
-    var selectedTheme: AppTheme = .paper
+    var selectedTheme: AppTheme = .paper {
+        didSet {
+            UserDefaults.standard.set(selectedTheme.rawValue, forKey: Self.themeKey)
+            LWThemeStore.current = selectedTheme
+        }
+    }
+
+    private static let themeKey = "liwanglai.selectedTheme"
+
+    init() {
+        if let rawValue = UserDefaults.standard.string(forKey: Self.themeKey),
+           let storedTheme = AppTheme(rawValue: rawValue) {
+            selectedTheme = storedTheme
+        }
+        LWThemeStore.current = selectedTheme
+    }
 }
 
 enum AppTab: Hashable {

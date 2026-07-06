@@ -4,6 +4,9 @@ struct SealButton: View {
     let title: String
     var systemImage: String? = nil
     var isDisabled = false
+    var fontSize: CGFloat = 20
+    var verticalPadding: CGFloat = 15
+    var cornerRadius: CGFloat = LWRadius.button
     let action: () -> Void
 
     @State private var isPressed = false
@@ -18,18 +21,18 @@ struct SealButton: View {
                     Image(systemName: systemImage)
                 }
                 Text(title)
-                    .font(.bodySong(20).weight(.semibold))
+                    .font(.bodySong(fontSize).weight(.semibold))
             }
             .foregroundStyle(.white)
             .frame(maxWidth: .infinity)
-            .padding(.vertical, 15)
+            .padding(.vertical, verticalPadding)
             .background(
                 LinearGradient(
                     colors: [LWColors.cinnabar, LWColors.cinnabarDark],
                     startPoint: .topLeading,
                     endPoint: .bottomTrailing
                 ),
-                in: RoundedRectangle(cornerRadius: LWRadius.button, style: .continuous)
+                in: RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
             )
             .scaleEffect(isPressed ? 0.98 : 1)
             .opacity(isDisabled ? 0.45 : 1)

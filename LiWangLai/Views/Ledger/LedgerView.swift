@@ -47,13 +47,9 @@ struct LedgerView: View {
         @Bindable var appState = appState
 
         ScrollView {
-            VStack(alignment: .leading, spacing: 20) {
-                PageHeader(
-                    title: "礼簿",
-                    subtitle: "人情有数，往来有度",
-                    trailing: AnyView(exportButton)
-                )
-                SearchField(placeholder: "搜索姓名 / 事件 / 备注", text: $appState.ledgerSearchText)
+            VStack(alignment: .leading, spacing: 9) {
+                ledgerHeader
+                SearchField(placeholder: "搜索姓名 / 事件 / 备注", text: $appState.ledgerSearchText, fontSize: 14, iconSize: 18, verticalPadding: 9)
                 typeFilters
                 timeFilters
 
@@ -63,16 +59,17 @@ struct LedgerView: View {
                     }
                 } else {
                     ForEach(groupedRecords, id: \.0) { month, records in
-                        VStack(alignment: .leading, spacing: 12) {
+                        VStack(alignment: .leading, spacing: 8) {
                             HStack {
                                 Text(month)
-                                    .font(.titleSong(24))
+                                    .font(.titleSong(16))
                                     .foregroundStyle(LWColors.ink)
                                 Spacer()
                                 MountainDecoration()
-                                    .frame(width: 70, height: 22)
+                                    .frame(width: 56, height: 18)
+                                    .opacity(0.72)
                             }
-                            PaperCard {
+                            PaperCard(padding: 11) {
                                 ForEach(records) { record in
                                     NavigationLink {
                                         RecordDetailView(record: record)
@@ -116,7 +113,8 @@ struct LedgerView: View {
                 }
             }
             .padding(.horizontal, LWSpacing.page)
-            .padding(.top, 28)
+            .padding(.top, -4)
+            .padding(.bottom, 10)
         }
         .background(PaperTexture())
         .sheet(item: $editingRecord) { record in
@@ -139,25 +137,59 @@ struct LedgerView: View {
         }
     }
 
+    private var ledgerHeader: some View {
+        ZStack(alignment: .topTrailing) {
+            MountainDecoration()
+                .frame(width: 180, height: 88)
+                .offset(x: 20, y: 0)
+                .opacity(0.36)
+                .allowsHitTesting(false)
+
+            HStack(alignment: .top) {
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("礼簿")
+                        .font(.titleSong(30))
+                        .foregroundStyle(LWColors.ink)
+                    Text("人情有数，往来有度")
+                        .font(.bodySong(13))
+                        .foregroundStyle(LWColors.warmGold)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.top, 10)
+
+                exportButton
+                    .padding(.top, 18)
+            }
+        }
+        .frame(height: 94)
+    }
+
     private var exportButton: some View {
         Button {
             appState.selectedTab = .settings
         } label: {
             Label("导出", systemImage: "square.and.arrow.up")
-                .font(.bodySong(16))
+                .font(.bodySong(12))
                 .foregroundStyle(LWColors.ink)
+                .padding(.horizontal, 11)
+                .padding(.vertical, 6)
+                .background(
+                    Capsule()
+                        .fill(Color.white.opacity(0.56))
+                        .overlay(Capsule().stroke(LWColors.cardStroke.opacity(0.35)))
+                )
         }
         .buttonStyle(.plain)
     }
 
     private var typeFilters: some View {
         ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 10) {
+            HStack(spacing: 8) {
                 ForEach(LedgerTypeFilter.allCases) { filter in
                     Button {
                         typeFilter = filter
                     } label: {
-                        RelationshipTag(title: filter.title, isSelected: typeFilter == filter)
+                        ledgerFilterTag(filter.title, isSelected: typeFilter == filter)
                     }
                     .buttonStyle(.plain)
                 }
@@ -166,16 +198,16 @@ struct LedgerView: View {
     }
 
     private var timeFilters: some View {
-        HStack(spacing: 12) {
+        HStack(spacing: 8) {
             ForEach(LedgerTimeFilter.allCases) { filter in
                 Button {
                     timeFilter = filter
                 } label: {
                     Text(filter.title)
-                        .font(.bodySong(17))
+                        .font(.bodySong(12))
                         .foregroundStyle(timeFilter == filter ? LWColors.cinnabar : LWColors.ink)
                         .frame(maxWidth: .infinity)
-                        .padding(.vertical, 12)
+                        .padding(.vertical, 6)
                         .background(
                             Capsule()
                                 .fill(Color.white.opacity(0.56))
@@ -185,6 +217,19 @@ struct LedgerView: View {
                 .buttonStyle(.plain)
             }
         }
+    }
+
+    private func ledgerFilterTag(_ title: String, isSelected: Bool) -> some View {
+        Text(title)
+            .font(.bodySong(12))
+            .foregroundStyle(isSelected ? .white : LWColors.ink)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 6)
+            .background(
+                Capsule()
+                    .fill(isSelected ? LWColors.cinnabar : LWColors.card.opacity(0.78))
+                    .overlay(Capsule().stroke(LWColors.cardStroke.opacity(0.55), lineWidth: 0.8))
+            )
     }
 }
 

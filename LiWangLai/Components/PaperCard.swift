@@ -2,10 +2,11 @@ import SwiftUI
 
 struct PaperCard<Content: View>: View {
     var padding: CGFloat = LWSpacing.card
+    var spacing: CGFloat = 10
     @ViewBuilder let content: Content
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
+        VStack(alignment: .leading, spacing: spacing) {
             content
         }
         .padding(padding)

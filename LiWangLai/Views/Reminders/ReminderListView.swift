@@ -31,7 +31,10 @@ struct ReminderListView: View {
                     .frame(height: 68)
                 PaperCard {
                     HStack {
-                        SealStamp(text: "礼", size: 64)
+                        Image("lwl_gift_circle")
+                            .resizable()
+                            .scaledToFit()
+                            .frame(width: 64, height: 64)
                         VStack(alignment: .leading, spacing: 8) {
                             Text("待处理")
                                 .font(.bodySong(18))
@@ -41,9 +44,10 @@ struct ReminderListView: View {
                                 .foregroundStyle(LWColors.cinnabar)
                         }
                         Spacer()
-                        Image(systemName: "calendar.badge.clock")
-                            .font(.system(size: 52))
-                            .foregroundStyle(LWColors.goldPale.opacity(0.65))
+                        Image("lwl_calendar_clock")
+                            .resizable()
+                            .scaledToFit()
+                            .frame(width: 104, height: 70)
                     }
                 }
                 filterChips
@@ -91,9 +95,10 @@ struct ReminderListView: View {
                     }
                 }
 
-                Text("礼尚往来 · 心意常在")
-                    .font(.bodySong(18))
-                    .foregroundStyle(LWColors.warmGold)
+                Image("lwl_bottom_slogan")
+                    .resizable()
+                    .scaledToFit()
+                    .frame(maxWidth: 260)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 12)
             }

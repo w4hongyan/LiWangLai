@@ -8,6 +8,7 @@ struct RootView: View {
 
     var body: some View {
         @Bindable var appState = appState
+        let activeTheme = appState.selectedTheme
 
         ZStack(alignment: .bottom) {
             PaperTexture()
@@ -36,10 +37,11 @@ struct RootView: View {
                     }
                 }
             }
-            .padding(.bottom, 66)
+            .padding(.bottom, 46)
 
             TabBar(selectedTab: $appState.selectedTab)
         }
+        .animation(.easeInOut(duration: 0.18), value: activeTheme)
         .task {
             MockData.seedIfNeeded(context: modelContext, existingCount: records.count)
         }
@@ -51,15 +53,15 @@ private struct TabBar: View {
 
     var body: some View {
         HStack(alignment: .bottom) {
-            tab(.home, title: "今日", image: "house")
+            tab(.home, title: "首页", image: "house")
             tab(.ledger, title: "礼簿", image: "book")
             addTab
             tab(.people, title: "人情", image: "person.2")
             tab(.settings, title: "我的", image: "person")
         }
         .padding(.horizontal, 18)
-        .padding(.top, 6)
-        .padding(.bottom, 14)
+        .padding(.top, 1)
+        .padding(.bottom, 2)
         .background(.ultraThinMaterial)
         .overlay(alignment: .top) {
             GoldLineDivider()
@@ -71,11 +73,11 @@ private struct TabBar: View {
             selectedTab = tab
             HapticsManager.lightTap()
         } label: {
-            VStack(spacing: 4) {
+            VStack(spacing: 2) {
                 Image(systemName: selectedTab == tab ? "\(image).fill" : image)
-                    .font(.system(size: 20))
+                    .font(.system(size: 15))
                 Text(title)
-                    .font(.bodySong(11))
+                    .font(.bodySong(8.5))
             }
             .foregroundStyle(selectedTab == tab ? LWColors.cinnabar : LWColors.inkSoft)
             .frame(maxWidth: .infinity)
@@ -88,28 +90,18 @@ private struct TabBar: View {
             selectedTab = .add
             HapticsManager.lightTap()
         } label: {
-            VStack(spacing: 4) {
-                ZStack {
-                    Circle()
-                        .fill(
-                            LinearGradient(
-                                colors: [LWColors.cinnabar, LWColors.cinnabarDark],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            )
-                        )
-                        .frame(width: 46, height: 46)
-                        .shadow(color: LWColors.cinnabar.opacity(0.22), radius: 10, x: 0, y: 5)
-                    Image(systemName: "plus")
-                        .font(.system(size: 24, weight: .medium))
-                        .foregroundStyle(.white)
-                }
+            VStack(spacing: 2) {
+                Image("lwl_fab_add")
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 40, height: 40)
+                    .shadow(color: LWColors.cinnabar.opacity(0.14), radius: 5, x: 0, y: 3)
                 Text("入簿")
-                    .font(.bodySong(11))
+                    .font(.bodySong(8.5))
                     .foregroundStyle(selectedTab == .add ? LWColors.cinnabar : LWColors.inkSoft)
             }
             .frame(maxWidth: .infinity)
-            .offset(y: -12)
+            .offset(y: -4)
         }
         .buttonStyle(.plain)
     }

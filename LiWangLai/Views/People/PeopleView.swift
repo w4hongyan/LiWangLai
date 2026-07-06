@@ -18,13 +18,9 @@ struct PeopleView: View {
         @Bindable var appState = appState
 
         ScrollView {
-            VStack(alignment: .leading, spacing: 20) {
-                PageHeader(
-                    title: "人情",
-                    subtitle: "按人查往来",
-                    trailing: AnyView(filterBadge)
-                )
-                SearchField(placeholder: "搜索姓名", text: $appState.peopleSearchText)
+            VStack(alignment: .leading, spacing: 9) {
+                peopleHeader
+                SearchField(placeholder: "搜索姓名", text: $appState.peopleSearchText, fontSize: 14, iconSize: 18, verticalPadding: 9)
                 relationshipFilters
 
                 if people.isEmpty {
@@ -44,9 +40,37 @@ struct PeopleView: View {
                 }
             }
             .padding(.horizontal, LWSpacing.page)
-            .padding(.top, 28)
+            .padding(.top, -4)
+            .padding(.bottom, 10)
         }
         .background(PaperTexture())
+    }
+
+    private var peopleHeader: some View {
+        ZStack(alignment: .topTrailing) {
+            MountainDecoration()
+                .frame(width: 180, height: 88)
+                .offset(x: 20, y: 0)
+                .opacity(0.36)
+                .allowsHitTesting(false)
+
+            HStack(alignment: .top) {
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("人情")
+                        .font(.titleSong(30))
+                        .foregroundStyle(LWColors.ink)
+                    Text("按人查往来")
+                        .font(.bodySong(13))
+                        .foregroundStyle(LWColors.warmGold)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.top, 10)
+
+                filterBadge
+                    .padding(.top, 18)
+            }
+        }
+        .frame(height: 94)
     }
 
     private var filterBadge: some View {
@@ -54,10 +78,10 @@ struct PeopleView: View {
             relationshipFilter = nil
         } label: {
             Label("筛选", systemImage: "line.3.horizontal.decrease.circle")
-                .font(.bodySong(16))
+                .font(.bodySong(12))
                 .foregroundStyle(LWColors.ink)
-                .padding(.horizontal, 14)
-                .padding(.vertical, 9)
+                .padding(.horizontal, 11)
+                .padding(.vertical, 6)
                 .background(
                     Capsule()
                         .fill(Color.white.opacity(0.56))
@@ -69,18 +93,18 @@ struct PeopleView: View {
 
     private var relationshipFilters: some View {
         ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 10) {
+            HStack(spacing: 8) {
                 Button {
                     relationshipFilter = nil
                 } label: {
-                    RelationshipTag(title: "全部", isSelected: relationshipFilter == nil)
+                    peopleFilterTag("全部", isSelected: relationshipFilter == nil)
                 }
                 .buttonStyle(.plain)
                 ForEach(RelationshipType.allCases.filter { $0 != .client && $0 != .other }) { relationship in
                     Button {
                         relationshipFilter = relationship
                     } label: {
-                        RelationshipTag(title: relationship.title, isSelected: relationshipFilter == relationship)
+                        peopleFilterTag(relationship.title, isSelected: relationshipFilter == relationship)
                     }
                     .buttonStyle(.plain)
                 }
@@ -89,22 +113,25 @@ struct PeopleView: View {
     }
 
     private func personCard(_ summary: PersonSummary) -> some View {
-        PaperCard {
-            HStack(alignment: .top, spacing: 14) {
-                SealStamp(text: String(summary.name.prefix(1)), size: 54, color: summary.pendingReturnCount > 0 ? LWColors.cinnabar : LWColors.warmGold)
-                VStack(alignment: .leading, spacing: 8) {
+        PaperCard(padding: 11) {
+            HStack(alignment: .top, spacing: 11) {
+                SealStamp(text: String(summary.name.prefix(1)), size: 40, color: summary.pendingReturnCount > 0 ? LWColors.cinnabar : LWColors.warmGold)
+                VStack(alignment: .leading, spacing: 5) {
                     HStack {
                         Text(summary.name)
-                            .font(.titleSong(24))
+                            .font(.titleSong(15))
                             .foregroundStyle(LWColors.ink)
+                            .lineLimit(1)
                         Spacer()
                         Text(summary.statusText)
-                            .font(.bodySong(16))
+                            .font(.bodySong(12))
                             .foregroundStyle(summary.pendingReturnCount > 0 ? LWColors.cinnabar : LWColors.warmGold)
+                            .lineLimit(1)
                     }
                     Text("\(summary.relationship.title) · 往来 \(summary.records.count) 次 · 最近：\(summary.latestRecord?.date.lwCompactMonthText ?? "-") \(summary.latestRecord?.eventType.title ?? "")")
-                        .font(.bodySong(15))
+                        .font(.bodySong(11))
                         .foregroundStyle(LWColors.muted)
+                        .lineLimit(1)
                     GoldLineDivider()
                     HStack {
                         Text("我送：")
@@ -114,18 +141,32 @@ struct PeopleView: View {
                         Spacer()
                         Rectangle()
                             .fill(LWColors.cardStroke.opacity(0.38))
-                            .frame(width: 1, height: 22)
+                            .frame(width: 1, height: 18)
                         Spacer()
                         Text("我收：")
                             .foregroundStyle(LWColors.ink)
                         Text(summary.totalReceived.yuanText)
                             .foregroundStyle(LWColors.cinnabar)
                         Image(systemName: "chevron.right")
+                            .font(.system(size: 11, weight: .semibold))
                             .foregroundStyle(LWColors.muted.opacity(0.65))
                     }
-                    .font(.bodySong(17))
+                    .font(.bodySong(12))
                 }
             }
         }
+    }
+
+    private func peopleFilterTag(_ title: String, isSelected: Bool) -> some View {
+        Text(title)
+            .font(.bodySong(12))
+            .foregroundStyle(isSelected ? .white : LWColors.ink)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 6)
+            .background(
+                Capsule()
+                    .fill(isSelected ? LWColors.cinnabar : LWColors.card.opacity(0.78))
+                    .overlay(Capsule().stroke(LWColors.cardStroke.opacity(0.55), lineWidth: 0.8))
+            )
     }
 }

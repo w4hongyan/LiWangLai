@@ -1,0 +1,13 @@
+{
+  "images": [
+    {
+      "filename": "lwl_bottom_cloud_right.png",
+      "idiom": "universal",
+      "scale": "1x"
+    }
+  ],
+  "info": {
+    "author": "xcode",
+    "version": 1
+  }
+}

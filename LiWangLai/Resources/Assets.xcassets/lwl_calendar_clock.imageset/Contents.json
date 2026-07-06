@@ -1,0 +1,13 @@
+{
+  "images": [
+    {
+      "filename": "lwl_calendar_clock.png",
+      "idiom": "universal",
+      "scale": "1x"
+    }
+  ],
+  "info": {
+    "author": "xcode",
+    "version": 1
+  }
+}

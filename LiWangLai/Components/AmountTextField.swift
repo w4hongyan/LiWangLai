@@ -2,14 +2,16 @@ import SwiftUI
 
 struct AmountTextField: View {
     @Binding var amountText: String
+    var currencySize: CGFloat = 28
+    var amountSize: CGFloat = 44
 
     var body: some View {
         HStack(alignment: .firstTextBaseline, spacing: 8) {
             Text("¥")
-                .font(.titleSong(28))
+                .font(.titleSong(currencySize))
             TextField("0", text: $amountText)
                 .keyboardType(.numberPad)
-                .font(.system(size: 44, weight: .semibold, design: .serif))
+                .font(.system(size: amountSize, weight: .semibold, design: .serif))
                 .foregroundStyle(LWColors.ink)
                 .onChange(of: amountText) { _, newValue in
                     let filtered = String(newValue.filter(\.isNumber).prefix(7))

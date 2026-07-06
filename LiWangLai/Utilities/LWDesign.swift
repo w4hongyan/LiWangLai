@@ -1,18 +1,114 @@
 import SwiftUI
 
+struct LWThemePalette {
+    let paper: Color
+    let paperDeep: Color
+    let card: Color
+    let cardStroke: Color
+    let primary: Color
+    let primaryDark: Color
+    let ink: Color
+    let inkSoft: Color
+    let muted: Color
+    let secondary: Color
+    let secondaryPale: Color
+    let jade: Color
+}
+
+enum LWThemeStore {
+    nonisolated(unsafe) static var current: AppTheme = {
+        if let rawValue = UserDefaults.standard.string(forKey: "liwanglai.selectedTheme"),
+           let storedTheme = AppTheme(rawValue: rawValue) {
+            return storedTheme
+        }
+        return .paper
+    }()
+
+    static var palette: LWThemePalette {
+        current.palette
+    }
+}
+
 enum LWColors {
-    static let paper = Color(red: 0.976, green: 0.953, blue: 0.902)
-    static let paperDeep = Color(red: 0.946, green: 0.902, blue: 0.824)
-    static let card = Color(red: 1.0, green: 0.986, blue: 0.95)
-    static let cardStroke = Color(red: 0.858, green: 0.792, blue: 0.684)
-    static let cinnabar = Color(red: 0.72, green: 0.14, blue: 0.09)
-    static let cinnabarDark = Color(red: 0.55, green: 0.08, blue: 0.06)
-    static let ink = Color(red: 0.12, green: 0.11, blue: 0.10)
-    static let inkSoft = Color(red: 0.42, green: 0.38, blue: 0.32)
-    static let muted = Color(red: 0.60, green: 0.55, blue: 0.49)
-    static let warmGold = Color(red: 0.70, green: 0.52, blue: 0.30)
-    static let goldPale = Color(red: 0.86, green: 0.73, blue: 0.52)
-    static let jade = Color(red: 0.12, green: 0.30, blue: 0.29)
+    static var paper: Color { LWThemeStore.palette.paper }
+    static var paperDeep: Color { LWThemeStore.palette.paperDeep }
+    static var card: Color { LWThemeStore.palette.card }
+    static var cardStroke: Color { LWThemeStore.palette.cardStroke }
+    static var cinnabar: Color { LWThemeStore.palette.primary }
+    static var cinnabarDark: Color { LWThemeStore.palette.primaryDark }
+    static var ink: Color { LWThemeStore.palette.ink }
+    static var inkSoft: Color { LWThemeStore.palette.inkSoft }
+    static var muted: Color { LWThemeStore.palette.muted }
+    static var warmGold: Color { LWThemeStore.palette.secondary }
+    static var goldPale: Color { LWThemeStore.palette.secondaryPale }
+    static var jade: Color { LWThemeStore.palette.jade }
+}
+
+extension AppTheme {
+    var palette: LWThemePalette {
+        switch self {
+        case .paper:
+            LWThemePalette(
+                paper: Color(red: 0.976, green: 0.953, blue: 0.902),
+                paperDeep: Color(red: 0.946, green: 0.902, blue: 0.824),
+                card: Color(red: 1.0, green: 0.986, blue: 0.95),
+                cardStroke: Color(red: 0.858, green: 0.792, blue: 0.684),
+                primary: Color(red: 0.72, green: 0.14, blue: 0.09),
+                primaryDark: Color(red: 0.55, green: 0.08, blue: 0.06),
+                ink: Color(red: 0.12, green: 0.11, blue: 0.10),
+                inkSoft: Color(red: 0.42, green: 0.38, blue: 0.32),
+                muted: Color(red: 0.60, green: 0.55, blue: 0.49),
+                secondary: Color(red: 0.70, green: 0.52, blue: 0.30),
+                secondaryPale: Color(red: 0.86, green: 0.73, blue: 0.52),
+                jade: Color(red: 0.12, green: 0.30, blue: 0.29)
+            )
+        case .cinnabar:
+            LWThemePalette(
+                paper: Color(red: 0.988, green: 0.938, blue: 0.900),
+                paperDeep: Color(red: 0.920, green: 0.790, blue: 0.710),
+                card: Color(red: 1.0, green: 0.965, blue: 0.930),
+                cardStroke: Color(red: 0.820, green: 0.600, blue: 0.520),
+                primary: Color(red: 0.73, green: 0.12, blue: 0.09),
+                primaryDark: Color(red: 0.50, green: 0.06, blue: 0.05),
+                ink: Color(red: 0.17, green: 0.09, blue: 0.08),
+                inkSoft: Color(red: 0.45, green: 0.27, blue: 0.23),
+                muted: Color(red: 0.62, green: 0.45, blue: 0.40),
+                secondary: Color(red: 0.70, green: 0.45, blue: 0.24),
+                secondaryPale: Color(red: 0.88, green: 0.68, blue: 0.48),
+                jade: Color(red: 0.16, green: 0.32, blue: 0.28)
+            )
+        case .inkGreen:
+            LWThemePalette(
+                paper: Color(red: 0.915, green: 0.948, blue: 0.905),
+                paperDeep: Color(red: 0.760, green: 0.840, blue: 0.770),
+                card: Color(red: 0.965, green: 0.982, blue: 0.948),
+                cardStroke: Color(red: 0.590, green: 0.710, blue: 0.620),
+                primary: Color(red: 0.12, green: 0.34, blue: 0.30),
+                primaryDark: Color(red: 0.07, green: 0.22, blue: 0.19),
+                ink: Color(red: 0.08, green: 0.15, blue: 0.13),
+                inkSoft: Color(red: 0.28, green: 0.40, blue: 0.34),
+                muted: Color(red: 0.45, green: 0.55, blue: 0.49),
+                secondary: Color(red: 0.66, green: 0.52, blue: 0.28),
+                secondaryPale: Color(red: 0.78, green: 0.70, blue: 0.46),
+                jade: Color(red: 0.10, green: 0.31, blue: 0.28)
+            )
+        case .warmGold:
+            LWThemePalette(
+                paper: Color(red: 0.982, green: 0.940, blue: 0.830),
+                paperDeep: Color(red: 0.900, green: 0.790, blue: 0.590),
+                card: Color(red: 1.0, green: 0.970, blue: 0.880),
+                cardStroke: Color(red: 0.800, green: 0.630, blue: 0.360),
+                primary: Color(red: 0.62, green: 0.39, blue: 0.15),
+                primaryDark: Color(red: 0.42, green: 0.25, blue: 0.08),
+                ink: Color(red: 0.15, green: 0.11, blue: 0.06),
+                inkSoft: Color(red: 0.42, green: 0.33, blue: 0.19),
+                muted: Color(red: 0.58, green: 0.48, blue: 0.32),
+                secondary: Color(red: 0.70, green: 0.18, blue: 0.10),
+                secondaryPale: Color(red: 0.90, green: 0.70, blue: 0.42),
+                jade: Color(red: 0.14, green: 0.30, blue: 0.25)
+            )
+        }
+    }
 }
 
 enum LWSpacing {
@@ -105,61 +201,8 @@ struct PageHeader: View {
 
 struct MountainDecoration: View {
     var body: some View {
-        Canvas { context, size in
-            let baseY = size.height * 0.76
-            let mountains: [[CGPoint]] = [
-                [
-                    CGPoint(x: size.width * 0.36, y: baseY),
-                    CGPoint(x: size.width * 0.48, y: size.height * 0.42),
-                    CGPoint(x: size.width * 0.58, y: baseY)
-                ],
-                [
-                    CGPoint(x: size.width * 0.52, y: baseY),
-                    CGPoint(x: size.width * 0.70, y: size.height * 0.26),
-                    CGPoint(x: size.width * 0.88, y: baseY)
-                ],
-                [
-                    CGPoint(x: size.width * 0.64, y: baseY),
-                    CGPoint(x: size.width * 0.78, y: size.height * 0.50),
-                    CGPoint(x: size.width * 1.02, y: baseY)
-                ]
-            ]
-
-            for mountain in mountains {
-                var path = Path()
-                path.move(to: mountain[0])
-                path.addLine(to: mountain[1])
-                path.addLine(to: mountain[2])
-                context.stroke(path, with: .color(LWColors.goldPale.opacity(0.45)), lineWidth: 1)
-            }
-
-            for offset in stride(from: 0, through: 60, by: 12) {
-                var cloud = Path()
-                cloud.move(to: CGPoint(x: size.width * 0.50 + CGFloat(offset), y: size.height * 0.18))
-                cloud.addCurve(
-                    to: CGPoint(x: size.width * 0.58 + CGFloat(offset), y: size.height * 0.18),
-                    control1: CGPoint(x: size.width * 0.52 + CGFloat(offset), y: size.height * 0.10),
-                    control2: CGPoint(x: size.width * 0.55 + CGFloat(offset), y: size.height * 0.25)
-                )
-                context.stroke(cloud, with: .color(LWColors.goldPale.opacity(0.45)), lineWidth: 1)
-            }
-
-            var branch = Path()
-            branch.move(to: CGPoint(x: size.width * 0.86, y: 0))
-            branch.addCurve(
-                to: CGPoint(x: size.width, y: size.height * 0.1),
-                control1: CGPoint(x: size.width * 0.90, y: size.height * 0.12),
-                control2: CGPoint(x: size.width * 0.95, y: size.height * 0.02)
-            )
-            context.stroke(branch, with: .color(LWColors.inkSoft.opacity(0.65)), lineWidth: 2)
-
-            for index in 0..<5 {
-                let x = size.width * (0.86 + CGFloat(index) * 0.028)
-                let y = size.height * (0.12 + CGFloat(index % 2) * 0.16)
-                var blossom = Path()
-                blossom.addEllipse(in: CGRect(x: x, y: y, width: 7, height: 7))
-                context.fill(blossom, with: .color(LWColors.cinnabar.opacity(0.85)))
-            }
-        }
+        Image("lwl_header_decoration")
+            .resizable()
+            .scaledToFit()
     }
 }
