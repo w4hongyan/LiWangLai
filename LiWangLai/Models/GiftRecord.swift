@@ -15,43 +15,46 @@ final class GiftRecord {
     var returnReminderDate: Date?
     var location: String
     var giftName: String
-    var contact: String
-    var createdAt: Date
-    var updatedAt: Date
+   var contact: String
+   var createdAt: Date
+   var updatedAt: Date
+    var hostedEventID: UUID?
 
-    init(
-        id: UUID = UUID(),
-        personName: String,
-        type: GiftRecordType,
-        amountYuan: Int,
-        eventType: GiftEventType,
-        relationship: RelationshipType,
-        date: Date = .now,
-        note: String = "",
-        isReturned: Bool = false,
-        returnReminderDate: Date? = nil,
-        location: String = "",
-        giftName: String = "",
-        contact: String = "",
-        createdAt: Date = .now,
-        updatedAt: Date = .now
-    ) {
-        self.id = id
-        self.personName = personName
-        self.typeRawValue = type.rawValue
-        self.amountYuan = amountYuan
-        self.eventTypeRawValue = eventType.rawValue
-        self.relationshipRawValue = relationship.rawValue
-        self.date = date
-        self.note = note
-        self.isReturned = isReturned
-        self.returnReminderDate = returnReminderDate
-        self.location = location
-        self.giftName = giftName
-        self.contact = contact
-        self.createdAt = createdAt
-        self.updatedAt = updatedAt
-    }
+   init(
+       id: UUID = UUID(),
+       personName: String,
+       type: GiftRecordType,
+       amountYuan: Int,
+       eventType: GiftEventType,
+       relationship: RelationshipType,
+       date: Date = .now,
+       note: String = "",
+       isReturned: Bool = false,
+       returnReminderDate: Date? = nil,
+       location: String = "",
+       giftName: String = "",
+       contact: String = "",
+       createdAt: Date = .now,
+        updatedAt: Date = .now,
+        hostedEventID: UUID? = nil
+   ) {
+       self.id = id
+       self.personName = personName
+       self.typeRawValue = type.rawValue
+       self.amountYuan = amountYuan
+       self.eventTypeRawValue = eventType.rawValue
+       self.relationshipRawValue = relationship.rawValue
+       self.date = date
+       self.note = note
+       self.isReturned = isReturned
+       self.returnReminderDate = returnReminderDate
+       self.location = location
+       self.giftName = giftName
+       self.contact = contact
+       self.createdAt = createdAt
+       self.updatedAt = updatedAt
+        self.hostedEventID = hostedEventID
+   }
 
     var type: GiftRecordType {
         get { GiftRecordType(rawValue: typeRawValue) ?? .received }

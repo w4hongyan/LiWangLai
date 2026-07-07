@@ -4,6 +4,14 @@ import SwiftUI
 struct RootView: View {
     @Environment(AppState.self) private var appState
     @Query(sort: \GiftRecord.date, order: .reverse) private var records: [GiftRecord]
+    @Environment(\.scenePhase) private var scenePhase
+
+    @State private var isLocked: Bool
+
+    init() {
+        let enabled = UserDefaults.standard.bool(forKey: "liwanglai.biometricLock")
+        _isLocked = State(initialValue: enabled)
+    }
 
     var body: some View {
         @Bindable var appState = appState
@@ -39,8 +47,24 @@ struct RootView: View {
             .padding(.bottom, 46)
 
             TabBar(selectedTab: $appState.selectedTab)
+
+            if isLocked, appState.isBiometricLockEnabled, BiometricService.isAvailable {
+                LockScreenView {
+                    isLocked = false
+                }
+            }
         }
         .animation(.easeInOut(duration: 0.18), value: activeTheme)
+        .onChange(of: scenePhase) { oldPhase, newPhase in
+            if oldPhase == .background, newPhase == .active, appState.isBiometricLockEnabled {
+                isLocked = true
+            }
+        }
+        .onChange(of: appState.isBiometricLockEnabled) { _, enabled in
+            if enabled {
+                isLocked = true
+            }
+        }
     }
 }
 
@@ -73,7 +97,7 @@ private struct TabBar: View {
                 Image(systemName: selectedTab == tab ? "\(image).fill" : image)
                     .font(.system(size: 15))
                 Text(title)
-                    .font(.bodySong(8.5))
+                    .font(.custom("STKaiti", size: 8.5))
             }
             .foregroundStyle(selectedTab == tab ? LWColors.cinnabar : LWColors.inkSoft)
             .frame(maxWidth: .infinity)
@@ -93,7 +117,7 @@ private struct TabBar: View {
                     .frame(width: 40, height: 40)
                     .shadow(color: LWColors.cinnabar.opacity(0.14), radius: 5, x: 0, y: 3)
                 Text("入簿")
-                    .font(.bodySong(8.5))
+                    .font(.custom("STKaiti", size: 8.5))
                     .foregroundStyle(selectedTab == .add ? LWColors.cinnabar : LWColors.inkSoft)
             }
             .frame(maxWidth: .infinity)

@@ -47,7 +47,7 @@ struct LedgerView: View {
         @Bindable var appState = appState
 
         ScrollView {
-            VStack(alignment: .leading, spacing: 9) {
+            VStack(alignment: .leading, spacing: 11) {
                 ledgerHeader
                 SearchField(placeholder: "搜索姓名 / 事件 / 备注", text: $appState.ledgerSearchText, fontSize: 14, iconSize: 18, verticalPadding: 9)
                 typeFilters
@@ -149,29 +149,31 @@ struct LedgerView: View {
 
     private var ledgerHeader: some View {
         ZStack(alignment: .topTrailing) {
-            MountainDecoration()
-                .frame(width: 180, height: 88)
-                .offset(x: 20, y: 0)
-                .opacity(0.36)
+            Image("prototype_header_mountain_plum")
+                .resizable()
+                .scaledToFit()
+                .frame(width: 236)
+                .offset(x: 24, y: 8)
+                .opacity(0.88)
                 .allowsHitTesting(false)
 
             HStack(alignment: .top) {
                 VStack(alignment: .leading, spacing: 6) {
                     Text("礼簿")
-                        .font(.titleSong(30))
+                        .font(.titleSong(40))
                         .foregroundStyle(LWColors.ink)
                     Text("人情有数，往来有度")
-                        .font(.bodySong(13))
+                        .font(.bodySong(17))
                         .foregroundStyle(LWColors.warmGold)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.top, 10)
+                .padding(.top, 18)
 
                 exportButton
-                    .padding(.top, 18)
+                    .padding(.top, 20)
             }
         }
-        .frame(height: 94)
+        .frame(height: 124)
     }
 
     private var exportButton: some View {
@@ -194,7 +196,7 @@ struct LedgerView: View {
 
     private var typeFilters: some View {
         ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 8) {
+            HStack(spacing: 10) {
                 ForEach(LedgerTypeFilter.allCases) { filter in
                     Button {
                         typeFilter = filter
@@ -231,14 +233,15 @@ struct LedgerView: View {
 
     private func ledgerFilterTag(_ title: String, isSelected: Bool) -> some View {
         Text(title)
-            .font(.bodySong(12))
+            .font(.bodySong(14))
             .foregroundStyle(isSelected ? .white : LWColors.ink)
-            .padding(.horizontal, 12)
-            .padding(.vertical, 6)
+            .padding(.horizontal, 18)
+            .padding(.vertical, 9)
             .background(
                 Capsule()
-                    .fill(isSelected ? LWColors.cinnabar : LWColors.card.opacity(0.78))
-                    .overlay(Capsule().stroke(LWColors.cardStroke.opacity(0.55), lineWidth: 0.8))
+                    .fill(isSelected ? LWColors.cinnabar : LWColors.card.opacity(0.84))
+                    .overlay(Capsule().stroke(isSelected ? LWColors.cinnabarDark.opacity(0.2) : LWColors.cardStroke.opacity(0.5), lineWidth: 0.8))
+                    .shadow(color: isSelected ? LWColors.cinnabar.opacity(0.18) : .clear, radius: 8, x: 0, y: 4)
             )
     }
 
@@ -295,10 +298,19 @@ struct LedgerView: View {
                 .foregroundStyle(LWColors.muted.opacity(0.72))
         }
         .padding(.horizontal, 10)
-        .padding(.vertical, 7)
+        .padding(.vertical, 8)
         .background(
             RoundedRectangle(cornerRadius: 12, style: .continuous)
-                .fill(Color.white.opacity(0.56))
+                .fill(LWColors.card.opacity(0.86))
+                .overlay(alignment: .topTrailing) {
+                    Image("prototype_gold_clouds")
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: 30)
+                        .padding(.top, 5)
+                        .padding(.trailing, 6)
+                        .opacity(0.66)
+                }
                 .overlay(RoundedRectangle(cornerRadius: 12).stroke(LWColors.cardStroke.opacity(0.36)))
         )
     }

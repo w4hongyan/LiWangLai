@@ -10,35 +10,40 @@ struct AddRecordView: View {
     var presetName: String = ""
     var presetType: GiftRecordType = .received
     var presetEventType: GiftEventType?
-    var presetDate: Date?
-    var presetNote: String = ""
+   var presetDate: Date?
+   var presetNote: String = ""
+    var presetEventID: UUID? = nil
 
-    @State private var draft: GiftRecordDraft
-    @State private var showMore = false
-    @State private var showSavedSeal = false
+   @State private var draft: GiftRecordDraft
+   @State private var showMore = false
+   @State private var showPostSave = false
+    @Query(sort: \GiftRecord.date, order: .reverse) private var allRecords: [GiftRecord]
 
     init(
         editingRecord: GiftRecord? = nil,
-        presetName: String = "",
-        presetType: GiftRecordType = .received,
-        presetEventType: GiftEventType? = nil,
-        presetDate: Date? = nil,
-        presetNote: String = ""
-    ) {
-        self.editingRecord = editingRecord
-        self.presetName = presetName
-        self.presetType = presetType
-        self.presetEventType = presetEventType
-        self.presetDate = presetDate
-        self.presetNote = presetNote
-        _draft = State(initialValue: GiftRecordDraft(
-            record: editingRecord,
-            personName: presetName,
-            type: presetType,
-            eventType: presetEventType,
-            date: presetDate,
-            note: presetNote
-        ))
+       presetName: String = "",
+       presetType: GiftRecordType = .received,
+       presetEventType: GiftEventType? = nil,
+       presetDate: Date? = nil,
+        presetNote: String = "",
+        presetEventID: UUID? = nil
+   ) {
+       self.editingRecord = editingRecord
+       self.presetName = presetName
+       self.presetType = presetType
+       self.presetEventType = presetEventType
+       self.presetDate = presetDate
+       self.presetNote = presetNote
+        self.presetEventID = presetEventID
+       _draft = State(initialValue: GiftRecordDraft(
+           record: editingRecord,
+           personName: presetName,
+           type: presetType,
+           eventType: presetEventType,
+           date: presetDate,
+            note: presetNote,
+            hostedEventID: presetEventID
+       ))
     }
 
     var body: some View {
@@ -67,8 +72,8 @@ struct AddRecordView: View {
                 .padding(.bottom, 4)
             }
 
-            if showSavedSeal {
-                savedOverlay
+            if showPostSave {
+                postSaveCard
             }
         }
         .background(PaperTexture())
@@ -140,6 +145,8 @@ struct AddRecordView: View {
                 TextField("请输入姓名", text: $draft.personName)
                     .font(.bodySong(13))
                     .foregroundStyle(LWColors.ink)
+
+            nameSuggestions
                     .textInputAutocapitalization(.never)
             }
 
@@ -265,38 +272,156 @@ struct AddRecordView: View {
                 .buttonStyle(.plain)
             }
         }
-    }
+   }
 
-    private var suggestionCard: some View {
-        PaperCard(padding: 12) {
-            HStack(alignment: .top, spacing: 10) {
-                SealStamp(text: "礼", size: 36, color: LWColors.warmGold)
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("保存后可在往来详情里查看历史与回礼参考。")
-                        .font(.bodySong(13))
+
+    private var postSaveCard: some View {
+        let personRecords = allRecords.filter { $0.personName == draft.personName }
+        let sortedRecords = personRecords.sorted { $0.date > $1.date }
+        let lastRecord = sortedRecords.first
+        let suggestionBase = max(100, (lastRecord?.amountYuan ?? draft.amountYuan) / 100 * 100)
+
+        return VStack(alignment: .leading, spacing: 14) {
+            HStack {
+                SealStamp(text: "已", size: 40)
+                VStack(alignment: .leading, spacing: 3) {
+                    Text("已入簿")
+                        .font(.custom("SourceHanSerifSC-SemiBold", size: 20))
+                        .foregroundStyle(LWColors.ink)
+                    Text("\(draft.personName) · \(draft.eventType.title) · \(draft.type.title)")
+                        .font(.custom("STKaiti", size: 14))
                         .foregroundStyle(LWColors.inkSoft)
-                    Text("建议：下次回礼可参考 \(draft.amountYuan.yuanText) 左右。")
-                        .font(.bodySong(13))
+                }
+                Spacer()
+                Text(draft.amountYuan.yuanText)
+                    .font(.custom("STKaiti", size: 26))
+                    .foregroundStyle(LWColors.cinnabar)
+            }
+
+            if let lastRecord {
+                GoldLineDivider()
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("上次往来")
+                        .font(.custom("STKaiti", size: 12))
+                        .foregroundStyle(LWColors.muted)
+                    Text("\(lastRecord.date.lwCompactMonthText) \(lastRecord.eventType.title) · \(lastRecord.type.narrativeTitle) \(lastRecord.amountYuan.yuanText)")
+                        .font(.custom("STKaiti", size: 14))
+                        .foregroundStyle(LWColors.ink)
+                    Text("建议：下次回礼可参考 \(suggestionBase.yuanText) - \((suggestionBase + 200).yuanText)")
+                        .font(.custom("STKaiti", size: 14))
                         .foregroundStyle(LWColors.cinnabar)
                 }
             }
+
+            HStack(spacing: 8) {
+                Button {
+                    withAnimation(.easeOut(duration: 0.16)) {
+                        showPostSave = false
+                    }
+                    draft = GiftRecordDraft(type: draft.type, hostedEventID: draft.hostedEventID)
+                } label: {
+                    Label("再记一笔", systemImage: "pencil")
+                        .font(.custom("STKaiti", size: 13).weight(.semibold))
+                        .foregroundStyle(LWColors.cinnabar)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 8)
+                        .background(
+                            RoundedRectangle(cornerRadius: 10)
+                                .fill(Color.white.opacity(0.52))
+                                .overlay(RoundedRectangle(cornerRadius: 10).stroke(LWColors.cinnabar.opacity(0.35)))
+                        )
+                }
+                .buttonStyle(.plain)
+
+                Button {
+                    showPostSave = false
+                    appState.selectedTab = .people
+                } label: {
+                    Label("查看详情", systemImage: "person.text.rectangle")
+                        .font(.custom("STKaiti", size: 13).weight(.semibold))
+                        .foregroundStyle(LWColors.warmGold)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 8)
+                        .background(
+                            RoundedRectangle(cornerRadius: 10)
+                                .fill(Color.white.opacity(0.52))
+                                .overlay(RoundedRectangle(cornerRadius: 10).stroke(LWColors.warmGold.opacity(0.35)))
+                        )
+                }
+                .buttonStyle(.plain)
+
+                Button {
+                    showPostSave = false
+                    appState.selectedTab = .home
+                } label: {
+                    Label("返回首页", systemImage: "house")
+                        .font(.custom("STKaiti", size: 13).weight(.semibold))
+                        .foregroundStyle(.white)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 8)
+                        .background(LWColors.cinnabar, in: RoundedRectangle(cornerRadius: 10))
+                }
+                .buttonStyle(.plain)
+            }
         }
+        .padding(20)
+        .background(
+            RoundedRectangle(cornerRadius: 22, style: .continuous)
+                .fill(.regularMaterial)
+                .shadow(color: .black.opacity(0.1), radius: 20, x: 0, y: 8)
+        )
+        .padding(.horizontal, 16)
+        .transition(.scale.combined(with: .opacity))
     }
 
-    private var savedOverlay: some View {
-        VStack(spacing: 12) {
-            SealStamp(text: "已", size: 92)
-                .scaleEffect(showSavedSeal ? 1 : 0.7)
-            Text("已入簿")
-                .font(.titleSong(22))
-                .foregroundStyle(LWColors.ink)
-            Text("\(draft.personName) · \(draft.eventType.title) · \(draft.type.title) \(draft.amountYuan.yuanText)")
-                .font(.bodySong(13))
-                .foregroundStyle(LWColors.inkSoft)
-        }
-        .padding(28)
-        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
-        .transition(.scale.combined(with: .opacity))
+    private var nameSuggestions: some View {
+        let trimmed = draft.personName.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty, trimmed.count >= 1 else { return AnyView(EmptyView()) }
+        let uniqueNames = Array(Set(allRecords.map(\.personName))).filter {
+            $0.localizedCaseInsensitiveContains(trimmed) && $0 != trimmed
+        }.prefix(3)
+        guard !uniqueNames.isEmpty else { return AnyView(EmptyView()) }
+        return AnyView(
+            VStack(alignment: .leading, spacing: 0) {
+                ForEach(uniqueNames, id: \.self) { name in
+                    if let matchingRecord = allRecords.first(where: { $0.personName == name }) {
+                        Button {
+                            draft.personName = name
+                            draft.relationship = matchingRecord.relationship
+                        } label: {
+                            HStack {
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(name)
+                                        .font(.custom("STKaiti", size: 14))
+                                        .foregroundStyle(LWColors.ink)
+                                    if let latestRecord = allRecords.first(where: { $0.personName == name }) {
+                                        Text("上次：\(latestRecord.date.lwCompactMonthText) \(latestRecord.eventType.title) · \(latestRecord.type.title) \(latestRecord.amountYuan.yuanText)")
+                                            .font(.custom("STKaiti", size: 11))
+                                            .foregroundStyle(LWColors.muted)
+                                            .lineLimit(1)
+                                    }
+                                }
+                                Spacer()
+                                Image(systemName: "arrow.up.left")
+                                    .font(.system(size: 10))
+                                    .foregroundStyle(LWColors.muted)
+                            }
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 8)
+                        }
+                        .buttonStyle(.plain)
+                        if name != uniqueNames.last {
+                            GoldLineDivider()
+                        }
+                    }
+                }
+            }
+            .background(
+                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                    .fill(Color.white.opacity(0.92))
+                    .overlay(RoundedRectangle(cornerRadius: 10).stroke(LWColors.cardStroke.opacity(0.3)))
+            )
+        )
     }
 
     private func fieldRow<Content: View>(title: String, icon: String, @ViewBuilder content: () -> Content) -> some View {
@@ -356,27 +481,20 @@ struct AddRecordView: View {
             )
     }
 
-    private func save() {
-        guard draft.isValid else { return }
-        if let editingRecord {
-            RecordService.update(editingRecord, with: draft, in: modelContext)
-            HapticsManager.success()
-            dismiss()
-        } else {
-            RecordService.insert(draft, in: modelContext)
-            HapticsManager.success()
-            withAnimation(.spring(response: 0.32, dampingFraction: 0.82)) {
-                showSavedSeal = true
-            }
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.9) {
-                withAnimation(.easeOut(duration: 0.16)) {
-                    showSavedSeal = false
-                }
-                draft = GiftRecordDraft(type: draft.type)
-                appState.selectedTab = .ledger
-            }
-        }
-    }
+   private func save() {
+       guard draft.isValid else { return }
+       if let editingRecord {
+           RecordService.update(editingRecord, with: draft, in: modelContext)
+           HapticsManager.success()
+           dismiss()
+       } else {
+           RecordService.insert(draft, in: modelContext)
+           HapticsManager.success()
+           withAnimation(.spring(response: 0.32, dampingFraction: 0.82)) {
+               showPostSave = true
+           }
+       }
+   }
 }
 
 protocol TitleProviding {

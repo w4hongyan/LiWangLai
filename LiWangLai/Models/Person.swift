@@ -18,6 +18,9 @@ struct PersonSummary: Identifiable {
         totalReceived - totalGiven
     }
 
+    /// 判断「往来平衡」的金额阈值（净额不超过该值时视为平衡）
+    static let balanceThreshold = 200
+
     var pendingReturnCount: Int {
         records.filter(\.needsReturn).count
     }
@@ -29,7 +32,7 @@ struct PersonSummary: Identifiable {
     var statusText: String {
         if pendingReturnCount > 0 {
             "记得回礼"
-        } else if abs(netAmount) <= 200 {
+        } else if abs(netAmount) <= PersonSummary.balanceThreshold {
             "往来平衡"
         } else if netAmount > 0 {
             "下次可回"

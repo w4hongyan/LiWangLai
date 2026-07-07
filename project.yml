@@ -23,7 +23,7 @@ targets:
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         TARGETED_DEVICE_FAMILY: "1,2"
         SUPPORTS_MACCATALYST: false
-        DEVELOPMENT_TEAM: ""
+        DEVELOPMENT_TEAM: "3VL637VQRM"
     info:
       path: LiWangLai/App/Info.plist
       properties:
@@ -36,3 +36,15 @@ targets:
         UIAppFonts:
           - SourceHanSerifSC-Regular.otf
           - SourceHanSerifSC-SemiBold.otf
+  LiWangLaiTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources:
+      - path: LiWangLaiTests
+    dependencies:
+      - target: LiWangLai
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.liwanglai.app.tests
+        SWIFT_VERSION: "6.0"
+        GENERATE_INFOPLIST_FILE: YES

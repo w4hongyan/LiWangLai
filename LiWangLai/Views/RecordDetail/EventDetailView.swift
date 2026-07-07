@@ -46,12 +46,13 @@ struct EventDetailView: View {
         }
         .sheet(isPresented: $showAddRecord) {
             NavigationStack {
-                AddRecordView(
-                    presetType: .received,
-                    presetEventType: event.eventType,
-                    presetDate: event.date,
-                    presetNote: event.title
-                )
+               AddRecordView(
+                   presetType: .received,
+                   presetEventType: event.eventType,
+                   presetDate: event.date,
+                    presetNote: event.title,
+                    presetEventID: event.hostedEventID
+               )
             }
         }
         .confirmationDialog("确认删除这条往来记录？", isPresented: $showDeleteConfirm, titleVisibility: .visible) {

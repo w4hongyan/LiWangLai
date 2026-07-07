@@ -36,6 +36,33 @@ struct SettingsView: View {
                     }
                 }
 
+
+                if BiometricService.isAvailable {
+                    section(title: "隐私") {
+                        HStack(spacing: 10) {
+                            Image(systemName: "faceid")
+                                .font(.system(size: 15, weight: .medium))
+                                .foregroundStyle(LWColors.warmGold)
+                                .frame(width: 20)
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("\(BiometricService.biometricTypeName) 解锁")
+                                    .font(.custom("STKaiti", size: 13))
+                                    .foregroundStyle(LWColors.ink)
+                                Text("打开 App 时验证身份以查看礼簿")
+                                    .font(.custom("STKaiti", size: 10))
+                                    .foregroundStyle(LWColors.muted)
+                                    .lineLimit(1)
+                            }
+                            Spacer()
+                            Toggle("", isOn: $appState.isBiometricLockEnabled)
+                                .tint(LWColors.cinnabar)
+                                .labelsHidden()
+                        }
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 9)
+                    }
+                }
+
                 themeSection
 
                 section(title: "其他") {

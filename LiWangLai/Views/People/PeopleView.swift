@@ -18,7 +18,7 @@ struct PeopleView: View {
         @Bindable var appState = appState
 
         ScrollView {
-            VStack(alignment: .leading, spacing: 9) {
+            VStack(alignment: .leading, spacing: 11) {
                 peopleHeader
                 SearchField(placeholder: "搜索姓名", text: $appState.peopleSearchText, fontSize: 14, iconSize: 18, verticalPadding: 9)
                 relationshipFilters
@@ -63,29 +63,31 @@ struct PeopleView: View {
 
     private var peopleHeader: some View {
         ZStack(alignment: .topTrailing) {
-            MountainDecoration()
-                .frame(width: 180, height: 88)
-                .offset(x: 20, y: 0)
-                .opacity(0.36)
+            Image("prototype_header_mountain_plum")
+                .resizable()
+                .scaledToFit()
+                .frame(width: 236)
+                .offset(x: 24, y: 8)
+                .opacity(0.88)
                 .allowsHitTesting(false)
 
             HStack(alignment: .top) {
                 VStack(alignment: .leading, spacing: 6) {
                     Text("人情")
-                        .font(.titleSong(30))
+                        .font(.titleSong(40))
                         .foregroundStyle(LWColors.ink)
                     Text("按人查往来")
-                        .font(.bodySong(13))
+                        .font(.bodySong(17))
                         .foregroundStyle(LWColors.warmGold)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.top, 10)
+                .padding(.top, 18)
 
                 filterBadge
-                    .padding(.top, 18)
+                    .padding(.top, 20)
             }
         }
-        .frame(height: 94)
+        .frame(height: 124)
     }
 
     private var filterBadge: some View {
@@ -108,7 +110,7 @@ struct PeopleView: View {
 
     private var relationshipFilters: some View {
         ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 8) {
+            HStack(spacing: 10) {
                 Button {
                     relationshipFilter = nil
                 } label: {
@@ -130,11 +132,21 @@ struct PeopleView: View {
     private func personCard(_ summary: PersonSummary) -> some View {
         PaperCard(padding: 11) {
             HStack(alignment: .top, spacing: 11) {
-                SealStamp(text: String(summary.name.prefix(1)), size: 40, color: summary.pendingReturnCount > 0 ? LWColors.cinnabar : LWColors.warmGold)
+                ZStack(alignment: .bottomTrailing) {
+                    SealStamp(text: String(summary.name.prefix(1)), size: 46, color: summary.pendingReturnCount > 0 ? LWColors.cinnabar : LWColors.warmGold)
+                    if summary.pendingReturnCount > 0 {
+                        Text("待")
+                            .font(.bodySong(9).weight(.semibold))
+                            .foregroundStyle(.white)
+                            .frame(width: 17, height: 17)
+                            .background(LWColors.cinnabar, in: Circle())
+                            .offset(x: 2, y: 2)
+                    }
+                }
                 VStack(alignment: .leading, spacing: 5) {
                     HStack {
                         Text(summary.name)
-                            .font(.bodyKai(16))
+                            .font(.bodyKai(18))
                             .foregroundStyle(LWColors.ink)
                             .lineLimit(1)
                         Spacer()
@@ -169,19 +181,28 @@ struct PeopleView: View {
                     .font(.bodySong(12))
                 }
             }
+            .overlay(alignment: .topTrailing) {
+                Image("prototype_gold_clouds")
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 38)
+                    .offset(x: 2, y: -2)
+                    .opacity(0.64)
+            }
         }
     }
 
     private func peopleFilterTag(_ title: String, isSelected: Bool) -> some View {
         Text(title)
-            .font(.bodySong(12))
+            .font(.bodySong(14))
             .foregroundStyle(isSelected ? .white : LWColors.ink)
-            .padding(.horizontal, 12)
-            .padding(.vertical, 6)
+            .padding(.horizontal, 18)
+            .padding(.vertical, 9)
             .background(
                 Capsule()
-                    .fill(isSelected ? LWColors.cinnabar : LWColors.card.opacity(0.78))
-                    .overlay(Capsule().stroke(LWColors.cardStroke.opacity(0.55), lineWidth: 0.8))
+                    .fill(isSelected ? LWColors.cinnabar : LWColors.card.opacity(0.84))
+                    .overlay(Capsule().stroke(isSelected ? LWColors.cinnabarDark.opacity(0.2) : LWColors.cardStroke.opacity(0.5), lineWidth: 0.8))
+                    .shadow(color: isSelected ? LWColors.cinnabar.opacity(0.18) : .clear, radius: 8, x: 0, y: 4)
             )
     }
 }

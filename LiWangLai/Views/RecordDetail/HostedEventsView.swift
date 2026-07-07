@@ -101,20 +101,21 @@ struct HostedEventsView: View {
         }
     }
 
-    private func giftEvent(from hostedEvent: HostedGiftEvent) -> GiftEvent {
-        let eventRecords = records.filter { record in
-            record.type == .received
-                && record.eventType == hostedEvent.eventType
-                && Calendar.current.isDate(record.date, inSameDayAs: hostedEvent.date)
-        }
-        return GiftEvent(
-            title: hostedEvent.title,
-            monthKey: hostedEvent.date.lwDayText,
-            eventType: hostedEvent.eventType,
-            date: hostedEvent.date,
-            records: eventRecords
-        )
-    }
+   private func giftEvent(from hostedEvent: HostedGiftEvent) -> GiftEvent {
+       let eventRecords = records.filter { record in
+           record.type == .received
+               && record.eventType == hostedEvent.eventType
+               && Calendar.current.isDate(record.date, inSameDayAs: hostedEvent.date)
+       }
+       return GiftEvent(
+           title: hostedEvent.title,
+           monthKey: hostedEvent.date.lwDayText,
+           eventType: hostedEvent.eventType,
+           date: hostedEvent.date,
+            records: eventRecords,
+            hostedEventID: hostedEvent.id
+       )
+   }
 }
 
 private struct NewHostedEventSheet: View {

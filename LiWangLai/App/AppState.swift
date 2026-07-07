@@ -15,7 +15,13 @@ final class AppState {
         }
     }
 
+    var isBiometricLockEnabled: Bool {
+        get { UserDefaults.standard.bool(forKey: Self.biometricLockKey) }
+        set { UserDefaults.standard.set(newValue, forKey: Self.biometricLockKey) }
+    }
+
     private static let themeKey = "liwanglai.selectedTheme"
+    private static let biometricLockKey = "liwanglai.biometricLock"
 
     init() {
         if let rawValue = UserDefaults.standard.string(forKey: Self.themeKey),

@@ -28,7 +28,7 @@ struct HomeView: View {
         @Bindable var appState = appState
 
         ScrollView {
-            VStack(alignment: .leading, spacing: 9) {
+            VStack(alignment: .leading, spacing: 11) {
                 homeHero
 
                 SearchField(placeholder: "搜索姓名 / 事件 / 备注", text: $appState.homeSearchText, fontSize: 14, iconSize: 18, verticalPadding: 9)
@@ -55,24 +55,26 @@ struct HomeView: View {
 
     private var homeHero: some View {
         ZStack(alignment: .topTrailing) {
-            MountainDecoration()
-                .frame(width: 180, height: 88)
-                .offset(x: 20, y: 0)
+            Image("prototype_header_mountain_plum")
+                .resizable()
+                .scaledToFit()
+                .frame(width: 236)
+                .offset(x: 24, y: 8)
                 .opacity(0.98)
 
             VStack(alignment: .leading, spacing: 6) {
                 Text("礼往来")
-                    .font(.titleSong(30))
+                    .font(.titleSong(40))
                     .foregroundStyle(LWColors.ink)
                     .fixedSize()
                 Text("人情有数，往来有度")
-                    .font(.bodySong(13))
+                    .font(.bodySong(17))
                     .foregroundStyle(LWColors.warmGold)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(.top, 10)
+            .padding(.top, 18)
         }
-        .frame(height: 94)
+        .frame(height: 124)
     }
 
     private var reminderCard: some View {
@@ -119,28 +121,63 @@ struct HomeView: View {
     }
 
     private var yearlyCard: some View {
-            PaperCard(padding: 12) {
-                HStack {
-                    Label("\(String(Calendar.current.component(.year, from: .now))) 年人情往来", systemImage: "scroll")
-                        .font(.titleSong(16))
-                        .foregroundStyle(LWColors.ink)
-                    Spacer()
-                    Image("lwl_cloud_card_top")
-                        .resizable()
-                        .scaledToFit()
-                        .frame(width: 48, height: 22)
-            }
+        ZStack {
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .fill(LWColors.cinnabarDark)
+
+            Image("yearly_ledger_red_card")
+                .resizable()
+                .scaledToFill()
+                .accessibilityHidden(true)
+
+            VStack(spacing: 14) {
+                HStack(spacing: 8) {
+                    Rectangle()
+                        .fill(LWColors.goldPale.opacity(0.72))
+                        .frame(width: 34, height: 1)
+                    Text("\(String(Calendar.current.component(.year, from: .now))) 年人情往来")
+                        .font(.titleSong(18))
+                        .foregroundStyle(.white)
+                    Rectangle()
+                        .fill(LWColors.goldPale.opacity(0.72))
+                        .frame(width: 34, height: 1)
+                }
 
                 HStack(spacing: 0) {
-                    statItem(seal: "收", title: "收礼", value: totalReceived.yuanText, color: LWColors.cinnabar)
-                    statDivider
-                    statItem(seal: "送", title: "送礼", value: totalGiven.yuanText, color: LWColors.warmGold)
-                    statDivider
-                    statItem(seal: "未", title: "未回礼", value: "\(records.filter(\.needsReturn).count) 笔", color: LWColors.muted)
-                    statDivider
-                    statItem(seal: "净", title: "净额", value: (totalReceived - totalGiven).yuanText, color: LWColors.cinnabar)
+                    redLedgerStat(title: "收礼", value: totalReceived.yuanText)
+                    redLedgerDivider
+                    redLedgerStat(title: "送礼", value: totalGiven.yuanText)
+                    redLedgerDivider
+                    redLedgerStat(title: "未回礼", value: "\(records.filter(\.needsReturn).count) 笔")
+                    redLedgerDivider
+                    redLedgerStat(title: "净额", value: (totalReceived - totalGiven).yuanText, highlight: true)
                 }
+            }
+            .padding(.horizontal, 20)
+            .padding(.vertical, 18)
         }
+        .frame(height: 146)
+        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .shadow(color: LWColors.cinnabarDark.opacity(0.16), radius: 14, x: 0, y: 8)
+    }
+
+    private func redLedgerStat(title: String, value: String, highlight: Bool = false) -> some View {
+        VStack(spacing: 5) {
+            Text(title)
+                .font(.bodySong(12))
+                .foregroundStyle(Color.white.opacity(0.9))
+            Text(value)
+                .font(.amountKai(highlight ? 20 : 18))
+                .foregroundStyle(highlight ? LWColors.goldPale : .white)
+                .minimumScaleFactor(0.72)
+        }
+        .frame(maxWidth: .infinity)
+    }
+
+    private var redLedgerDivider: some View {
+        Rectangle()
+            .fill(Color.white.opacity(0.24))
+            .frame(width: 0.8, height: 44)
     }
 
     private func statItem(seal: String, title: String, value: String, color: Color) -> some View {
@@ -255,7 +292,7 @@ struct HomeView: View {
     }
 
     private var quickActions: some View {
-            VStack(alignment: .leading, spacing: 7) {
+            VStack(alignment: .leading, spacing: 9) {
             Text("快捷操作")
                 .font(.titleSong(15))
                 .foregroundStyle(LWColors.ink)
@@ -279,10 +316,19 @@ struct HomeView: View {
                     .foregroundStyle(LWColors.ink)
             }
             .frame(maxWidth: .infinity)
-            .padding(.vertical, 8)
+            .padding(.vertical, 10)
             .background(
                 RoundedRectangle(cornerRadius: 12, style: .continuous)
-                    .fill(Color.white.opacity(0.52))
+                    .fill(LWColors.card.opacity(0.84))
+                    .overlay(alignment: .topTrailing) {
+                        Image("prototype_gold_clouds")
+                            .resizable()
+                            .scaledToFit()
+                            .frame(width: 32)
+                            .padding(.top, 5)
+                            .padding(.trailing, 6)
+                            .opacity(0.7)
+                    }
                     .overlay(RoundedRectangle(cornerRadius: 12).stroke(LWColors.cardStroke.opacity(0.35)))
             )
         }
@@ -303,10 +349,19 @@ struct HomeView: View {
                     .foregroundStyle(LWColors.ink)
             }
             .frame(maxWidth: .infinity)
-            .padding(.vertical, 8)
+            .padding(.vertical, 10)
             .background(
                 RoundedRectangle(cornerRadius: 12, style: .continuous)
-                    .fill(Color.white.opacity(0.52))
+                    .fill(LWColors.card.opacity(0.84))
+                    .overlay(alignment: .topTrailing) {
+                        Image("prototype_gold_clouds")
+                            .resizable()
+                            .scaledToFit()
+                            .frame(width: 32)
+                            .padding(.top, 5)
+                            .padding(.trailing, 6)
+                            .opacity(0.7)
+                    }
                     .overlay(RoundedRectangle(cornerRadius: 12).stroke(LWColors.cardStroke.opacity(0.35)))
             )
         }

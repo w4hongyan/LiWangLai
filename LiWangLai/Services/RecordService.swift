@@ -14,10 +14,11 @@ enum RecordService {
             isReturned: draft.isReturned,
             returnReminderDate: draft.returnReminderDate,
             location: draft.location,
-            giftName: draft.giftName,
-            contact: draft.contact
-        )
-        context.insert(record)
+           giftName: draft.giftName,
+           contact: draft.contact,
+            hostedEventID: draft.hostedEventID,
+       )
+       context.insert(record)
         try? context.save()
     }
 
@@ -33,8 +34,9 @@ enum RecordService {
         record.returnReminderDate = draft.returnReminderDate
         record.location = draft.location
         record.giftName = draft.giftName
-        record.contact = draft.contact
-        record.updatedAt = .now
+       record.contact = draft.contact
+        record.hostedEventID = draft.hostedEventID
+       record.updatedAt = .now
         try? context.save()
     }
 
@@ -71,49 +73,53 @@ struct GiftRecordDraft: Equatable {
     var note = ""
     var isReturned = false
     var returnReminderDate: Date?
-    var location = ""
-    var giftName = ""
-    var contact = ""
+   var location = ""
+   var giftName = ""
+   var contact = ""
+    var hostedEventID: UUID?
 
-    var amountYuan: Int {
-        Int(amountText.filter(\.isNumber)) ?? 0
-    }
+   var amountYuan: Int {
+       Int(amountText.filter(\.isNumber)) ?? 0
+   }
 
     var isValid: Bool {
         !personName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && amountYuan > 0
     }
 
-    init(
-        record: GiftRecord? = nil,
-        personName: String = "",
-        type: GiftRecordType = .received,
-        eventType: GiftEventType? = nil,
-        date: Date? = nil,
-        note: String = ""
-    ) {
-        if let record {
-            self.personName = record.personName
-            self.type = record.type
-            self.amountText = "\(record.amountYuan)"
-            self.eventType = record.eventType
-            self.relationship = record.relationship
-            self.date = record.date
-            self.note = record.note
-            self.isReturned = record.isReturned
-            self.returnReminderDate = record.returnReminderDate
-            self.location = record.location
-            self.giftName = record.giftName
-            self.contact = record.contact
-        } else {
-            self.personName = personName
-            self.type = type
-            if let eventType {
-                self.eventType = eventType
-            }
-            if let date {
-                self.date = date
-            }
-            self.note = note
-        }
+   init(
+       record: GiftRecord? = nil,
+       personName: String = "",
+       type: GiftRecordType = .received,
+       eventType: GiftEventType? = nil,
+       date: Date? = nil,
+        note: String = "",
+        hostedEventID: UUID? = nil
+   ) {
+       if let record {
+           self.personName = record.personName
+           self.type = record.type
+           self.amountText = "\(record.amountYuan)"
+           self.eventType = record.eventType
+           self.relationship = record.relationship
+           self.date = record.date
+           self.note = record.note
+           self.isReturned = record.isReturned
+           self.returnReminderDate = record.returnReminderDate
+           self.location = record.location
+           self.giftName = record.giftName
+           self.contact = record.contact
+           self.hostedEventID = record.hostedEventID
+       } else {
+           self.personName = personName
+           self.type = type
+           if let eventType {
+               self.eventType = eventType
+           }
+           if let date {
+               self.date = date
+           }
+           self.note = note
+            self.hostedEventID = hostedEventID
+       }
     }
 }
