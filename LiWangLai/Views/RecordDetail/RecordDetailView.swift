@@ -11,21 +11,32 @@ struct RecordDetailView: View {
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 10) {
-                HStack(alignment: .top) {
-                    VStack(alignment: .leading, spacing: 6) {
-                        Text(record.personName)
-                            .font(.titleSong(30))
-                            .foregroundStyle(LWColors.ink)
-                        Text("\(record.relationship.title) · \(record.type.title)")
-                            .font(.bodySong(13))
-                            .foregroundStyle(LWColors.warmGold)
-                    }
-                    Spacer()
-                    SealStamp(text: record.type.shortTitle, size: 44, color: record.type.accentColor)
-                }
+            VStack(alignment: .leading, spacing: 12) {
+                ZStack(alignment: .topTrailing) {
+                    Image("prototype_header_mountain_plum")
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: 236)
+                        .offset(x: 24, y: 8)
+                        .opacity(0.88)
+                        .allowsHitTesting(false)
 
-                PaperCard(padding: 12, spacing: 8) {
+                    HStack(alignment: .top) {
+                        VStack(alignment: .leading, spacing: 6) {
+                            Text(record.personName)
+                                .font(.titleSong(40))
+                                .foregroundStyle(LWColors.ink)
+                            Text("\(record.relationship.title) · \(record.type.title)")
+                                .font(.bodySong(17))
+                                .foregroundStyle(LWColors.warmGold)
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(.top, 18)
+                    }
+                }
+                .frame(height: 124)
+
+                PaperCard(padding: 14, spacing: 10) {
                     detailLine("金额", value: record.amountYuan.yuanText, isAmount: true)
                     GoldLineDivider()
                     detailLine("事件", value: record.eventType.title)
@@ -43,19 +54,35 @@ struct RecordDetailView: View {
                     }
                 }
 
-                PaperCard(padding: 12, spacing: 8) {
-                    Label("回礼建议", systemImage: "gift")
-                        .font(.titleSong(16))
-                        .foregroundStyle(LWColors.ink)
+                PaperCard(padding: 14, spacing: 10) {
+                    HStack {
+                        Image(systemName: "gift")
+                            .font(.system(size: 16, weight: .medium))
+                            .foregroundStyle(LWColors.warmGold)
+                        Text("回礼建议")
+                            .font(.titleSong(16))
+                            .foregroundStyle(LWColors.ink)
+                        Spacer()
+                        Image("prototype_gold_clouds")
+                            .resizable()
+                            .scaledToFit()
+                            .frame(width: 50)
+                            .opacity(0.6)
+                    }
                     Text("可参考这笔往来的金额与关系亲疏，保持心意周到即可。")
                         .font(.bodySong(13))
                         .foregroundStyle(LWColors.inkSoft)
-                    Text("\(record.amountYuan.yuanText) 左右较稳妥")
-                        .font(.titleSong(17))
-                        .foregroundStyle(LWColors.cinnabar)
+                    HStack {
+                        Image(systemName: "star.fill")
+                            .font(.system(size: 14))
+                            .foregroundStyle(LWColors.warmGold)
+                        Text("\(record.amountYuan.yuanText) 左右较稳妥")
+                            .font(.titleSong(16))
+                            .foregroundStyle(LWColors.cinnabar)
+                    }
                 }
 
-                HStack(spacing: 8) {
+                HStack(spacing: 10) {
                     SealButton(title: "编辑", systemImage: "pencil", fontSize: 14, verticalPadding: 10, cornerRadius: 12) {
                         showEdit = true
                     }

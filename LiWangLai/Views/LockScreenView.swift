@@ -20,7 +20,7 @@ struct LockScreenView: View {
                     .foregroundStyle(LWColors.ink)
 
                 Text("人情有数，往来有度")
-                    .font(.custom("STKaiti", size: 18))
+                    .font(.custom("SourceHanSerifSC-Regular", size: 18))
                     .foregroundStyle(LWColors.warmGold)
 
                 Spacer()
@@ -35,7 +35,7 @@ struct LockScreenView: View {
 
                 if showAuthError {
                     Text("验证未通过，可重试或使用设备密码")
-                        .font(.custom("STKaiti", size: 13))
+                        .font(.custom("SourceHanSerifSC-Regular", size: 13))
                         .foregroundStyle(LWColors.cinnabar)
                 }
             }

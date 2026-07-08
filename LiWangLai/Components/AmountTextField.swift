@@ -2,13 +2,14 @@ import SwiftUI
 
 struct AmountTextField: View {
     @Binding var amountText: String
-    var currencySize: CGFloat = 28
-    var amountSize: CGFloat = 44
+    var currencySize: CGFloat = 24
+    var amountSize: CGFloat = 36
 
     var body: some View {
-        HStack(alignment: .firstTextBaseline, spacing: 8) {
+        HStack(alignment: .firstTextBaseline, spacing: 6) {
             Text("¥")
                 .font(.titleSong(currencySize))
+                .foregroundStyle(LWColors.warmGold)
             TextField("0", text: $amountText)
                 .keyboardType(.numberPad)
                 .font(.amountKai(amountSize))

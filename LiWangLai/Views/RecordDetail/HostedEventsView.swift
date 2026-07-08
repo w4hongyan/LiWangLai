@@ -10,7 +10,7 @@ struct HostedEventsView: View {
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 10) {
+            VStack(alignment: .leading, spacing: 11) {
                 header
 
                 if hostedEvents.isEmpty {
@@ -57,34 +57,38 @@ struct HostedEventsView: View {
 
     private var header: some View {
         ZStack(alignment: .topTrailing) {
-            MountainDecoration()
-                .frame(width: 180, height: 88)
-                .offset(x: 20, y: 0)
-                .opacity(0.36)
+            Image("prototype_header_mountain_plum")
+                .resizable()
+                .scaledToFit()
+                .frame(width: 236)
+                .offset(x: 24, y: 8)
+                .opacity(0.88)
                 .allowsHitTesting(false)
 
-            VStack(alignment: .leading, spacing: 6) {
-                Text("一场事")
-                    .font(.titleSong(30))
-                    .foregroundStyle(LWColors.ink)
-                Text("我家办事，集中入簿")
-                    .font(.bodySong(13))
-                    .foregroundStyle(LWColors.warmGold)
+            HStack(alignment: .top) {
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("一场事")
+                        .font(.titleSong(40))
+                        .foregroundStyle(LWColors.ink)
+                    Text("我家办事，集中入簿")
+                        .font(.bodySong(17))
+                        .foregroundStyle(LWColors.warmGold)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.top, 18)
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(.top, 10)
         }
-        .frame(height: 94)
+        .frame(height: 124)
     }
 
     private func hostedEventCard(_ hostedEvent: HostedGiftEvent) -> some View {
         let event = giftEvent(from: hostedEvent)
         return PaperCard(padding: 12) {
             HStack(spacing: 12) {
-                SealStamp(text: hostedEvent.eventType == .wedding ? "囍" : "事", size: 48, color: LWColors.cinnabar)
+                SealStamp(text: hostedEvent.eventType == .wedding ? "囍" : "事", size: 46, color: LWColors.cinnabar)
                 VStack(alignment: .leading, spacing: 5) {
                     Text(hostedEvent.title)
-                        .font(.bodyKai(20))
+                        .font(.bodyKai(19))
                         .foregroundStyle(LWColors.ink)
                     Text("\(hostedEvent.date.lwDayText) · \(hostedEvent.eventType.title)")
                         .font(.bodySong(12))

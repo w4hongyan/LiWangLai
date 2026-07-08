@@ -13,12 +13,12 @@ struct PaperCard<Content: View>: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .background {
             RoundedRectangle(cornerRadius: LWRadius.card, style: .continuous)
-                .fill(LWColors.card.opacity(0.78))
+                .fill(LWColors.card.opacity(0.82))
                 .overlay(
                     RoundedRectangle(cornerRadius: LWRadius.card, style: .continuous)
-                        .stroke(LWColors.cardStroke.opacity(0.38), lineWidth: 0.8)
+                        .stroke(LWColors.cardStroke.opacity(0.35), lineWidth: 0.8)
                 )
-                .shadow(color: LWColors.ink.opacity(0.06), radius: 8, x: 0, y: 4)
+                .shadow(color: LWColors.ink.opacity(0.05), radius: 6, x: 0, y: 3)
         }
     }
 }

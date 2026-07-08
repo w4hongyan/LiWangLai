@@ -18,7 +18,7 @@ struct PersonDetailView: View {
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 10) {
+            VStack(alignment: .leading, spacing: 12) {
                 detailHeader
 
                 if let summary {
@@ -61,23 +61,33 @@ struct PersonDetailView: View {
     }
 
     private var detailHeader: some View {
-        HStack(alignment: .top) {
-            VStack(alignment: .leading, spacing: 6) {
-                Text(summary?.name ?? "往来详情")
-                    .font(.titleSong(30))
-                    .foregroundStyle(LWColors.ink)
-                Text("\(summary?.relationship.title ?? "") · 往来 \(summary?.records.count ?? 0) 次")
-                    .font(.bodySong(13))
-                    .foregroundStyle(LWColors.warmGold)
+        ZStack(alignment: .topTrailing) {
+            Image("prototype_header_mountain_plum")
+                .resizable()
+                .scaledToFit()
+                .frame(width: 236)
+                .offset(x: 24, y: 8)
+                .opacity(0.88)
+                .allowsHitTesting(false)
+
+            HStack(alignment: .top) {
+                VStack(alignment: .leading, spacing: 6) {
+                    Text(summary?.name ?? "往来详情")
+                        .font(.titleSong(40))
+                        .foregroundStyle(LWColors.ink)
+                    Text("\(summary?.relationship.title ?? "") · 往来 \(summary?.records.count ?? 0) 次")
+                        .font(.bodySong(17))
+                        .foregroundStyle(LWColors.warmGold)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.top, 18)
             }
-            Spacer()
-            MountainDecoration()
-                .frame(width: 150, height: 64)
         }
+        .frame(height: 124)
     }
 
     private func overviewCard(_ summary: PersonSummary) -> some View {
-        PaperCard(padding: 12, spacing: 8) {
+        PaperCard(padding: 14, spacing: 10) {
             overviewRow(icon: "gift", title: "我送出：", value: summary.totalGiven.yuanText, color: LWColors.cinnabar)
             GoldLineDivider()
             overviewRow(icon: "tray.and.arrow.down", title: "我收到：", value: summary.totalReceived.yuanText, color: LWColors.cinnabar)
@@ -109,22 +119,33 @@ struct PersonDetailView: View {
         let lastGiven = records.first { $0.type == .given }
         let base = lastReceived?.amountYuan ?? lastGiven?.amountYuan ?? 600
 
-        return PaperCard(padding: 12, spacing: 8) {
+        return PaperCard(padding: 14, spacing: 10) {
             HStack {
-                Label("回礼参考", systemImage: "gift")
+                Image(systemName: "gift")
+                    .font(.system(size: 16, weight: .medium))
+                    .foregroundStyle(LWColors.warmGold)
+                Text("回礼参考")
                     .font(.titleSong(16))
                     .foregroundStyle(LWColors.ink)
                 Spacer()
-                MountainDecoration()
-                    .frame(width: 58, height: 20)
+                Image("prototype_gold_clouds")
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 50)
+                    .opacity(0.6)
             }
             adviceRow("上次他家给你：", value: lastReceived?.amountYuan.yuanText ?? "暂无")
             adviceRow("你上次给他：", value: lastGiven?.amountYuan.yuanText ?? "暂无")
             adviceRow("本地常见区间：", value: "\(max(100, base - 100).yuanText) - \((base + 200).yuanText)")
             GoldLineDivider()
-            Label("建议： \(base.yuanText) 左右较稳妥", systemImage: "star.fill")
-                .font(.titleSong(16))
-                .foregroundStyle(LWColors.cinnabar)
+            HStack {
+                Image(systemName: "star.fill")
+                    .font(.system(size: 14))
+                    .foregroundStyle(LWColors.warmGold)
+                Text("建议： \(base.yuanText) 左右较稳妥")
+                    .font(.titleSong(15))
+                    .foregroundStyle(LWColors.cinnabar)
+            }
         }
     }
 
@@ -141,7 +162,7 @@ struct PersonDetailView: View {
     }
 
     private func timelineCard(_ summary: PersonSummary) -> some View {
-        PaperCard(padding: 12, spacing: 8) {
+        PaperCard(padding: 14, spacing: 10) {
             Text("往来记录")
                 .font(.titleSong(16))
                 .foregroundStyle(LWColors.ink)
@@ -156,13 +177,13 @@ struct PersonDetailView: View {
                             .fill(index == records.count - 1 ? Color.clear : LWColors.goldPale.opacity(0.5))
                             .frame(width: 1, height: 44)
                     }
-                    SealStamp(text: record.type.shortTitle, size: 34, color: record.type.accentColor)
+                    SealStamp(text: record.type.shortTitle, size: 32, color: record.type.accentColor)
                     VStack(alignment: .leading, spacing: 3) {
                         Text(record.date.lwCompactMonthText)
                             .font(.bodySong(11))
                             .foregroundStyle(LWColors.muted)
                         Text(record.type == .given ? "他家\(record.eventType.title)，我送礼" : "我家\(record.eventType.title)，他送礼")
-                            .font(.bodyKai(15))
+                            .font(.bodyKai(14))
                             .foregroundStyle(LWColors.ink)
                         if !record.note.isEmpty {
                             Text(record.note)
@@ -172,7 +193,7 @@ struct PersonDetailView: View {
                     }
                     Spacer()
                     Text(record.amountYuan.yuanText)
-                        .font(.amountKai(14))
+                        .font(.amountKai(13))
                         .foregroundStyle(record.type == .received ? LWColors.cinnabar : LWColors.ink)
                     Menu {
                         Button("编辑") {

@@ -131,15 +131,15 @@ extension Font {
     }
 
     static func bodySong(_ size: CGFloat) -> Font {
-        .custom("STKaiti", size: size)
+        .custom("SourceHanSerifSC-Regular", size: size)
     }
 
     static func bodyKai(_ size: CGFloat) -> Font {
-        .custom("STKaiti", size: size)
+        .custom("SourceHanSerifSC-Regular", size: size)
     }
 
     static func amountKai(_ size: CGFloat) -> Font {
-        .custom("STKaiti", size: size)
+        .custom("SourceHanSerifSC-Regular", size: size)
     }
 }
 
@@ -149,9 +149,9 @@ struct PaperTexture: View {
             LWColors.paper
             LinearGradient(
                 colors: [
-                    Color.white.opacity(0.42),
-                    LWColors.paperDeep.opacity(0.16),
-                    Color.white.opacity(0.16)
+                    Color.white.opacity(0.40),
+                    LWColors.paperDeep.opacity(0.14),
+                    Color.white.opacity(0.14)
                 ],
                 startPoint: .topLeading,
                 endPoint: .bottomTrailing
@@ -187,11 +187,11 @@ struct PageHeader: View {
             HStack(alignment: .top) {
                 VStack(alignment: .leading, spacing: 8) {
                     Text(title)
-                        .font(.titleSong(46))
+                        .font(.titleSong(40))
                         .foregroundStyle(LWColors.ink)
                     if let subtitle {
                         Text(subtitle)
-                            .font(.bodySong(19))
+                            .font(.bodySong(17))
                             .foregroundStyle(LWColors.warmGold)
                     }
                 }
@@ -201,8 +201,8 @@ struct PageHeader: View {
                 }
             }
             MountainDecoration()
-                .frame(height: 76)
-                .padding(.top, -24)
+                .frame(height: 72)
+                .padding(.top, -22)
         }
     }
 }

@@ -25,6 +25,19 @@ enum GiftEventType: String, Codable, CaseIterable, Identifiable {
         }
     }
 
+    var icon: String? {
+        switch self {
+        case .wedding: "heart.circle"
+        case .funeral: nil
+        case .baby: "baby.face"
+        case .housewarming: "house"
+        case .birthday: "gift"
+        case .school: "graduationcap"
+        case .festival: "star"
+        case .other: nil
+        }
+    }
+
     var notePlaceholder: String {
         switch self {
         case .wedding: "婚宴地点、同席亲友等"

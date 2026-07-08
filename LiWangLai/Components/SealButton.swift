@@ -4,8 +4,8 @@ struct SealButton: View {
     let title: String
     var systemImage: String? = nil
     var isDisabled = false
-    var fontSize: CGFloat = 20
-    var verticalPadding: CGFloat = 15
+    var fontSize: CGFloat = 16
+    var verticalPadding: CGFloat = 12
     var cornerRadius: CGFloat = LWRadius.button
     let action: () -> Void
 
@@ -19,6 +19,7 @@ struct SealButton: View {
             HStack(spacing: 8) {
                 if let systemImage {
                     Image(systemName: systemImage)
+                        .font(.system(size: 16, weight: .medium))
                 }
                 Text(title)
                     .font(.bodySong(fontSize).weight(.semibold))

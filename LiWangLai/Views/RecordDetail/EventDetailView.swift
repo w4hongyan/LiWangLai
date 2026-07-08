@@ -26,7 +26,7 @@ struct EventDetailView: View {
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 10) {
+            VStack(alignment: .leading, spacing: 12) {
                 detailHeader
                 overviewCard
                 recordsCard
@@ -74,30 +74,46 @@ struct EventDetailView: View {
     }
 
     private var detailHeader: some View {
-        HStack(alignment: .top) {
-            VStack(alignment: .leading, spacing: 6) {
-                Text(event.title)
-                    .font(.titleSong(30))
-                    .foregroundStyle(LWColors.ink)
-                Text("\(event.monthKey) · 我家办的事")
-                    .font(.bodySong(13))
-                    .foregroundStyle(LWColors.warmGold)
+        ZStack(alignment: .topTrailing) {
+            Image("prototype_header_mountain_plum")
+                .resizable()
+                .scaledToFit()
+                .frame(width: 236)
+                .offset(x: 24, y: 8)
+                .opacity(0.88)
+                .allowsHitTesting(false)
+
+            HStack(alignment: .top) {
+                VStack(alignment: .leading, spacing: 6) {
+                    Text(event.title)
+                        .font(.titleSong(40))
+                        .foregroundStyle(LWColors.ink)
+                    Text("\(event.monthKey) · 我家办的事")
+                        .font(.bodySong(17))
+                        .foregroundStyle(LWColors.warmGold)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.top, 18)
             }
-            Spacer()
-            SealStamp(text: "事", size: 44, color: LWColors.cinnabar)
         }
+        .frame(height: 124)
     }
 
     private var overviewCard: some View {
-        PaperCard(padding: 12, spacing: 8) {
+        PaperCard(padding: 14, spacing: 10) {
             HStack {
-                Label("收礼总览", systemImage: "scroll")
+                Image(systemName: "scroll")
+                    .font(.system(size: 16, weight: .medium))
+                    .foregroundStyle(LWColors.warmGold)
+                Text("收礼总览")
                     .font(.titleSong(16))
                     .foregroundStyle(LWColors.ink)
                 Spacer()
-                MountainDecoration()
-                    .frame(width: 58, height: 20)
-                    .opacity(0.72)
+                Image("prototype_gold_clouds")
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 50)
+                    .opacity(0.6)
             }
             overviewRow(title: "记录", value: "\(records.count) 笔", color: LWColors.ink)
             GoldLineDivider()
@@ -120,7 +136,7 @@ struct EventDetailView: View {
     }
 
     private var recordsCard: some View {
-        PaperCard(padding: 12, spacing: 8) {
+        PaperCard(padding: 14, spacing: 10) {
             Text("来随礼的人")
                 .font(.titleSong(16))
                 .foregroundStyle(LWColors.ink)

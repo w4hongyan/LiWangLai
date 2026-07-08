@@ -73,7 +73,7 @@ private struct TabBar: View {
 
     var body: some View {
         HStack(alignment: .bottom) {
-            tab(.home, title: "首页", image: "house")
+            tab(.home, title: "今日", image: "house")
             tab(.ledger, title: "礼簿", image: "book")
             addTab
             tab(.people, title: "人情", image: "person.2")
@@ -97,7 +97,7 @@ private struct TabBar: View {
                 Image(systemName: selectedTab == tab ? "\(image).fill" : image)
                     .font(.system(size: 15))
                 Text(title)
-                    .font(.custom("STKaiti", size: 8.5))
+                    .font(.custom("SourceHanSerifSC-Regular", size: 8.5))
             }
             .foregroundStyle(selectedTab == tab ? LWColors.cinnabar : LWColors.inkSoft)
             .frame(maxWidth: .infinity)
@@ -117,7 +117,7 @@ private struct TabBar: View {
                     .frame(width: 40, height: 40)
                     .shadow(color: LWColors.cinnabar.opacity(0.14), radius: 5, x: 0, y: 3)
                 Text("入簿")
-                    .font(.custom("STKaiti", size: 8.5))
+                    .font(.custom("SourceHanSerifSC-Regular", size: 8.5))
                     .foregroundStyle(selectedTab == .add ? LWColors.cinnabar : LWColors.inkSoft)
             }
             .frame(maxWidth: .infinity)

@@ -16,7 +16,7 @@ struct ChineseDatePickerButton: View {
             HStack(spacing: 8) {
                 if let title {
                     Text(title)
-                        .font(.titleSong(13))
+                        .font(.titleSong(14))
                         .foregroundStyle(LWColors.ink)
                 }
                 Spacer(minLength: 8)
@@ -24,7 +24,7 @@ struct ChineseDatePickerButton: View {
                     .font(.bodySong(13))
                     .foregroundStyle(LWColors.ink)
                 Image(systemName: "calendar")
-                    .font(.system(size: 13, weight: .medium))
+                    .font(.system(size: 14, weight: .medium))
                     .foregroundStyle(LWColors.warmGold)
             }
             .contentShape(Rectangle())
@@ -50,14 +50,14 @@ private struct ChineseDatePickerSheet: View {
         VStack(spacing: 14) {
             HStack {
                 Text(title)
-                    .font(.titleSong(20))
+                    .font(.titleSong(18))
                     .foregroundStyle(LWColors.ink)
                 Spacer()
                 Button {
                     dismiss()
                 } label: {
                     Image(systemName: "xmark.circle.fill")
-                        .font(.system(size: 22))
+                        .font(.system(size: 20))
                         .foregroundStyle(LWColors.muted)
                 }
                 .buttonStyle(.plain)

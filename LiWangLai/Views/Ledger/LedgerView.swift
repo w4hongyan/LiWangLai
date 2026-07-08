@@ -8,6 +8,8 @@ struct LedgerView: View {
     let records: [GiftRecord]
     @State private var typeFilter: LedgerTypeFilter = .all
     @State private var timeFilter: LedgerTimeFilter = .thisYear
+    @State private var customDateRange: ClosedRange<Date>?
+    @State private var showCustomDatePicker = false
     @State private var editingRecord: GiftRecord?
     @State private var pendingDelete: GiftRecord?
     @State private var showDeleteConfirm = false
@@ -16,21 +18,26 @@ struct LedgerView: View {
         SearchService.filter(records, query: appState.ledgerSearchText)
             .filter { record in
                 switch typeFilter {
-                case .all: true
-                case .received: record.type == .received
-                case .given: record.type == .given
-                case .notReturned: record.needsReturn
-                case .returned: record.isReturned
+                case .all: return true
+                case .received: return record.type == .received
+                case .given: return record.type == .given
+                case .notReturned: return record.needsReturn
+                case .returned: return record.isReturned
                 }
             }
             .filter { record in
                 switch timeFilter {
                 case .thisYear:
-                    Calendar.current.component(.year, from: record.date) == Calendar.current.component(.year, from: .now)
+                    return Calendar.current.component(.year, from: record.date) == Calendar.current.component(.year, from: .now)
                 case .lastYear:
-                    Calendar.current.component(.year, from: record.date) == Calendar.current.component(.year, from: .now) - 1
+                    return Calendar.current.component(.year, from: record.date) == Calendar.current.component(.year, from: .now) - 1
                 case .all:
-                    true
+                    return true
+                case .custom:
+                    if let range = customDateRange {
+                        return range.contains(record.date)
+                    }
+                    return true
                 }
             }
     }
@@ -213,7 +220,11 @@ struct LedgerView: View {
         HStack(spacing: 8) {
             ForEach(LedgerTimeFilter.allCases) { filter in
                 Button {
-                    timeFilter = filter
+                    if filter == .custom {
+                        showCustomDatePicker = true
+                    } else {
+                        timeFilter = filter
+                    }
                 } label: {
                     Text(filter.title)
                         .font(.bodySong(12))
@@ -228,6 +239,46 @@ struct LedgerView: View {
                 }
                 .buttonStyle(.plain)
             }
+        }
+        .sheet(isPresented: $showCustomDatePicker) {
+            NavigationStack {
+                VStack(spacing: 16) {
+                    DatePicker("开始日期", selection: Binding(
+                        get: { customDateRange?.lowerBound ?? Calendar.current.date(byAdding: .month, value: -1, to: .now) ?? .now },
+                        set: { newStart in
+                            let end = customDateRange?.upperBound ?? .now
+                            customDateRange = newStart...end
+                        }
+                    ), displayedComponents: .date)
+                    .datePickerStyle(.graphical)
+
+                    DatePicker("结束日期", selection: Binding(
+                        get: { customDateRange?.upperBound ?? .now },
+                        set: { newEnd in
+                            let start = customDateRange?.lowerBound ?? Calendar.current.date(byAdding: .month, value: -1, to: .now) ?? .now
+                            customDateRange = start...newEnd
+                        }
+                    ), displayedComponents: .date)
+                    .datePickerStyle(.graphical)
+                }
+                .padding()
+                .navigationTitle("自定义时间范围")
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbar {
+                    ToolbarItem(placement: .cancellationAction) {
+                        Button("取消") {
+                            showCustomDatePicker = false
+                        }
+                    }
+                    ToolbarItem(placement: .confirmationAction) {
+                        Button("确定") {
+                            timeFilter = .custom
+                            showCustomDatePicker = false
+                        }
+                    }
+                }
+            }
+            .presentationDetents([.medium])
         }
     }
 
@@ -284,7 +335,7 @@ struct LedgerView: View {
 
     private func eventCard(_ event: GiftEvent) -> some View {
         HStack(spacing: 8) {
-            SealStamp(text: "事", size: 30, color: LWColors.cinnabar)
+            SealStamp(text: "事", size: 28, color: LWColors.cinnabar)
             VStack(alignment: .leading, spacing: 2) {
                 Text(event.title)
                     .font(.titleSong(13))
@@ -306,10 +357,10 @@ struct LedgerView: View {
                     Image("prototype_gold_clouds")
                         .resizable()
                         .scaledToFit()
-                        .frame(width: 30)
+                        .frame(width: 28)
                         .padding(.top, 5)
                         .padding(.trailing, 6)
-                        .opacity(0.66)
+                        .opacity(0.58)
                 }
                 .overlay(RoundedRectangle(cornerRadius: 12).stroke(LWColors.cardStroke.opacity(0.36)))
         )
@@ -339,6 +390,7 @@ private enum LedgerTimeFilter: String, CaseIterable, Identifiable {
     case thisYear
     case lastYear
     case all
+    case custom
 
     var id: String { rawValue }
     var title: String {
@@ -346,6 +398,7 @@ private enum LedgerTimeFilter: String, CaseIterable, Identifiable {
         case .thisYear: "今年"
         case .lastYear: "去年"
         case .all: "全部"
+        case .custom: "自定义"
         }
     }
 }

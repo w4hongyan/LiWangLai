@@ -10,13 +10,13 @@ struct SealStamp: View {
             Circle()
                 .fill(
                     LinearGradient(
-                        colors: [color, color.opacity(0.78)],
+                        colors: [color, color.opacity(0.82)],
                         startPoint: .topLeading,
                         endPoint: .bottomTrailing
                     )
                 )
             Text(text)
-                .font(.titleSong(size * 0.46))
+                .font(.titleSong(size * 0.45))
                 .foregroundStyle(.white)
         }
         .frame(width: size, height: size)

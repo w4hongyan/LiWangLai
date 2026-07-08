@@ -30,6 +30,21 @@ enum ExportService {
         return url
     }
 
+    static func writeCSV(from records: [GiftRecord]) throws -> URL {
+        guard !records.isEmpty else {
+            throw ExportError.emptyRecords
+        }
+        let fileName = "礼往来-\(Int(Date().timeIntervalSince1970)).csv"
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent(fileName)
+        var csv = columns.joined(separator: ",") + "\n"
+        for record in records.sorted(by: { $0.date > $1.date }) {
+            let row = rowValues(for: record).map { "\"\($0.text.replacingOccurrences(of: "\"", with: "\"\""))\"" }.joined(separator: ",")
+            csv += row + "\n"
+        }
+        try csv.write(to: url, atomically: true, encoding: .utf8)
+        return url
+    }
+
     private static func rowValues(for record: GiftRecord) -> [(text: String, type: String)] {
         [
             (record.personName, "String"),

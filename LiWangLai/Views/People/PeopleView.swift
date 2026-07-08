@@ -130,28 +130,28 @@ struct PeopleView: View {
     }
 
     private func personCard(_ summary: PersonSummary) -> some View {
-        PaperCard(padding: 11) {
+        PaperCard(padding: 12) {
             HStack(alignment: .top, spacing: 11) {
                 ZStack(alignment: .bottomTrailing) {
-                    SealStamp(text: String(summary.name.prefix(1)), size: 46, color: summary.pendingReturnCount > 0 ? LWColors.cinnabar : LWColors.warmGold)
+                    SealStamp(text: String(summary.name.prefix(1)), size: 44, color: summary.pendingReturnCount > 0 ? LWColors.cinnabar : LWColors.warmGold)
                     if summary.pendingReturnCount > 0 {
                         Text("待")
-                            .font(.bodySong(9).weight(.semibold))
+                            .font(.bodySong(8).weight(.semibold))
                             .foregroundStyle(.white)
-                            .frame(width: 17, height: 17)
+                            .frame(width: 16, height: 16)
                             .background(LWColors.cinnabar, in: Circle())
                             .offset(x: 2, y: 2)
                     }
                 }
-                VStack(alignment: .leading, spacing: 5) {
+                VStack(alignment: .leading, spacing: 4) {
                     HStack {
                         Text(summary.name)
-                            .font(.bodyKai(18))
+                            .font(.bodyKai(17))
                             .foregroundStyle(LWColors.ink)
                             .lineLimit(1)
                         Spacer()
                         Text(summary.statusText)
-                            .font(.bodySong(12))
+                            .font(.bodySong(11))
                             .foregroundStyle(summary.pendingReturnCount > 0 ? LWColors.cinnabar : LWColors.warmGold)
                             .lineLimit(1)
                     }
@@ -162,8 +162,10 @@ struct PeopleView: View {
                     GoldLineDivider()
                     HStack {
                         Text("我送：")
+                            .font(.bodySong(12))
                             .foregroundStyle(LWColors.ink)
                         Text(summary.totalGiven.yuanText)
+                            .font(.bodySong(12))
                             .foregroundStyle(LWColors.cinnabar)
                         Spacer()
                         Rectangle()
@@ -171,23 +173,24 @@ struct PeopleView: View {
                             .frame(width: 1, height: 18)
                         Spacer()
                         Text("我收：")
+                            .font(.bodySong(12))
                             .foregroundStyle(LWColors.ink)
                         Text(summary.totalReceived.yuanText)
+                            .font(.bodySong(12))
                             .foregroundStyle(LWColors.cinnabar)
                         Image(systemName: "chevron.right")
                             .font(.system(size: 11, weight: .semibold))
                             .foregroundStyle(LWColors.muted.opacity(0.65))
                     }
-                    .font(.bodySong(12))
                 }
             }
             .overlay(alignment: .topTrailing) {
                 Image("prototype_gold_clouds")
                     .resizable()
                     .scaledToFit()
-                    .frame(width: 38)
+                    .frame(width: 36)
                     .offset(x: 2, y: -2)
-                    .opacity(0.64)
+                    .opacity(0.58)
             }
         }
     }

@@ -20,27 +20,27 @@ struct ReminderListView: View {
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 9) {
+            VStack(alignment: .leading, spacing: 11) {
                 reminderHeader
                 PaperCard(padding: 12) {
                     HStack {
                         Image("lwl_gift_circle")
                             .resizable()
                             .scaledToFit()
-                            .frame(width: 52, height: 52)
+                            .frame(width: 48, height: 48)
                         VStack(alignment: .leading, spacing: 5) {
                             Text("待处理")
                                 .font(.bodySong(14))
                                 .foregroundStyle(LWColors.inkSoft)
                             Text("\(reminders.count) 项")
-                                .font(.amountKai(31))
+                                .font(.amountKai(28))
                                 .foregroundStyle(LWColors.cinnabar)
                         }
                         Spacer()
                         Image("lwl_calendar_clock")
                             .resizable()
                             .scaledToFit()
-                            .frame(width: 86, height: 58)
+                            .frame(width: 80, height: 54)
                     }
                 }
                 filterChips
@@ -52,12 +52,12 @@ struct ReminderListView: View {
                     }
                 } else {
                     ForEach(reminders) { item in
-                        PaperCard(padding: 11) {
-                            HStack(spacing: 11) {
-                                SealStamp(text: item.record.type == .received ? "礼" : "记", size: 42, color: item.record.needsReturn ? LWColors.cinnabar : LWColors.warmGold)
-                                VStack(alignment: .leading, spacing: 5) {
+                        PaperCard(padding: 12) {
+                            HStack(spacing: 10) {
+                                SealStamp(text: item.record.type == .received ? "礼" : "记", size: 40, color: item.record.needsReturn ? LWColors.cinnabar : LWColors.warmGold)
+                                VStack(alignment: .leading, spacing: 4) {
                                     Text(item.title)
-                                        .font(.titleSong(15))
+                                        .font(.titleSong(14))
                                         .foregroundStyle(LWColors.ink)
                                         .lineLimit(1)
                                     Label(item.subtitle, systemImage: item.isDateReminder ? "calendar" : "clock")
@@ -97,7 +97,7 @@ struct ReminderListView: View {
                 Image("lwl_bottom_slogan")
                     .resizable()
                     .scaledToFit()
-                    .frame(maxWidth: 260)
+                    .frame(maxWidth: 240)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 12)
             }
@@ -126,24 +126,28 @@ struct ReminderListView: View {
 
     private var reminderHeader: some View {
         ZStack(alignment: .topTrailing) {
-            MountainDecoration()
-                .frame(width: 180, height: 88)
-                .offset(x: 20, y: 0)
-                .opacity(0.36)
+            Image("prototype_header_mountain_plum")
+                .resizable()
+                .scaledToFit()
+                .frame(width: 236)
+                .offset(x: 24, y: 8)
+                .opacity(0.88)
                 .allowsHitTesting(false)
 
-            VStack(alignment: .leading, spacing: 6) {
-                Text("回礼提醒")
-                    .font(.titleSong(30))
-                    .foregroundStyle(LWColors.ink)
-                Text("别忘心意往来")
-                    .font(.bodySong(13))
-                    .foregroundStyle(LWColors.warmGold)
+            HStack(alignment: .top) {
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("回礼提醒")
+                        .font(.titleSong(40))
+                        .foregroundStyle(LWColors.ink)
+                    Text("别忘心意往来")
+                        .font(.bodySong(17))
+                        .foregroundStyle(LWColors.warmGold)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.top, 18)
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(.top, 10)
         }
-        .frame(height: 94)
+        .frame(height: 124)
     }
 
     private var filterChips: some View {

@@ -9,7 +9,7 @@ struct RecordRow: View {
             recordBadge
             VStack(alignment: .leading, spacing: 3) {
                 Text("\(record.personName) · \(record.eventType.title)")
-                    .font(.bodyKai(16))
+                    .font(.bodyKai(15))
                     .foregroundStyle(LWColors.ink)
                     .lineLimit(1)
                 Text(record.date.lwDayText)
@@ -20,10 +20,10 @@ struct RecordRow: View {
             Spacer()
             VStack(alignment: .trailing, spacing: 2) {
                 Text(record.amountYuan.yuanText)
-                    .font(.amountKai(14))
+                    .font(.amountKai(13))
                     .foregroundStyle(record.type == .received ? LWColors.cinnabar : LWColors.ink)
                 Text(record.isReturned ? "已回" : (record.type == .received ? "未回" : "已记"))
-                    .font(.bodySong(10))
+                    .font(.bodySong(9))
                     .foregroundStyle(record.isReturned ? LWColors.muted : LWColors.cinnabar)
                     .padding(.horizontal, 5)
                     .padding(.vertical, 1)
@@ -34,7 +34,7 @@ struct RecordRow: View {
             }
             if showChevron {
                 Image(systemName: "chevron.right")
-                    .font(.system(size: 12, weight: .semibold))
+                    .font(.system(size: 11, weight: .semibold))
                     .foregroundStyle(LWColors.muted.opacity(0.65))
             }
         }
@@ -48,12 +48,12 @@ struct RecordRow: View {
             Image("lwl_badge_receive")
                 .resizable()
                 .scaledToFit()
-                .frame(width: 32, height: 32)
+                .frame(width: 30, height: 30)
         } else {
             Image("lwl_badge_give")
                 .resizable()
                 .scaledToFit()
-                .frame(width: 32, height: 32)
+                .frame(width: 30, height: 30)
         }
     }
 }

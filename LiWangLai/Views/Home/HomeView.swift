@@ -60,19 +60,21 @@ struct HomeView: View {
                 .scaledToFit()
                 .frame(width: 236)
                 .offset(x: 24, y: 8)
-                .opacity(0.98)
+                .opacity(0.88)
+                .allowsHitTesting(false)
 
-            VStack(alignment: .leading, spacing: 6) {
-                Text("礼往来")
-                    .font(.titleSong(40))
-                    .foregroundStyle(LWColors.ink)
-                    .fixedSize()
-                Text("人情有数，往来有度")
-                    .font(.bodySong(17))
-                    .foregroundStyle(LWColors.warmGold)
+            HStack(alignment: .top) {
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("礼往来")
+                        .font(.titleSong(40))
+                        .foregroundStyle(LWColors.ink)
+                    Text("人情有数，往来有度")
+                        .font(.bodySong(17))
+                        .foregroundStyle(LWColors.warmGold)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.top, 18)
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(.top, 18)
         }
         .frame(height: 124)
     }
@@ -83,15 +85,10 @@ struct HomeView: View {
         } label: {
             PaperCard(padding: 12) {
                 HStack {
-                    Circle()
-                        .fill(LWColors.cinnabar)
+                    Image("lwl_gift_red")
+                        .resizable()
+                        .scaledToFit()
                         .frame(width: 32, height: 32)
-                        .overlay {
-                            Image("lwl_gift_red")
-                                .resizable()
-                                .scaledToFit()
-                                .frame(width: 20, height: 20)
-                        }
                     Text("回礼提醒")
                         .font(.titleSong(16))
                         .foregroundStyle(LWColors.ink)
@@ -121,77 +118,117 @@ struct HomeView: View {
     }
 
     private var yearlyCard: some View {
+        PaperCard(padding: 14) {
+            HStack(spacing: 6) {
+                yearlyHeaderIcon
+                Text("\(String(Calendar.current.component(.year, from: .now))) 年人情往来")
+                    .font(.titleSong(17))
+                    .foregroundStyle(LWColors.ink)
+                Spacer()
+                Image("prototype_gold_clouds")
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 40)
+                    .opacity(0.6)
+            }
+
+            HStack(spacing: 0) {
+                statItem(seal: "收", title: "收礼", value: totalReceived.yuanText, color: LWColors.cinnabar)
+                statDivider
+                statItem(seal: "送", title: "送礼", value: totalGiven.yuanText, color: LWColors.warmGold)
+                statDivider
+                statItem(icon: .document, title: "未回礼", value: "\(records.filter(\.needsReturn).count) 笔", color: LWColors.muted)
+                statDivider
+                statItem(icon: .trendUp, title: "净额", value: (totalReceived - totalGiven).yuanText, color: LWColors.cinnabar)
+            }
+        }
+    }
+
+    private var yearlyHeaderIcon: some View {
         ZStack {
-            RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .fill(LWColors.cinnabarDark)
-
-            Image("yearly_ledger_red_card")
-                .resizable()
-                .scaledToFill()
-                .accessibilityHidden(true)
-
-            VStack(spacing: 14) {
-                HStack(spacing: 8) {
-                    Rectangle()
-                        .fill(LWColors.goldPale.opacity(0.72))
-                        .frame(width: 34, height: 1)
-                    Text("\(String(Calendar.current.component(.year, from: .now))) 年人情往来")
-                        .font(.titleSong(18))
-                        .foregroundStyle(.white)
-                    Rectangle()
-                        .fill(LWColors.goldPale.opacity(0.72))
-                        .frame(width: 34, height: 1)
-                }
-
-                HStack(spacing: 0) {
-                    redLedgerStat(title: "收礼", value: totalReceived.yuanText)
-                    redLedgerDivider
-                    redLedgerStat(title: "送礼", value: totalGiven.yuanText)
-                    redLedgerDivider
-                    redLedgerStat(title: "未回礼", value: "\(records.filter(\.needsReturn).count) 笔")
-                    redLedgerDivider
-                    redLedgerStat(title: "净额", value: (totalReceived - totalGiven).yuanText, highlight: true)
+            RoundedRectangle(cornerRadius: 4)
+                .fill(LWColors.cinnabar)
+            VStack(spacing: 2) {
+                ForEach(0..<3) { _ in
+                    RoundedRectangle(cornerRadius: 1)
+                        .fill(.white.opacity(0.8))
+                        .frame(width: 12, height: 2)
                 }
             }
-            .padding(.horizontal, 20)
-            .padding(.vertical, 18)
         }
-        .frame(height: 146)
-        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
-        .shadow(color: LWColors.cinnabarDark.opacity(0.16), radius: 14, x: 0, y: 8)
+        .frame(width: 22, height: 22)
     }
 
-    private func redLedgerStat(title: String, value: String, highlight: Bool = false) -> some View {
+    private enum StatIcon {
+        case seal(String)
+        case document
+        case trendUp
+    }
+
+    private func statItem(seal: String? = nil, icon: StatIcon? = nil, title: String, value: String, color: Color) -> some View {
         VStack(spacing: 5) {
-            Text(title)
-                .font(.bodySong(12))
-                .foregroundStyle(Color.white.opacity(0.9))
-            Text(value)
-                .font(.amountKai(highlight ? 20 : 18))
-                .foregroundStyle(highlight ? LWColors.goldPale : .white)
-                .minimumScaleFactor(0.72)
-        }
-        .frame(maxWidth: .infinity)
-    }
-
-    private var redLedgerDivider: some View {
-        Rectangle()
-            .fill(Color.white.opacity(0.24))
-            .frame(width: 0.8, height: 44)
-    }
-
-    private func statItem(seal: String, title: String, value: String, color: Color) -> some View {
-        VStack(spacing: 3) {
-            statSeal(seal: seal, color: color)
+            if let seal {
+                statSeal(seal: seal, color: color)
+            } else if let icon {
+                statIconView(icon: icon, color: color)
+            }
             Text(title)
                 .font(.bodySong(11))
-                .foregroundStyle(LWColors.ink)
+                .foregroundStyle(LWColors.muted)
             Text(value)
-                .font(.amountKai(13))
-                .foregroundStyle(color == LWColors.muted ? LWColors.ink : color)
+                .font(.amountKai(15))
+                .foregroundStyle(LWColors.ink)
                 .minimumScaleFactor(0.72)
         }
         .frame(maxWidth: .infinity)
+    }
+
+    @ViewBuilder
+    private func statIconView(icon: StatIcon, color: Color) -> some View {
+        switch icon {
+        case .document:
+            documentIcon
+        case .trendUp:
+            trendUpIcon
+        case .seal(let text):
+            SealStamp(text: text, size: 24, color: color)
+        }
+    }
+
+    private var documentIcon: some View {
+        ZStack {
+            RoundedRectangle(cornerRadius: 3)
+                .stroke(LWColors.muted, lineWidth: 1.5)
+            VStack(spacing: 2.5) {
+                ForEach(0..<3) { _ in
+                    RoundedRectangle(cornerRadius: 1)
+                        .fill(LWColors.muted)
+                        .frame(width: 10, height: 1.5)
+                }
+            }
+        }
+        .frame(width: 22, height: 22)
+    }
+
+    private var trendUpIcon: some View {
+        ZStack {
+            RoundedRectangle(cornerRadius: 3)
+                .stroke(LWColors.cinnabar, lineWidth: 1.5)
+            Path { path in
+                path.move(to: CGPoint(x: 5, y: 16))
+                path.addLine(to: CGPoint(x: 10, y: 10))
+                path.addLine(to: CGPoint(x: 14, y: 13))
+                path.addLine(to: CGPoint(x: 18, y: 6))
+            }
+            .stroke(LWColors.cinnabar, style: StrokeStyle(lineWidth: 1.8, lineCap: .round, lineJoin: .round))
+            Path { path in
+                path.move(to: CGPoint(x: 14, y: 6))
+                path.addLine(to: CGPoint(x: 18, y: 6))
+                path.addLine(to: CGPoint(x: 18, y: 10))
+            }
+            .stroke(LWColors.cinnabar, style: StrokeStyle(lineWidth: 1.8, lineCap: .round, lineJoin: .round))
+        }
+        .frame(width: 22, height: 22)
     }
 
     @ViewBuilder
@@ -200,14 +237,12 @@ struct HomeView: View {
             Image("lwl_badge_receive")
                 .resizable()
                 .scaledToFit()
-                .frame(width: 30, height: 30)
-        } else if seal == "送" {
+                .frame(width: 28, height: 28)
+        } else {
             Image("lwl_badge_give")
                 .resizable()
                 .scaledToFit()
-                .frame(width: 30, height: 30)
-        } else {
-            SealStamp(text: seal, size: 26, color: color)
+                .frame(width: 28, height: 28)
         }
     }
 
@@ -296,11 +331,11 @@ struct HomeView: View {
             Text("快捷操作")
                 .font(.titleSong(15))
                 .foregroundStyle(LWColors.ink)
-            HStack(spacing: 9) {
-                quickAction("收礼", image: "gift", tab: .add, presetType: .received)
-                quickAction("送礼", image: "gift", tab: .add, presetType: .given)
+            HStack(spacing: 10) {
+                quickAction("收礼", systemImage: "gift", tab: .add, presetType: .received)
+                quickAction("送礼", systemImage: "gift", tab: .add, presetType: .given)
                 hostedEventAction
-                quickAction("查旧账", image: "book", tab: .people)
+                quickAction("查旧账", systemImage: "magnifyingglass", tab: .people)
             }
         }
     }
@@ -335,7 +370,7 @@ struct HomeView: View {
         .buttonStyle(.plain)
     }
 
-    private func quickAction(_ title: String, image: String, tab: AppTab, presetType: GiftRecordType? = nil) -> some View {
+    private func quickAction(_ title: String, systemImage: String, tab: AppTab, presetType: GiftRecordType? = nil) -> some View {
         Button {
             if let presetType {
                 appState.addPresetType = presetType
@@ -343,7 +378,7 @@ struct HomeView: View {
             appState.selectedTab = tab
         } label: {
             VStack(spacing: 4) {
-                quickActionIcon(title: title, systemImage: image)
+                quickActionIcon(title: title, systemImage: systemImage)
                 Text(title)
                     .font(.bodySong(12))
                     .foregroundStyle(LWColors.ink)
