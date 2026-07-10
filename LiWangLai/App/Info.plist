@@ -22,6 +22,8 @@
 	<string>1</string>
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
+	<key>NSFaceIDUsageDescription</key>
+	<string>用于解锁查看你的礼簿内容</string>
 	<key>UIAppFonts</key>
 	<array>
 		<string>SourceHanSerifSC-Regular.otf</string>

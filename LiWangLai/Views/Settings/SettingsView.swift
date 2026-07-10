@@ -10,9 +10,6 @@ struct SettingsView: View {
     @State private var showAbout = false
     @State private var showPrivacy = false
     @State private var showTerms = false
-    @AppStorage("liwanglai.iCloudSync") private var iCloudSync = false
-    @AppStorage("liwanglai.hideAmounts") private var hideAmounts = false
-    @AppStorage("liwanglai.defaultBlurAmount") private var defaultBlurAmount = false
 
     var body: some View {
         @Bindable var appState = appState
@@ -65,40 +62,6 @@ struct SettingsView: View {
                 .padding(.leading, 10)
             PaperCard(padding: 0) {
                 VStack(spacing: 0) {
-                    HStack(spacing: 10) {
-                        Image(systemName: "icloud")
-                            .font(.system(size: 15, weight: .medium))
-                            .foregroundStyle(LWColors.warmGold)
-                            .frame(width: 20)
-                        Text("iCloud 同步")
-                            .font(.bodySong(13))
-                            .foregroundStyle(LWColors.ink)
-                        Spacer()
-                        Toggle("", isOn: $iCloudSync)
-                            .tint(LWColors.cinnabar)
-                            .labelsHidden()
-                    }
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 9)
-
-                    GoldLineDivider().padding(.leading, 44)
-
-                    Button {
-                        // 本地备份功能
-                    } label: {
-                        settingsRowContent(icon: "externaldrive", title: "本地备份", subtitle: "备份数据到设备")
-                    }
-                    .buttonStyle(.plain)
-                    .contentShape(Rectangle())
-
-                    Button {
-                        exportCSV()
-                    } label: {
-                        settingsRowContent(icon: "doc.text", title: "导出 CSV", subtitle: records.isEmpty ? "暂无记录可导出" : "生成 .csv 文件")
-                    }
-                    .buttonStyle(.plain)
-                    .contentShape(Rectangle())
-
                     Button {
                         exportExcel()
                     } label: {
@@ -143,43 +106,7 @@ struct SettingsView: View {
                         }
                         .padding(.horizontal, 12)
                         .padding(.vertical, 9)
-
-                        GoldLineDivider().padding(.leading, 44)
                     }
-
-                    HStack(spacing: 10) {
-                        Image(systemName: "eye.slash")
-                            .font(.system(size: 15, weight: .medium))
-                            .foregroundStyle(LWColors.warmGold)
-                            .frame(width: 20)
-                        Text("隐藏金额")
-                            .font(.bodySong(13))
-                            .foregroundStyle(LWColors.ink)
-                        Spacer()
-                        Toggle("", isOn: $hideAmounts)
-                            .tint(LWColors.cinnabar)
-                            .labelsHidden()
-                    }
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 9)
-
-                    GoldLineDivider().padding(.leading, 44)
-
-                    HStack(spacing: 10) {
-                        Image(systemName: "rectangle.dashed")
-                            .font(.system(size: 15, weight: .medium))
-                            .foregroundStyle(LWColors.warmGold)
-                            .frame(width: 20)
-                        Text("打开时默认模糊金额")
-                            .font(.bodySong(13))
-                            .foregroundStyle(LWColors.ink)
-                        Spacer()
-                        Toggle("", isOn: $defaultBlurAmount)
-                            .tint(LWColors.cinnabar)
-                            .labelsHidden()
-                    }
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 9)
                 }
             }
         }
@@ -300,9 +227,17 @@ struct SettingsView: View {
             PaperCard(padding: 0) {
                 VStack(spacing: 0) {
                     Button {
-                        // 意见反馈
+                        showPrivacy = true
                     } label: {
-                        settingsRowContent(icon: "bubble.left.and.bubble.right", title: "意见反馈", subtitle: nil)
+                        settingsRowContent(icon: "hand.raised", title: "隐私政策", subtitle: nil)
+                    }
+                    .buttonStyle(.plain)
+                    .contentShape(Rectangle())
+
+                    Button {
+                        showTerms = true
+                    } label: {
+                        settingsRowContent(icon: "doc.text", title: "用户协议", subtitle: nil)
                     }
                     .buttonStyle(.plain)
                     .contentShape(Rectangle())
@@ -366,15 +301,6 @@ struct SettingsView: View {
         }
     }
 
-    private func exportCSV() {
-        do {
-            exportURL = try ExportService.writeCSV(from: records)
-            HapticsManager.success()
-        } catch {
-            exportErrorMessage = (error as? LocalizedError)?.errorDescription ?? "请稍后再试，或检查设备存储空间。"
-            showExportError = true
-        }
-    }
 }
 
 private struct AboutView: View {

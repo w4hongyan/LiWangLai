@@ -43,10 +43,22 @@
 - 一场事：我家办事集中入簿
 - 我的：主题和 Excel 导出
 
-## 仍需填写
+## 上架 URL（部署到 GitHub Pages 后填入 App Store Connect）
 
-- Apple Developer Team
-- 隐私政策公网 URL
-- 支持 URL
-- App Store 截图
-- App Store 审核备注
+将 `docs/` 目录部署到 GitHub Pages 后，使用以下 URL：
+
+- 隐私政策 URL：`https://<你的GitHub用户名>.github.io/LiWangLai/privacy-policy.html`
+- 支持 URL：`https://<你的GitHub用户名>.github.io/LiWangLai/support.html`
+
+部署方式：
+1. 将 `docs/privacy-policy.html` 和 `docs/support.html` 推送到仓库 `main` 分支的 `docs/` 目录
+2. 在 GitHub 仓库 Settings → Pages → Source 选择 `main` 分支，目录选择 `/docs`
+3. 等待部署完成后，复制 URL 填入 App Store Connect
+
+## 仍需完成
+
+- [ ] 部署 docs/ 到 GitHub Pages 获取公网 URL
+- [ ] 在 App Store Connect 填写隐私政策 URL 和支持 URL
+- [ ] 提交 Apple Developer Team 信息（已配置 Team ID: 3VL637VQRM）
+- [ ] 上传 App Store 截图（已有 screenshots/ 目录中的截图）
+- [ ] 填写 App Store 审核备注

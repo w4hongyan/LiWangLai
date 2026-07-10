@@ -511,7 +511,7 @@
 				PRODUCT_BUNDLE_IDENTIFIER = com.liwanglai.app;
 				SDKROOT = iphoneos;
 				SUPPORTS_MACCATALYST = NO;
-				TARGETED_DEVICE_FAMILY = "1,2";
+				TARGETED_DEVICE_FAMILY = "1";
 			};
 			name = Debug;
 		};
@@ -651,7 +651,7 @@
 				PRODUCT_BUNDLE_IDENTIFIER = com.liwanglai.app.tests;
 				SDKROOT = iphoneos;
 				SWIFT_VERSION = 6.0;
-				TARGETED_DEVICE_FAMILY = "1,2";
+				TARGETED_DEVICE_FAMILY = "1";
 				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/LiWangLai.app/LiWangLai";
 			};
 			name = Debug;
@@ -669,7 +669,7 @@
 				PRODUCT_BUNDLE_IDENTIFIER = com.liwanglai.app.tests;
 				SDKROOT = iphoneos;
 				SWIFT_VERSION = 6.0;
-				TARGETED_DEVICE_FAMILY = "1,2";
+				TARGETED_DEVICE_FAMILY = "1";
 				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/LiWangLai.app/LiWangLai";
 			};
 			name = Release;
@@ -688,7 +688,7 @@
 				PRODUCT_BUNDLE_IDENTIFIER = com.liwanglai.app;
 				SDKROOT = iphoneos;
 				SUPPORTS_MACCATALYST = NO;
-				TARGETED_DEVICE_FAMILY = "1,2";
+				TARGETED_DEVICE_FAMILY = "1";
 			};
 			name = Release;
 		};
