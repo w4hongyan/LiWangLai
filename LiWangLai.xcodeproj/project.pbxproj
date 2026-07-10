@@ -108,9 +108,9 @@
 		A5CF0038ABA744E6895A6C4A /* RecordServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecordServiceTests.swift; sourceTree = "<group>"; };
 		A87405DF078F041AA2023D34 /* Localizable.strings */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; path = Localizable.strings; sourceTree = "<group>"; };
 		A8F0A224AB8962BD084D8608 /* Localizable.strings */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = Localizable.strings; path = "zh-Hans.lproj/Localizable.strings"; sourceTree = "<group>"; };
-		ABCEE97AC1B66A50631E3A95 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
+		ABCEE97AC1B66A50631E3A95 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		B57F06FA33F2375655355DF6 /* SearchService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SearchService.swift; sourceTree = "<group>"; };
-		B8F6C0CC53291E262CCC00AC /* LiWangLai.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = LiWangLai.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		B8F6C0CC53291E262CCC00AC /* LiWangLai.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = LiWangLai.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		BADEF26DC77D0F9E8BC22F8E /* AddRecordView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AddRecordView.swift; sourceTree = "<group>"; };
 		CABDF78E467E7380435E48EA /* ExportService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExportService.swift; sourceTree = "<group>"; };
 		CCE13A077FF21902B99EE56F /* SealStamp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SealStamp.swift; sourceTree = "<group>"; };
@@ -384,11 +384,6 @@
 			attributes = {
 				BuildIndependentTargetsInParallel = YES;
 				LastUpgradeCheck = 1430;
-				TargetAttributes = {
-					1E1F36C73A2D74D8B22D5A77 = {
-						DevelopmentTeam = 3VL637VQRM;
-					};
-				};
 			};
 			buildConfigurationList = 133389472739A1167186E313 /* Build configuration list for PBXProject "LiWangLai" */;
 			developmentRegion = en;
@@ -502,7 +497,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
-				DEVELOPMENT_TEAM = 3VL637VQRM;
+				DEVELOPMENT_TEAM = FGB346G6W6;
 				INFOPLIST_FILE = LiWangLai/App/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -511,7 +506,7 @@
 				PRODUCT_BUNDLE_IDENTIFIER = com.liwanglai.app;
 				SDKROOT = iphoneos;
 				SUPPORTS_MACCATALYST = NO;
-				TARGETED_DEVICE_FAMILY = "1";
+				TARGETED_DEVICE_FAMILY = 1;
 			};
 			name = Debug;
 		};
@@ -651,7 +646,7 @@
 				PRODUCT_BUNDLE_IDENTIFIER = com.liwanglai.app.tests;
 				SDKROOT = iphoneos;
 				SWIFT_VERSION = 6.0;
-				TARGETED_DEVICE_FAMILY = "1";
+				TARGETED_DEVICE_FAMILY = 1;
 				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/LiWangLai.app/LiWangLai";
 			};
 			name = Debug;
@@ -669,7 +664,7 @@
 				PRODUCT_BUNDLE_IDENTIFIER = com.liwanglai.app.tests;
 				SDKROOT = iphoneos;
 				SWIFT_VERSION = 6.0;
-				TARGETED_DEVICE_FAMILY = "1";
+				TARGETED_DEVICE_FAMILY = 1;
 				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/LiWangLai.app/LiWangLai";
 			};
 			name = Release;
@@ -679,7 +674,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
-				DEVELOPMENT_TEAM = 3VL637VQRM;
+				DEVELOPMENT_TEAM = FGB346G6W6;
 				INFOPLIST_FILE = LiWangLai/App/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -688,7 +683,7 @@
 				PRODUCT_BUNDLE_IDENTIFIER = com.liwanglai.app;
 				SDKROOT = iphoneos;
 				SUPPORTS_MACCATALYST = NO;
-				TARGETED_DEVICE_FAMILY = "1";
+				TARGETED_DEVICE_FAMILY = 1;
 			};
 			name = Release;
 		};
