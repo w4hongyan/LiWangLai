@@ -91,21 +91,49 @@ struct PeopleView: View {
     }
 
     private var filterBadge: some View {
-        Button {
-            relationshipFilter = nil
+        Menu {
+            Button {
+                relationshipFilter = nil
+            } label: {
+                if relationshipFilter == nil {
+                    Label("全部关系", systemImage: "checkmark")
+                } else {
+                    Text("全部关系")
+                }
+            }
+
+            Divider()
+
+            ForEach(RelationshipType.allCases) { relationship in
+                Button {
+                    relationshipFilter = relationship
+                } label: {
+                    if relationshipFilter == relationship {
+                        Label(relationship.title, systemImage: "checkmark")
+                    } else {
+                        Text(relationship.title)
+                    }
+                }
+            }
         } label: {
-            Label("筛选", systemImage: "line.3.horizontal.decrease.circle")
+            Label(relationshipFilter?.title ?? "筛选", systemImage: "line.3.horizontal.decrease.circle")
                 .font(.bodySong(12))
-                .foregroundStyle(LWColors.ink)
+                .foregroundStyle(relationshipFilter == nil ? LWColors.ink : LWColors.cinnabar)
                 .padding(.horizontal, 11)
                 .padding(.vertical, 6)
                 .background(
                     Capsule()
-                        .fill(Color.white.opacity(0.56))
-                        .overlay(Capsule().stroke(LWColors.cardStroke.opacity(0.35)))
+                        .fill(relationshipFilter == nil ? Color.white.opacity(0.56) : LWColors.cinnabar.opacity(0.08))
+                        .overlay(
+                            Capsule().stroke(
+                                relationshipFilter == nil ? LWColors.cardStroke.opacity(0.35) : LWColors.cinnabar.opacity(0.35)
+                            )
+                        )
                 )
         }
         .buttonStyle(.plain)
+        .accessibilityLabel("按关系筛选")
+        .accessibilityValue(relationshipFilter?.title ?? "全部关系")
     }
 
     private var relationshipFilters: some View {
