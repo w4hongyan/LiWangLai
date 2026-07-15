@@ -13,6 +13,7 @@ struct LedgerView: View {
     @State private var editingRecord: GiftRecord?
     @State private var pendingDelete: GiftRecord?
     @State private var showDeleteConfirm = false
+    @State private var dataErrorMessage: String?
 
     private var filteredRecords: [GiftRecord] {
         SearchService.filter(records, query: appState.ledgerSearchText)
@@ -113,7 +114,11 @@ struct LedgerView: View {
                                             editingRecord = record
                                         }
                                         Button("标记已回") {
-                                            RecordService.markReturned(record, in: modelContext)
+                                            do {
+                                                try RecordService.markReturned(record, in: modelContext)
+                                            } catch {
+                                                dataErrorMessage = error.localizedDescription
+                                            }
                                         }
                                         Button("删除", role: .destructive) {
                                             pendingDelete = record
@@ -142,7 +147,11 @@ struct LedgerView: View {
         .confirmationDialog("确认删除这条往来记录？", isPresented: $showDeleteConfirm, titleVisibility: .visible) {
             Button("删除记录", role: .destructive) {
                 if let pendingDelete {
-                    RecordService.delete(pendingDelete, in: modelContext)
+                    do {
+                        try RecordService.delete(pendingDelete, in: modelContext)
+                    } catch {
+                        dataErrorMessage = error.localizedDescription
+                    }
                 }
                 pendingDelete = nil
             }
@@ -151,6 +160,14 @@ struct LedgerView: View {
             }
         } message: {
             Text("删除后将无法在礼簿和人情详情中查看这笔记录。")
+        }
+        .alert("操作失败", isPresented: Binding(
+            get: { dataErrorMessage != nil },
+            set: { if !$0 { dataErrorMessage = nil } }
+        )) {
+            Button("知道了", role: .cancel) {}
+        } message: {
+            Text(dataErrorMessage ?? "请稍后再试。")
         }
     }
 

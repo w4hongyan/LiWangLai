@@ -6,14 +6,15 @@ struct LiWangLaiApp: App {
     @State private var appState = AppState()
 
     var sharedModelContainer: ModelContainer = {
-        let schema = Schema([
-            HostedGiftEvent.self,
-            GiftRecord.self
-        ])
+        let schema = Schema(versionedSchema: LiWangLaiSchemaV1.self)
         let configuration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
 
         do {
-            return try ModelContainer(for: schema, configurations: [configuration])
+            return try ModelContainer(
+                for: schema,
+                migrationPlan: LiWangLaiMigrationPlan.self,
+                configurations: [configuration]
+            )
         } catch {
             fatalError("Unable to create SwiftData container: \(error)")
         }

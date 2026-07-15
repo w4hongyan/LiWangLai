@@ -2,7 +2,9 @@ import Foundation
 import SwiftData
 
 enum RecordService {
-    static func insert(_ draft: GiftRecordDraft, in context: ModelContext) {
+    @discardableResult
+    static func insert(_ draft: GiftRecordDraft, in context: ModelContext) throws -> GiftRecord {
+        let supportsReturn = draft.type == .received
         let record = GiftRecord(
             personName: draft.personName.trimmingCharacters(in: .whitespacesAndNewlines),
             type: draft.type,
@@ -11,18 +13,25 @@ enum RecordService {
             relationship: draft.relationship,
             date: draft.date,
             note: draft.note.trimmingCharacters(in: .whitespacesAndNewlines),
-            isReturned: draft.isReturned,
-            returnReminderDate: draft.returnReminderDate,
+            isReturned: supportsReturn ? draft.isReturned : false,
+            returnReminderDate: supportsReturn ? draft.returnReminderDate : nil,
             location: draft.location,
            giftName: draft.giftName,
            contact: draft.contact,
             hostedEventID: draft.hostedEventID,
        )
        context.insert(record)
-        try? context.save()
+        do {
+            try context.save()
+            return record
+        } catch {
+            context.rollback()
+            throw error
+        }
     }
 
-    static func update(_ record: GiftRecord, with draft: GiftRecordDraft, in context: ModelContext) {
+    static func update(_ record: GiftRecord, with draft: GiftRecordDraft, in context: ModelContext) throws {
+        let supportsReturn = draft.type == .received
         record.personName = draft.personName.trimmingCharacters(in: .whitespacesAndNewlines)
         record.type = draft.type
         record.amountYuan = draft.amountYuan
@@ -30,25 +39,41 @@ enum RecordService {
         record.relationship = draft.relationship
         record.date = draft.date
         record.note = draft.note.trimmingCharacters(in: .whitespacesAndNewlines)
-        record.isReturned = draft.isReturned
-        record.returnReminderDate = draft.returnReminderDate
+        record.isReturned = supportsReturn ? draft.isReturned : false
+        record.returnReminderDate = supportsReturn ? draft.returnReminderDate : nil
         record.location = draft.location
         record.giftName = draft.giftName
        record.contact = draft.contact
         record.hostedEventID = draft.hostedEventID
        record.updatedAt = .now
-        try? context.save()
+        do {
+            try context.save()
+        } catch {
+            context.rollback()
+            throw error
+        }
     }
 
-    static func delete(_ record: GiftRecord, in context: ModelContext) {
+    static func delete(_ record: GiftRecord, in context: ModelContext) throws {
         context.delete(record)
-        try? context.save()
+        do {
+            try context.save()
+        } catch {
+            context.rollback()
+            throw error
+        }
     }
 
-    static func markReturned(_ record: GiftRecord, in context: ModelContext) {
+    static func markReturned(_ record: GiftRecord, in context: ModelContext) throws {
         record.isReturned = true
+        record.returnReminderDate = nil
         record.updatedAt = .now
-        try? context.save()
+        do {
+            try context.save()
+        } catch {
+            context.rollback()
+            throw error
+        }
     }
 
     static func people(from records: [GiftRecord]) -> [PersonSummary] {

@@ -17,11 +17,17 @@ struct AddRecordView: View {
    @State private var draft: GiftRecordDraft
    @State private var showMore = false
    @State private var showPostSave = false
+    @State private var previousRecordBeforeSave: GiftRecord?
+    @State private var saveErrorMessage: String?
     @Query(sort: \GiftRecord.date, order: .reverse) private var allRecords: [GiftRecord]
 
     private var lastRecordForPerson: GiftRecord? {
         allRecords
-            .filter { $0.personName == draft.personName && $0.personName != "" }
+            .filter {
+                $0.personName == draft.personName
+                    && $0.personName != ""
+                    && $0.id != editingRecord?.id
+            }
             .sorted { $0.date > $1.date }
             .first
     }
@@ -99,6 +105,20 @@ struct AddRecordView: View {
                     .foregroundStyle(LWColors.cinnabar)
                 }
             }
+        }
+        .onChange(of: draft.type) { _, type in
+            if type == .given {
+                draft.isReturned = false
+                draft.returnReminderDate = nil
+            }
+        }
+        .alert("保存失败", isPresented: Binding(
+            get: { saveErrorMessage != nil },
+            set: { if !$0 { saveErrorMessage = nil } }
+        )) {
+            Button("知道了", role: .cancel) {}
+        } message: {
+            Text(saveErrorMessage ?? "请稍后再试。")
         }
     }
 
@@ -299,34 +319,34 @@ struct AddRecordView: View {
                     TextField("可选填", text: $draft.location)
                         .font(.bodySong(12))
                 }
-                Toggle(isOn: $draft.isReturned) {
-                    Text("是否已回礼")
-                        .font(.titleSong(13))
-                        .foregroundStyle(LWColors.ink)
-                }
-                .tint(LWColors.cinnabar)
-                ChineseDatePickerButton(title: "回礼提醒", date: Binding(
-                    get: { draft.returnReminderDate ?? Date() },
-                    set: { draft.returnReminderDate = $0 }
-                ))
+                if draft.type == .received {
+                    Toggle(isOn: $draft.isReturned) {
+                        Text("是否已回礼")
+                            .font(.titleSong(13))
+                            .foregroundStyle(LWColors.ink)
+                    }
+                    .tint(LWColors.cinnabar)
+                    ChineseDatePickerButton(title: "回礼提醒", date: Binding(
+                        get: { draft.returnReminderDate ?? Date() },
+                        set: { draft.returnReminderDate = $0 }
+                    ))
 
-                Button {
-                    draft.returnReminderDate = nil
-                } label: {
-                    Label("不提醒", systemImage: "bell.slash")
-                        .font(.bodySong(12))
-                        .foregroundStyle(LWColors.muted)
+                    Button {
+                        draft.returnReminderDate = nil
+                    } label: {
+                        Label("不提醒", systemImage: "bell.slash")
+                            .font(.bodySong(12))
+                            .foregroundStyle(LWColors.muted)
+                    }
+                    .buttonStyle(.plain)
                 }
-                .buttonStyle(.plain)
             }
         }
    }
 
 
     private var postSaveCard: some View {
-        let personRecords = allRecords.filter { $0.personName == draft.personName }
-        let sortedRecords = personRecords.sorted { $0.date > $1.date }
-        let lastRecord = sortedRecords.first
+        let lastRecord = previousRecordBeforeSave
         let suggestionBase = max(100, (lastRecord?.amountYuan ?? draft.amountYuan) / 100 * 100)
 
         return VStack(alignment: .leading, spacing: 14) {
@@ -555,16 +575,21 @@ struct AddRecordView: View {
 
    private func save() {
        guard draft.isValid else { return }
-       if let editingRecord {
-           RecordService.update(editingRecord, with: draft, in: modelContext)
-           HapticsManager.success()
-           dismiss()
-       } else {
-           RecordService.insert(draft, in: modelContext)
-           HapticsManager.success()
-           withAnimation(.spring(response: 0.32, dampingFraction: 0.82)) {
-               showPostSave = true
+       do {
+           if let editingRecord {
+               try RecordService.update(editingRecord, with: draft, in: modelContext)
+               HapticsManager.success()
+               dismiss()
+           } else {
+               previousRecordBeforeSave = lastRecordForPerson
+               try RecordService.insert(draft, in: modelContext)
+               HapticsManager.success()
+               withAnimation(.spring(response: 0.32, dampingFraction: 0.82)) {
+                   showPostSave = true
+               }
            }
+       } catch {
+           saveErrorMessage = error.localizedDescription
        }
    }
 }

@@ -1,12 +1,17 @@
+import Foundation
+import SwiftData
 import SwiftUI
+import UniformTypeIdentifiers
 
 struct SettingsView: View {
     @Environment(AppState.self) private var appState
+    @Environment(\.modelContext) private var modelContext
+    @Query(sort: \HostedGiftEvent.date, order: .reverse) private var hostedEvents: [HostedGiftEvent]
     let records: [GiftRecord]
 
     @State private var exportURL: URL?
-    @State private var showExportError = false
-    @State private var exportErrorMessage = "请稍后再试，或检查设备存储空间。"
+    @State private var showBackupImporter = false
+    @State private var activeAlert: SettingsAlert?
     @State private var showAbout = false
     @State private var showPrivacy = false
     @State private var showTerms = false
@@ -23,7 +28,7 @@ struct SettingsView: View {
                 themeSection
                 otherSection
 
-                Text("· 数据仅保存在你的设备中 ·")
+                Text("· 数据仅保存在你的设备中 · 建议定期备份 ·")
                     .font(.bodySong(10))
                     .foregroundStyle(LWColors.warmGold)
                     .frame(maxWidth: .infinity)
@@ -34,10 +39,31 @@ struct SettingsView: View {
             .padding(.bottom, 12)
         }
         .background(PaperTexture())
-        .alert("导出失败", isPresented: $showExportError) {
-            Button("知道了", role: .cancel) {}
-        } message: {
-            Text(exportErrorMessage)
+        .alert(item: $activeAlert) { alert in
+            switch alert {
+            case .error(let message):
+                return Alert(
+                    title: Text("操作失败"),
+                    message: Text(message),
+                    dismissButton: .default(Text("知道了"))
+                )
+            case .restore(let backup):
+                let summary = backup.summary
+                return Alert(
+                    title: Text("恢复完整备份？"),
+                    message: Text("备份包含 \(summary.recordCount) 笔往来和 \(summary.eventCount) 场我家办的事。恢复会替换当前设备上的全部礼簿数据。"),
+                    primaryButton: .destructive(Text("替换并恢复")) {
+                        restore(backup)
+                    },
+                    secondaryButton: .cancel(Text("取消"))
+                )
+            case .restoreSucceeded(let summary):
+                return Alert(
+                    title: Text("恢复完成"),
+                    message: Text("已恢复 \(summary.recordCount) 笔往来和 \(summary.eventCount) 场我家办的事。"),
+                    dismissButton: .default(Text("知道了"))
+                )
+            }
         }
         .sheet(isPresented: $showAbout) {
             AboutView()
@@ -51,6 +77,13 @@ struct SettingsView: View {
         }
         .sheet(item: $exportURL) { url in
             ShareSheet(items: [url])
+        }
+        .fileImporter(
+            isPresented: $showBackupImporter,
+            allowedContentTypes: [.json],
+            allowsMultipleSelection: false
+        ) { result in
+            importBackup(result)
         }
     }
 
@@ -66,6 +99,26 @@ struct SettingsView: View {
                         exportExcel()
                     } label: {
                         settingsRowContent(icon: "tablecells", title: "导出 Excel", subtitle: records.isEmpty ? "暂无记录可导出" : "生成 .xlsx 文件，含完整往来字段")
+                    }
+                    .buttonStyle(.plain)
+                    .contentShape(Rectangle())
+
+                    Button {
+                        exportCompleteBackup()
+                    } label: {
+                        settingsRowContent(
+                            icon: "archivebox",
+                            title: "导出完整备份",
+                            subtitle: records.isEmpty && hostedEvents.isEmpty ? "暂无数据可备份" : "用于在礼往来中完整恢复"
+                        )
+                    }
+                    .buttonStyle(.plain)
+                    .contentShape(Rectangle())
+
+                    Button {
+                        showBackupImporter = true
+                    } label: {
+                        settingsRowContent(icon: "arrow.down.doc", title: "从备份恢复", subtitle: "恢复前会展示内容并再次确认")
                     }
                     .buttonStyle(.plain)
                     .contentShape(Rectangle())
@@ -296,15 +349,73 @@ struct SettingsView: View {
             exportURL = try ExportService.writeExcel(from: records)
             HapticsManager.success()
         } catch {
-            exportErrorMessage = (error as? LocalizedError)?.errorDescription ?? "请稍后再试，或检查设备存储空间。"
-            showExportError = true
+            activeAlert = .error((error as? LocalizedError)?.errorDescription ?? error.localizedDescription)
+        }
+    }
+
+    private func exportCompleteBackup() {
+        do {
+            exportURL = try BackupService.writeBackup(records: records, events: hostedEvents)
+            HapticsManager.success()
+        } catch {
+            activeAlert = .error((error as? LocalizedError)?.errorDescription ?? error.localizedDescription)
+        }
+    }
+
+    private func importBackup(_ result: Result<[URL], Error>) {
+        do {
+            guard let url = try result.get().first else { return }
+            let didAccess = url.startAccessingSecurityScopedResource()
+            defer {
+                if didAccess {
+                    url.stopAccessingSecurityScopedResource()
+                }
+            }
+            let data = try Data(contentsOf: url)
+            activeAlert = .restore(try BackupService.prepareRestore(from: data))
+        } catch let error as CocoaError where error.code == .userCancelled {
+            return
+        } catch {
+            activeAlert = .error((error as? LocalizedError)?.errorDescription ?? error.localizedDescription)
+        }
+    }
+
+    private func restore(_ backup: BackupService.PreparedBackup) {
+        do {
+            let summary = try BackupService.restore(backup, in: modelContext)
+            HapticsManager.success()
+            Task { @MainActor in
+                activeAlert = .restoreSucceeded(summary)
+            }
+        } catch {
+            activeAlert = .error((error as? LocalizedError)?.errorDescription ?? error.localizedDescription)
         }
     }
 
 }
 
+private enum SettingsAlert: Identifiable {
+    case error(String)
+    case restore(BackupService.PreparedBackup)
+    case restoreSucceeded(BackupService.Summary)
+
+    var id: String {
+        switch self {
+        case .error(let message): "error-\(message)"
+        case .restore(let backup): "restore-\(backup.summary.createdAt.timeIntervalSince1970)"
+        case .restoreSucceeded(let summary): "success-\(summary.createdAt.timeIntervalSince1970)"
+        }
+    }
+}
+
 private struct AboutView: View {
     @Environment(\.dismiss) private var dismiss
+
+    private var versionText: String {
+        let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "-"
+        let build = Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "-"
+        return "版本 \(version)（\(build)）· 数据默认保存在你的设备中"
+    }
 
     var body: some View {
         VStack(spacing: 12) {
@@ -318,7 +429,7 @@ private struct AboutView: View {
             Text("人情有数，往来有度")
                 .font(.bodySong(13))
                 .foregroundStyle(LWColors.warmGold)
-            Text("版本 1.0 · 数据默认保存在你的设备中")
+            Text(versionText)
                 .font(.bodySong(11))
                 .foregroundStyle(LWColors.muted)
             Button {
@@ -353,7 +464,7 @@ private let privacyContent = """
 
 系统权限：
 · Face ID / Touch ID：仅用于 App 本地解锁验证，生物特征数据由系统安全模块处理，App 无法读取。
-· 导出功能：仅在用户主动触发时生成 Excel 文件并保存至设备。
+· 导出功能：仅在用户主动触发时生成 Excel 或完整备份文件并保存至设备。
 
 如你对隐私保护有任何疑问，欢迎通过 App Store 评论区联系我们。
 """
@@ -365,7 +476,7 @@ private let termsContent = """
 礼往来是一款帮助你管理人情往来记录的工具 App。所有数据存储在设备本地，不会上传至云端或第三方服务器。
 
 二、数据安全
-请妥善保管你的设备。我们建议开启 Face ID / Touch ID 解锁以保护你的隐私。如设备丢失或损坏，存在数据丢失风险，建议定期通过导出功能备份数据。
+请妥善保管你的设备。我们建议开启 Face ID / Touch ID 解锁以保护你的隐私。如设备丢失或损坏，存在数据丢失风险，建议定期导出完整备份。
 
 三、免责声明
 本 App 仅提供记录与管理功能，不对任何因使用本 App 而产生的争议或损失承担责任。礼金金额、回礼建议等仅供参考，不构成任何建议。

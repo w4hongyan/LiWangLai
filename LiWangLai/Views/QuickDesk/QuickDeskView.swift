@@ -9,6 +9,7 @@ struct QuickDeskView: View {
     @State private var amount = "600"
     @State private var note = ""
     @State private var eventType: GiftEventType = .baby
+    @State private var saveErrorMessage: String?
 
     private var todayRecords: [GiftRecord] {
         records.filter { Calendar.current.isDateInToday($0.createdAt) }
@@ -25,6 +26,14 @@ struct QuickDeskView: View {
         .background(PaperTexture())
         .navigationTitle("横屏记账台")
         .navigationBarTitleDisplayMode(.inline)
+        .alert("保存失败", isPresented: Binding(
+            get: { saveErrorMessage != nil },
+            set: { if !$0 { saveErrorMessage = nil } }
+        )) {
+            Button("知道了", role: .cancel) {}
+        } message: {
+            Text(saveErrorMessage ?? "请稍后再试。")
+        }
     }
 
     private var landscapeBody: some View {
@@ -102,10 +111,14 @@ struct QuickDeskView: View {
         finalDraft.note = note
         finalDraft.eventType = eventType
         guard finalDraft.isValid else { return }
-        RecordService.insert(finalDraft, in: modelContext)
-        name = ""
-        amount = "600"
-        note = ""
-        HapticsManager.success()
+        do {
+            try RecordService.insert(finalDraft, in: modelContext)
+            name = ""
+            amount = "600"
+            note = ""
+            HapticsManager.success()
+        } catch {
+            saveErrorMessage = error.localizedDescription
+        }
     }
 }

@@ -23,7 +23,7 @@ struct RecordRow: View {
                     .font(.amountKai(13))
                     .foregroundStyle(record.type == .received ? LWColors.cinnabar : LWColors.ink)
                 Text(record.isReturned ? "已回" : (record.type == .received ? "未回" : "已记"))
-                    .font(.bodySong(9))
+                    .font(.bodySong(11))
                     .foregroundStyle(record.isReturned ? LWColors.muted : LWColors.cinnabar)
                     .padding(.horizontal, 5)
                     .padding(.vertical, 1)

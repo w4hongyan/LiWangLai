@@ -127,19 +127,19 @@ enum LWRadius {
 
 extension Font {
     static func titleSong(_ size: CGFloat) -> Font {
-        .custom("SourceHanSerifSC-SemiBold", size: size)
+        .custom("SourceHanSerifSC-SemiBold", size: size, relativeTo: .title2)
     }
 
     static func bodySong(_ size: CGFloat) -> Font {
-        .custom("SourceHanSerifSC-Regular", size: size)
+        .custom("SourceHanSerifSC-Regular", size: size, relativeTo: .body)
     }
 
     static func bodyKai(_ size: CGFloat) -> Font {
-        .custom("SourceHanSerifSC-Regular", size: size)
+        .custom("SourceHanSerifSC-Regular", size: size, relativeTo: .body)
     }
 
     static func amountKai(_ size: CGFloat) -> Font {
-        .custom("SourceHanSerifSC-Regular", size: size)
+        .custom("SourceHanSerifSC-Regular", size: size, relativeTo: .title3)
     }
 }
 

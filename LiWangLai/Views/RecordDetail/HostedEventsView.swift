@@ -106,11 +106,7 @@ struct HostedEventsView: View {
     }
 
    private func giftEvent(from hostedEvent: HostedGiftEvent) -> GiftEvent {
-       let eventRecords = records.filter { record in
-           record.type == .received
-               && record.eventType == hostedEvent.eventType
-               && Calendar.current.isDate(record.date, inSameDayAs: hostedEvent.date)
-       }
+       let eventRecords = HostedEventService.records(for: hostedEvent, from: records)
        return GiftEvent(
            title: hostedEvent.title,
            monthKey: hostedEvent.date.lwDayText,
@@ -130,6 +126,7 @@ private struct NewHostedEventSheet: View {
     @State private var eventType: GiftEventType = .wedding
     @State private var date = Date()
     @State private var note = ""
+    @State private var saveErrorMessage: String?
 
     private var effectiveTitle: String {
         let trimmed = title.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -194,20 +191,37 @@ private struct NewHostedEventSheet: View {
             }
 
             SealButton(title: "保存一场事", systemImage: "checkmark.seal", fontSize: 14, verticalPadding: 10, cornerRadius: 12) {
-                let event = HostedGiftEvent(
-                    title: effectiveTitle,
-                    eventType: eventType,
-                    date: date,
-                    note: note.trimmingCharacters(in: .whitespacesAndNewlines)
-                )
-                modelContext.insert(event)
-                try? modelContext.save()
-                HapticsManager.success()
-                dismiss()
+                save()
             }
         }
         .padding(20)
         .background(PaperTexture())
+        .alert("保存失败", isPresented: Binding(
+            get: { saveErrorMessage != nil },
+            set: { if !$0 { saveErrorMessage = nil } }
+        )) {
+            Button("知道了", role: .cancel) {}
+        } message: {
+            Text(saveErrorMessage ?? "请稍后再试。")
+        }
+    }
+
+    private func save() {
+        let event = HostedGiftEvent(
+            title: effectiveTitle,
+            eventType: eventType,
+            date: date,
+            note: note.trimmingCharacters(in: .whitespacesAndNewlines)
+        )
+        modelContext.insert(event)
+        do {
+            try modelContext.save()
+            HapticsManager.success()
+            dismiss()
+        } catch {
+            modelContext.rollback()
+            saveErrorMessage = error.localizedDescription
+        }
     }
 
     private func fieldRow<Content: View>(_ title: String, @ViewBuilder content: () -> Content) -> some View {

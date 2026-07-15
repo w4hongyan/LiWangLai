@@ -7,7 +7,7 @@ struct ExportServiceTests {
     @Test func emptyRecordsThrowsError() {
         do {
             _ = try ExportService.writeExcel(from: [])
-            #expect(false, "Expected error for empty records")
+            Issue.record("Expected error for empty records")
         } catch {
             #expect((error as? ExportService.ExportError) == ExportService.ExportError.emptyRecords)
         }

@@ -164,7 +164,7 @@ struct PeopleView: View {
                     SealStamp(text: String(summary.name.prefix(1)), size: 44, color: summary.pendingReturnCount > 0 ? LWColors.cinnabar : LWColors.warmGold)
                     if summary.pendingReturnCount > 0 {
                         Text("待")
-                            .font(.bodySong(8).weight(.semibold))
+                            .font(.bodySong(10).weight(.semibold))
                             .foregroundStyle(.white)
                             .frame(width: 16, height: 16)
                             .background(LWColors.cinnabar, in: Circle())

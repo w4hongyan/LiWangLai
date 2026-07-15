@@ -8,6 +8,7 @@ struct RecordDetailView: View {
 
     @State private var showEdit = false
     @State private var showDeleteConfirm = false
+    @State private var dataErrorMessage: String?
 
     var body: some View {
         ScrollView {
@@ -127,10 +128,22 @@ struct RecordDetailView: View {
         }
         .confirmationDialog("确认删除这条往来记录？", isPresented: $showDeleteConfirm, titleVisibility: .visible) {
             Button("删除记录", role: .destructive) {
-                RecordService.delete(record, in: modelContext)
-                dismiss()
+                do {
+                    try RecordService.delete(record, in: modelContext)
+                    dismiss()
+                } catch {
+                    dataErrorMessage = error.localizedDescription
+                }
             }
             Button("取消", role: .cancel) {}
+        }
+        .alert("删除失败", isPresented: Binding(
+            get: { dataErrorMessage != nil },
+            set: { if !$0 { dataErrorMessage = nil } }
+        )) {
+            Button("知道了", role: .cancel) {}
+        } message: {
+            Text(dataErrorMessage ?? "请稍后再试。")
         }
     }
 

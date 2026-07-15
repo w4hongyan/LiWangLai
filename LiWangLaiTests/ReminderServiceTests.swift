@@ -1,5 +1,6 @@
 import Testing
 import Foundation
+import SwiftData
 @testable import LiWangLai
 
 struct ReminderServiceTests {
@@ -29,6 +30,18 @@ struct ReminderServiceTests {
         )
         let reminders = ReminderService.reminders(from: [record])
         #expect(reminders.isEmpty)
+    }
+
+    @Test func givenRecordWithReminderDateDoesNotAppear() {
+        let record = GiftRecord(
+            personName: "李四",
+            type: .given,
+            amountYuan: 800,
+            eventType: .baby,
+            relationship: .relative,
+            returnReminderDate: Date(timeIntervalSince1970: 2_000_000)
+        )
+        #expect(ReminderService.reminders(from: [record]).isEmpty)
     }
 
     @Test func returnedRecordDoesNotAppearInReminders() {
@@ -84,5 +97,28 @@ struct ReminderServiceTests {
     @Test func emptyRecordsReturnsEmpty() {
         let reminders = ReminderService.reminders(from: [])
         #expect(reminders.isEmpty)
+    }
+
+    @MainActor
+    @Test func markingReturnedClearsReminderAndRemovesItem() throws {
+        let schema = Schema([HostedGiftEvent.self, GiftRecord.self])
+        let configuration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: true)
+        let container = try ModelContainer(for: schema, configurations: [configuration])
+        let record = GiftRecord(
+            personName: "待处理",
+            type: .received,
+            amountYuan: 600,
+            eventType: .wedding,
+            relationship: .friend,
+            returnReminderDate: Date(timeIntervalSince1970: 2_000_000)
+        )
+        container.mainContext.insert(record)
+        try container.mainContext.save()
+
+        try RecordService.markReturned(record, in: container.mainContext)
+
+        #expect(record.isReturned)
+        #expect(record.returnReminderDate == nil)
+        #expect(ReminderService.reminders(from: [record]).isEmpty)
     }
 }

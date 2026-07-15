@@ -28,8 +28,8 @@ enum SampleData {
                 amountYuan: amount,
                 eventType: event,
                 relationship: relationship,
-                note: note,
                 date: date,
+                note: note,
                 isReturned: type == .given
             )
             modelContext.insert(record)

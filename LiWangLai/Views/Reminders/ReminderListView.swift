@@ -6,6 +6,7 @@ struct ReminderListView: View {
     @Environment(\.modelContext) private var modelContext
     let records: [GiftRecord]
     @State private var filter: ReminderFilter = .all
+    @State private var dataErrorMessage: String?
 
     private var reminders: [ReminderItem] {
         ReminderService.reminders(from: records).filter { item in
@@ -13,7 +14,6 @@ struct ReminderListView: View {
             case .all: true
             case .returnGift: item.record.needsReturn
             case .date: item.isDateReminder
-            case .custom: !item.record.needsReturn && !item.isDateReminder
             }
         }
     }
@@ -77,7 +77,7 @@ struct ReminderListView: View {
                             GoldLineDivider()
                             HStack {
                                 Button {
-                                    RecordService.markReturned(item.record, in: modelContext)
+                                    markHandled(item.record)
                                 } label: {
                                     Label("标记已处理", systemImage: "checkmark.circle")
                                 }
@@ -106,6 +106,14 @@ struct ReminderListView: View {
             .padding(.bottom, 10)
         }
         .background(PaperTexture())
+        .alert("处理失败", isPresented: Binding(
+            get: { dataErrorMessage != nil },
+            set: { if !$0 { dataErrorMessage = nil } }
+        )) {
+            Button("知道了", role: .cancel) {}
+        } message: {
+            Text(dataErrorMessage ?? "请稍后再试。")
+        }
     }
 
     private var emptyMessage: String {
@@ -119,8 +127,6 @@ struct ReminderListView: View {
             return "没有待回礼记录，心里可以稍微松一口气。"
         case .date:
             return "还没有设置日期提醒。"
-        case .custom:
-            return "暂无自定义提醒。"
         }
     }
 
@@ -166,11 +172,21 @@ struct ReminderListView: View {
     }
 }
 
+private extension ReminderListView {
+    func markHandled(_ record: GiftRecord) {
+        do {
+            try RecordService.markReturned(record, in: modelContext)
+            HapticsManager.success()
+        } catch {
+            dataErrorMessage = error.localizedDescription
+        }
+    }
+}
+
 private enum ReminderFilter: String, CaseIterable, Identifiable {
     case all
     case returnGift
     case date
-    case custom
 
     var id: String { rawValue }
     var title: String {
@@ -178,7 +194,6 @@ private enum ReminderFilter: String, CaseIterable, Identifiable {
         case .all: "全部"
         case .returnGift: "待回礼"
         case .date: "日期提醒"
-        case .custom: "自定义"
         }
     }
 }

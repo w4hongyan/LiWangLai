@@ -3,7 +3,7 @@ import Foundation
 enum ReminderService {
     static func reminders(from records: [GiftRecord]) -> [ReminderItem] {
         records
-            .filter { $0.needsReturn || $0.returnReminderDate != nil }
+            .filter { $0.type == .received && !$0.isReturned }
             .sorted { ($0.returnReminderDate ?? $0.date) < ($1.returnReminderDate ?? $1.date) }
             .map { record in
                 let title: String

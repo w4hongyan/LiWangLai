@@ -4,9 +4,12 @@ import SwiftUI
 struct RootView: View {
     @Environment(AppState.self) private var appState
     @Query(sort: \GiftRecord.date, order: .reverse) private var records: [GiftRecord]
+    @Query(sort: \HostedGiftEvent.date, order: .reverse) private var hostedEvents: [HostedGiftEvent]
+    @Environment(\.modelContext) private var modelContext
     @Environment(\.scenePhase) private var scenePhase
 
     @State private var isLocked: Bool
+    @State private var migrationErrorMessage: String?
 
     init() {
         let enabled = UserDefaults.standard.bool(forKey: "liwanglai.biometricLock")
@@ -65,6 +68,25 @@ struct RootView: View {
                 isLocked = true
             }
         }
+        .task {
+            do {
+                try HostedEventService.backfillUnambiguousLinks(
+                    events: hostedEvents,
+                    records: records,
+                    in: modelContext
+                )
+            } catch {
+                migrationErrorMessage = error.localizedDescription
+            }
+        }
+        .alert("数据整理未完成", isPresented: Binding(
+            get: { migrationErrorMessage != nil },
+            set: { if !$0 { migrationErrorMessage = nil } }
+        )) {
+            Button("知道了", role: .cancel) {}
+        } message: {
+            Text("旧版的一场事关联暂未整理完成，你的原始礼簿记录仍会保留。\n\n\(migrationErrorMessage ?? "")")
+        }
     }
 }
 
@@ -97,7 +119,7 @@ private struct TabBar: View {
                 Image(systemName: selectedTab == tab ? "\(image).fill" : image)
                     .font(.system(size: 15))
                 Text(title)
-                    .font(.custom("SourceHanSerifSC-Regular", size: 8.5))
+                    .font(.bodySong(10))
             }
             .foregroundStyle(selectedTab == tab ? LWColors.cinnabar : LWColors.inkSoft)
             .frame(maxWidth: .infinity)
@@ -117,7 +139,7 @@ private struct TabBar: View {
                     .frame(width: 40, height: 40)
                     .shadow(color: LWColors.cinnabar.opacity(0.14), radius: 5, x: 0, y: 3)
                 Text("入簿")
-                    .font(.custom("SourceHanSerifSC-Regular", size: 8.5))
+                    .font(.bodySong(10))
                     .foregroundStyle(selectedTab == .add ? LWColors.cinnabar : LWColors.inkSoft)
             }
             .frame(maxWidth: .infinity)
