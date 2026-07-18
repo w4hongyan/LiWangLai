@@ -79,13 +79,19 @@ struct ReminderListView: View {
                                 Button {
                                     markHandled(item.record)
                                 } label: {
-                                    Label("标记已处理", systemImage: "checkmark.circle")
+                                    Label(item.record.type == .received ? "标记已回礼" : "标记已送礼", systemImage: "checkmark.circle")
                                 }
-                                Spacer()
-                                NavigationLink {
-                                    AddRecordView(presetName: item.record.personName, presetType: .given)
-                                } label: {
-                                    Label("新增送礼记录", systemImage: "gift")
+                                if item.record.type == .received {
+                                    Spacer()
+                                    NavigationLink {
+                                        AddRecordView(
+                                            presetName: item.record.personName,
+                                            presetType: .given,
+                                            returningRecord: item.record
+                                        )
+                                    } label: {
+                                        Label("新增送礼记录", systemImage: "gift")
+                                    }
                                 }
                             }
                             .font(.bodySong(12))
@@ -142,7 +148,7 @@ struct ReminderListView: View {
 
             HStack(alignment: .top) {
                 VStack(alignment: .leading, spacing: 6) {
-                    Text("回礼提醒")
+                    Text("心意提醒")
                         .font(.titleSong(40))
                         .foregroundStyle(LWColors.ink)
                     Text("别忘心意往来")
@@ -175,7 +181,7 @@ struct ReminderListView: View {
 private extension ReminderListView {
     func markHandled(_ record: GiftRecord) {
         do {
-            try RecordService.markReturned(record, in: modelContext)
+            try RecordService.completeReminder(record, in: modelContext)
             HapticsManager.success()
         } catch {
             dataErrorMessage = error.localizedDescription

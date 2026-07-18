@@ -28,6 +28,79 @@ struct BackupServiceTests {
         #expect(backup.summary.eventCount == 1)
     }
 
+    @Test func invalidBackupDataIsRejected() {
+        #expect(throws: BackupService.BackupError.invalidFile) {
+            try BackupService.prepareRestore(from: Data("not-json".utf8))
+        }
+    }
+
+    @Test func unsupportedBackupVersionIsRejected() {
+        let json = """
+        {
+          "formatVersion": 999,
+          "createdAt": "2026-07-17T00:00:00Z",
+          "records": [],
+          "events": []
+        }
+        """
+
+        #expect(throws: BackupService.BackupError.unsupportedVersion(999)) {
+            try BackupService.prepareRestore(from: Data(json.utf8))
+        }
+    }
+
+    @Test func emptyRestoreFileIsRejected() {
+        let json = """
+        {
+          "formatVersion": 1,
+          "createdAt": "2026-07-17T00:00:00Z",
+          "records": [],
+          "events": []
+        }
+        """
+
+        #expect(throws: BackupService.BackupError.invalidFile) {
+            try BackupService.prepareRestore(from: Data(json.utf8))
+        }
+    }
+
+    @Test func writeBackupCreatesJSONFile() throws {
+        let record = GiftRecord(
+            personName: "备份测试",
+            type: .received,
+            amountYuan: 600,
+            eventType: .wedding,
+            relationship: .friend
+        )
+
+        let url = try BackupService.writeBackup(records: [record], events: [])
+        defer { try? FileManager.default.removeItem(at: url) }
+
+        #expect(url.pathExtension == "json")
+        #expect(FileManager.default.fileExists(atPath: url.path))
+        #expect(try Data(contentsOf: url).isEmpty == false)
+    }
+
+    @Test func restoreRejectsDuplicateRecordAndEventIDs() throws {
+        let record = GiftRecord(
+            personName: "重复记录",
+            type: .received,
+            amountYuan: 600,
+            eventType: .wedding,
+            relationship: .friend
+        )
+        let duplicatedRecords = try BackupService.makeData(records: [record, record], events: [])
+        #expect(throws: BackupService.BackupError.invalidFile) {
+            try BackupService.prepareRestore(from: duplicatedRecords)
+        }
+
+        let event = HostedGiftEvent(title: "重复活动", eventType: .wedding)
+        let duplicatedEvents = try BackupService.makeData(records: [], events: [event, event])
+        #expect(throws: BackupService.BackupError.invalidFile) {
+            try BackupService.prepareRestore(from: duplicatedEvents)
+        }
+    }
+
     @MainActor
     @Test func restoreReplacesExistingDataAndPreservesLinks() throws {
         let backupEvent = HostedGiftEvent(title: "备份里的婚礼", eventType: .wedding)
@@ -110,5 +183,53 @@ struct BackupServiceTests {
 
         #expect(records.count == 1)
         #expect(records.first?.personName == "旧版本数据")
+    }
+
+    @MainActor
+    @Test func modelBootstrapUsesPersistentStoreWhenAvailable() throws {
+        let container = try makeInMemoryContainer()
+        let result = ModelContainerBootstrap.make(
+            persistentStore: { container },
+            fallbackStore: { throw BootstrapTestError.fallbackShouldNotRun }
+        )
+
+        #expect(result.errorDescription == nil)
+        #expect(result.container === container)
+    }
+
+    @MainActor
+    @Test func modelBootstrapShowsRecoveryWithoutOverwritingData() throws {
+        let fallback = try makeInMemoryContainer()
+        let result = ModelContainerBootstrap.make(
+            persistentStore: { throw BootstrapTestError.persistentStoreFailed },
+            fallbackStore: { fallback }
+        )
+
+        #expect(result.errorDescription == "测试数据库无法打开")
+        #expect(result.container === fallback)
+        #expect(try fallback.mainContext.fetch(FetchDescriptor<GiftRecord>()).isEmpty)
+    }
+
+    @MainActor
+    private func makeInMemoryContainer() throws -> ModelContainer {
+        let schema = Schema(versionedSchema: LiWangLaiSchemaV1.self)
+        let configuration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: true)
+        return try ModelContainer(
+            for: schema,
+            migrationPlan: LiWangLaiMigrationPlan.self,
+            configurations: [configuration]
+        )
+    }
+}
+
+private enum BootstrapTestError: LocalizedError {
+    case persistentStoreFailed
+    case fallbackShouldNotRun
+
+    var errorDescription: String? {
+        switch self {
+        case .persistentStoreFailed: "测试数据库无法打开"
+        case .fallbackShouldNotRun: "不应创建备用数据库"
+        }
     }
 }

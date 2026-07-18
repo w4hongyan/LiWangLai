@@ -3,6 +3,7 @@ import SwiftUI
 struct RecordRow: View {
     let record: GiftRecord
     var showChevron = true
+    var showsReturnStatus = true
 
     var body: some View {
         HStack(spacing: 8) {
@@ -12,7 +13,7 @@ struct RecordRow: View {
                     .font(.bodyKai(15))
                     .foregroundStyle(LWColors.ink)
                     .lineLimit(1)
-                Text(record.date.lwDayText)
+                Text(record.date.lwDualDateText)
                     .font(.bodySong(11))
                     .foregroundStyle(LWColors.muted)
                     .lineLimit(1)
@@ -22,15 +23,17 @@ struct RecordRow: View {
                 Text(record.amountYuan.yuanText)
                     .font(.amountKai(13))
                     .foregroundStyle(record.type == .received ? LWColors.cinnabar : LWColors.ink)
-                Text(record.isReturned ? "已回" : (record.type == .received ? "未回" : "已记"))
-                    .font(.bodySong(11))
-                    .foregroundStyle(record.isReturned ? LWColors.muted : LWColors.cinnabar)
-                    .padding(.horizontal, 5)
-                    .padding(.vertical, 1)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 3)
-                            .stroke((record.isReturned ? LWColors.muted : LWColors.cinnabar).opacity(0.65), lineWidth: 0.8)
-                    )
+                if showsReturnStatus {
+                    Text(record.isReturned ? "已回" : (record.type == .received ? "未回" : "已记"))
+                        .font(.bodySong(11))
+                        .foregroundStyle(record.isReturned ? LWColors.muted : LWColors.cinnabar)
+                        .padding(.horizontal, 5)
+                        .padding(.vertical, 1)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 3)
+                                .stroke((record.isReturned ? LWColors.muted : LWColors.cinnabar).opacity(0.65), lineWidth: 0.8)
+                        )
+                }
             }
             if showChevron {
                 Image(systemName: "chevron.right")

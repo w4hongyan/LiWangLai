@@ -4,11 +4,14 @@ import SwiftUI
 struct QuickDeskView: View {
     @Environment(\.modelContext) private var modelContext
     @Query(sort: \GiftRecord.createdAt, order: .reverse) private var records: [GiftRecord]
+    @Query(sort: \HostedGiftEvent.date, order: .reverse) private var hostedEvents: [HostedGiftEvent]
 
     @State private var name = ""
     @State private var amount = "600"
     @State private var note = ""
     @State private var eventType: GiftEventType = .baby
+    @State private var selectedHostedEventID: UUID?
+    @State private var newHostedEventTitle = ""
     @State private var saveErrorMessage: String?
 
     private var todayRecords: [GiftRecord] {
@@ -26,6 +29,12 @@ struct QuickDeskView: View {
         .background(PaperTexture())
         .navigationTitle("横屏记账台")
         .navigationBarTitleDisplayMode(.inline)
+        .onChange(of: selectedHostedEventID) { _, eventID in
+            guard let eventID,
+                  let event = hostedEvents.first(where: { $0.id == eventID }) else { return }
+            newHostedEventTitle = ""
+            eventType = event.eventType
+        }
         .alert("保存失败", isPresented: Binding(
             get: { saveErrorMessage != nil },
             set: { if !$0 { saveErrorMessage = nil } }
@@ -47,6 +56,7 @@ struct QuickDeskView: View {
                     GoldLineDivider()
                     AmountTextField(amountText: $amount)
                     chipEvents
+                    hostedEventSelection
                     TextField("临时备注", text: $note)
                         .font(.bodySong(18))
                     SealButton(title: "保存并继续", systemImage: "plus.circle") {
@@ -95,11 +105,43 @@ struct QuickDeskView: View {
         HStack {
             ForEach([GiftEventType.wedding, .baby, .housewarming, .birthday, .funeral], id: \.id) { event in
                 Button {
+                    if hostedEvents.first(where: { $0.id == selectedHostedEventID })?.eventType != event {
+                        selectedHostedEventID = nil
+                    }
                     eventType = event
                 } label: {
                     RelationshipTag(title: event.title, isSelected: eventType == event)
                 }
                 .buttonStyle(.plain)
+            }
+        }
+    }
+
+    private var hostedEventSelection: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 10) {
+                Text("一场事")
+                    .font(.titleSong(15))
+                    .foregroundStyle(LWColors.ink)
+                Picker("一场事", selection: $selectedHostedEventID) {
+                    Text("自动新建 · \(HostedEventService.defaultTitle(for: eventType))")
+                        .tag(nil as UUID?)
+                    ForEach(hostedEvents) { event in
+                        Text("\(event.title) · \(event.date.lwDayText)")
+                            .tag(event.id as UUID?)
+                    }
+                }
+                .labelsHidden()
+                .tint(LWColors.cinnabar)
+                Spacer()
+            }
+            if selectedHostedEventID == nil {
+                TextField(
+                    "场次名称（默认：\(HostedEventService.defaultTitle(for: eventType))）",
+                    text: $newHostedEventTitle
+                )
+                .font(.bodySong(14))
+                .textInputAutocapitalization(.never)
             }
         }
     }
@@ -110,9 +152,14 @@ struct QuickDeskView: View {
         finalDraft.amountText = amount
         finalDraft.note = note
         finalDraft.eventType = eventType
+        finalDraft.hostedEventID = selectedHostedEventID
+        finalDraft.hostedEventTitle = newHostedEventTitle
         guard finalDraft.isValid else { return }
         do {
-            try RecordService.insert(finalDraft, in: modelContext)
+            let record = try RecordService.insert(finalDraft, in: modelContext)
+            selectedHostedEventID = record.hostedEventID
+            newHostedEventTitle = ""
+            eventType = record.eventType
             name = ""
             amount = "600"
             note = ""

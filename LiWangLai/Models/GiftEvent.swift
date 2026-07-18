@@ -36,22 +36,32 @@ final class HostedGiftEvent {
 }
 
 struct GiftEvent: Identifiable {
-    var id: String { "\(title)-\(monthKey)" }
+    var id: String { hostedEventID?.uuidString ?? "\(title)-\(monthKey)" }
     let title: String
     let monthKey: String
-   let eventType: GiftEventType?
-   let date: Date?
-   let records: [GiftRecord]
-   let hostedEventID: UUID?
+    let eventType: GiftEventType?
+    let date: Date?
+    let records: [GiftRecord]
+    let hostedEventID: UUID?
+    let hostedEvent: HostedGiftEvent?
 
-   init(title: String, monthKey: String, eventType: GiftEventType? = nil, date: Date? = nil, records: [GiftRecord], hostedEventID: UUID? = nil) {
+    init(
+        title: String,
+        monthKey: String,
+        eventType: GiftEventType? = nil,
+        date: Date? = nil,
+        records: [GiftRecord],
+        hostedEventID: UUID? = nil,
+        hostedEvent: HostedGiftEvent? = nil
+    ) {
         self.title = title
-       self.monthKey = monthKey
-       self.eventType = eventType
-       self.date = date
-       self.records = records
+        self.monthKey = monthKey
+        self.eventType = eventType
+        self.date = date
+        self.records = records
         self.hostedEventID = hostedEventID
-   }
+        self.hostedEvent = hostedEvent
+    }
 
     var totalAmount: Int {
         records.reduce(0) { $0 + $1.amountYuan }

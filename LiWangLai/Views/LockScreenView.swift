@@ -27,7 +27,7 @@ struct LockScreenView: View {
 
                 SealButton(
                     title: "解锁查看礼簿",
-                    systemImage: BiometricService.isAvailable ? "faceid" : "lock"
+                    systemImage: BiometricService.hasBiometrics ? "faceid" : "lock"
                 ) {
                     authenticate()
                 }

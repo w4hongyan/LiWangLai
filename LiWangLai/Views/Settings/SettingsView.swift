@@ -11,10 +11,14 @@ struct SettingsView: View {
 
     @State private var exportURL: URL?
     @State private var showBackupImporter = false
+    @State private var showExcelImporter = false
+    @State private var dataSheet: DataManagementSheet?
     @State private var activeAlert: SettingsAlert?
     @State private var showAbout = false
     @State private var showPrivacy = false
     @State private var showTerms = false
+    @State private var notificationsEnabled = LocalNotificationService.isEnabled
+    @State private var notificationStatus = "正在读取状态"
 
     var body: some View {
         @Bindable var appState = appState
@@ -24,6 +28,7 @@ struct SettingsView: View {
                 settingsHeader
                 appCard
                 dataSection
+                notificationSection
                 privacySection(appState: appState)
                 themeSection
                 otherSection
@@ -78,12 +83,31 @@ struct SettingsView: View {
         .sheet(item: $exportURL) { url in
             ShareSheet(items: [url])
         }
+        .sheet(item: $dataSheet) { sheet in
+            switch sheet {
+            case .duplicates:
+                DuplicateMergeView(records: records)
+            case .excel(let prepared):
+                ExcelImportPreviewView(prepared: prepared)
+            }
+        }
         .fileImporter(
             isPresented: $showBackupImporter,
             allowedContentTypes: [.json],
             allowsMultipleSelection: false
         ) { result in
             importBackup(result)
+        }
+        .fileImporter(
+            isPresented: $showExcelImporter,
+            allowedContentTypes: [UTType(filenameExtension: "xlsx") ?? .data],
+            allowsMultipleSelection: false
+        ) { result in
+            importExcel(result)
+        }
+        .task {
+            notificationStatus = await LocalNotificationService.authorizationDescription()
+            notificationsEnabled = LocalNotificationService.isEnabled
         }
     }
 
@@ -99,6 +123,27 @@ struct SettingsView: View {
                         exportExcel()
                     } label: {
                         settingsRowContent(icon: "tablecells", title: "导出 Excel", subtitle: records.isEmpty ? "暂无记录可导出" : "生成 .xlsx 文件，含完整往来字段")
+                    }
+                    .buttonStyle(.plain)
+                    .contentShape(Rectangle())
+
+                    Button {
+                        showExcelImporter = true
+                    } label: {
+                        settingsRowContent(icon: "square.and.arrow.down", title: "导入 Excel", subtitle: "先预览，重复项自动跳过，不覆盖现有数据")
+                    }
+                    .buttonStyle(.plain)
+                    .contentShape(Rectangle())
+
+                    Button {
+                        dataSheet = .duplicates
+                    } label: {
+                        let duplicateCount = DuplicateMergeService.groups(in: records).reduce(0) { $0 + $1.duplicateCount }
+                        settingsRowContent(
+                            icon: "rectangle.on.rectangle.angled",
+                            title: "去重合并",
+                            subtitle: duplicateCount == 0 ? "未发现明确重复记录" : "发现 \(duplicateCount) 笔明确重复记录"
+                        )
                     }
                     .buttonStyle(.plain)
                     .contentShape(Rectangle())
@@ -123,6 +168,43 @@ struct SettingsView: View {
                     .buttonStyle(.plain)
                     .contentShape(Rectangle())
                 }
+            }
+        }
+    }
+
+    private var notificationSection: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text("送礼与回礼提醒")
+                .font(.bodySong(12))
+                .foregroundStyle(LWColors.inkSoft)
+                .padding(.leading, 10)
+            PaperCard(padding: 0) {
+                HStack(spacing: 10) {
+                    Image(systemName: "bell.badge")
+                        .font(.system(size: 15, weight: .medium))
+                        .foregroundStyle(LWColors.warmGold)
+                        .frame(width: 20)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("系统通知")
+                            .font(.bodySong(13))
+                            .foregroundStyle(LWColors.ink)
+                        Text("\(notificationStatus) · 在入簿的更多信息中设置日期")
+                            .font(.bodySong(10))
+                            .foregroundStyle(LWColors.muted)
+                            .lineLimit(1)
+                    }
+                    Spacer()
+                    Toggle("", isOn: Binding(
+                        get: { notificationsEnabled },
+                        set: { enabled in
+                            Task { await updateNotifications(enabled) }
+                        }
+                    ))
+                    .tint(LWColors.cinnabar)
+                    .labelsHidden()
+                }
+                .padding(.horizontal, 12)
+                .padding(.vertical, 9)
             }
         }
     }
@@ -392,6 +474,54 @@ struct SettingsView: View {
         }
     }
 
+    private func importExcel(_ result: Result<[URL], Error>) {
+        do {
+            guard let url = try result.get().first else { return }
+            let didAccess = url.startAccessingSecurityScopedResource()
+            defer {
+                if didAccess { url.stopAccessingSecurityScopedResource() }
+            }
+            let data = try Data(contentsOf: url)
+            dataSheet = .excel(try ExcelImportService.prepare(from: data, existingRecords: records))
+        } catch let error as CocoaError where error.code == .userCancelled {
+            return
+        } catch {
+            activeAlert = .error((error as? LocalizedError)?.errorDescription ?? error.localizedDescription)
+        }
+    }
+
+    @MainActor
+    private func updateNotifications(_ enabled: Bool) async {
+        do {
+            if enabled {
+                let granted = try await LocalNotificationService.requestAndEnable(records: records)
+                notificationsEnabled = granted
+                if !granted {
+                    activeAlert = .error("通知权限未开启。可前往 iPhone“设置 → 通知 → 礼往来”重新允许。")
+                }
+            } else {
+                await LocalNotificationService.disable()
+                notificationsEnabled = false
+            }
+            notificationStatus = await LocalNotificationService.authorizationDescription()
+        } catch {
+            notificationsEnabled = false
+            activeAlert = .error(error.localizedDescription)
+        }
+    }
+
+}
+
+private enum DataManagementSheet: Identifiable {
+    case duplicates
+    case excel(ExcelImportService.PreparedImport)
+
+    var id: String {
+        switch self {
+        case .duplicates: "duplicates"
+        case .excel(let prepared): "excel-\(prepared.id.uuidString)"
+        }
+    }
 }
 
 private enum SettingsAlert: Identifiable {
@@ -465,6 +595,7 @@ private let privacyContent = """
 系统权限：
 · Face ID / Touch ID：仅用于 App 本地解锁验证，生物特征数据由系统安全模块处理，App 无法读取。
 · 导出功能：仅在用户主动触发时生成 Excel 或完整备份文件并保存至设备。
+· 通知：仅在用户主动开启后，由 iPhone 在设备本地安排送礼或回礼提醒。
 
 如你对隐私保护有任何疑问，欢迎通过 App Store 评论区联系我们。
 """

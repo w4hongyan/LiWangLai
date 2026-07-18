@@ -72,6 +72,13 @@ enum BackupService {
         guard envelope.formatVersion == formatVersion else {
             throw BackupError.unsupportedVersion(envelope.formatVersion)
         }
+        guard !envelope.records.isEmpty || !envelope.events.isEmpty else {
+            throw BackupError.invalidFile
+        }
+        guard Set(envelope.records.map(\.id)).count == envelope.records.count,
+              Set(envelope.events.map(\.id)).count == envelope.events.count else {
+            throw BackupError.invalidFile
+        }
         return PreparedBackup(envelope: envelope)
     }
 

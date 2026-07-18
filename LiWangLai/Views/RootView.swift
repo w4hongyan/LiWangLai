@@ -11,6 +11,15 @@ struct RootView: View {
     @State private var isLocked: Bool
     @State private var migrationErrorMessage: String?
 
+    private var reminderRevision: String {
+        records
+            .sorted { $0.id.uuidString < $1.id.uuidString }
+            .map {
+                "\($0.id.uuidString):\($0.returnReminderDate?.timeIntervalSinceReferenceDate ?? 0):\($0.isReturned):\($0.updatedAt.timeIntervalSinceReferenceDate)"
+            }
+            .joined(separator: "|")
+    }
+
     init() {
         let enabled = UserDefaults.standard.bool(forKey: "liwanglai.biometricLock")
         _isLocked = State(initialValue: enabled)
@@ -51,15 +60,15 @@ struct RootView: View {
 
             TabBar(selectedTab: $appState.selectedTab)
 
-            if isLocked, appState.isBiometricLockEnabled, BiometricService.isAvailable {
+            if isLocked, appState.isBiometricLockEnabled {
                 LockScreenView {
                     isLocked = false
                 }
             }
         }
         .animation(.easeInOut(duration: 0.18), value: activeTheme)
-        .onChange(of: scenePhase) { oldPhase, newPhase in
-            if oldPhase == .background, newPhase == .active, appState.isBiometricLockEnabled {
+        .onChange(of: scenePhase) { _, newPhase in
+            if newPhase != .active, appState.isBiometricLockEnabled {
                 isLocked = true
             }
         }
@@ -78,6 +87,10 @@ struct RootView: View {
             } catch {
                 migrationErrorMessage = error.localizedDescription
             }
+        }
+        .task(id: reminderRevision) {
+            guard LocalNotificationService.isEnabled else { return }
+            try? await LocalNotificationService.reconcile(records: records)
         }
         .alert("数据整理未完成", isPresented: Binding(
             get: { migrationErrorMessage != nil },

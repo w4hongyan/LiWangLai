@@ -93,7 +93,7 @@ struct HomeView: View {
                         .font(.titleSong(16))
                         .foregroundStyle(LWColors.ink)
                     Spacer()
-                    Text("待回礼 \(reminders.count) 人")
+                    Text("待回礼 \(reminders.count) 项")
                         .font(.titleSong(15))
                         .foregroundStyle(LWColors.cinnabar)
                     Image(systemName: "chevron.right")
@@ -101,7 +101,7 @@ struct HomeView: View {
                 }
                 GoldLineDivider()
                 if let first = reminders.first {
-                    Label("最近一件： \(first.record.personName) · \(first.record.eventType.title) · \(first.record.date.lwDayText)", systemImage: "clock")
+                    Label("优先处理： \(first.record.personName) · \(first.record.eventType.title) · \(first.record.date.lwDualDateText)", systemImage: "clock")
                         .font(.bodySong(12))
                         .foregroundStyle(LWColors.inkSoft)
                     Label("建议回礼： \(suggestionRange(for: first.record))", systemImage: "tag")
@@ -294,7 +294,7 @@ struct HomeView: View {
                     .font(.bodyKai(16))
                     .foregroundStyle(LWColors.ink)
                     .lineLimit(1)
-                Text(record.date.lwDayText)
+                Text(record.date.lwDualDateText)
                     .font(.bodySong(11))
                     .foregroundStyle(LWColors.muted)
                     .lineLimit(1)

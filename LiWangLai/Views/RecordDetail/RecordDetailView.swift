@@ -42,12 +42,12 @@ struct RecordDetailView: View {
                     GoldLineDivider()
                     detailLine("事件", value: record.eventType.title)
                     GoldLineDivider()
-                    detailLine("日期", value: record.date.lwDayText)
+                    detailLine("日期", value: record.date.lwDualDateText)
                     GoldLineDivider()
                     detailLine("回礼", value: record.isReturned ? "已回礼" : (record.type == .received ? "未回礼" : "已记录"))
                     if let reminder = record.returnReminderDate {
                         GoldLineDivider()
-                        detailLine("提醒", value: reminder.lwDayText)
+                        detailLine(record.type == .received ? "回礼提醒" : "送礼提醒", value: reminder.lwDateTimeText)
                     }
                     if !record.note.isEmpty {
                         GoldLineDivider()

@@ -11,7 +11,29 @@ struct EventDetailView: View {
     @State private var showAddRecord = false
     @State private var pendingDelete: GiftRecord?
     @State private var showDeleteConfirm = false
+    @State private var presentedEventSheet: HostedEventSheetDestination?
+    @State private var showDeleteEventConfirm = false
     @State private var dataErrorMessage: String?
+
+    private var hostedEvent: HostedGiftEvent? {
+        event.hostedEvent
+    }
+
+    private var displayTitle: String {
+        hostedEvent?.title ?? event.title
+    }
+
+    private var displayDate: Date? {
+        hostedEvent?.date ?? event.date
+    }
+
+    private var displayEventType: GiftEventType? {
+        hostedEvent?.eventType ?? event.eventType
+    }
+
+    private var displayNote: String {
+        hostedEvent?.note ?? ""
+    }
 
     private var records: [GiftRecord] {
         event.records.sorted { $0.date > $1.date }
@@ -40,6 +62,27 @@ struct EventDetailView: View {
         .background(PaperTexture())
         .navigationTitle("我家一场事")
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            if let hostedEvent {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Menu {
+                        Button {
+                            presentedEventSheet = .edit(hostedEvent)
+                        } label: {
+                            Label("编辑一场事", systemImage: "pencil")
+                        }
+                        Button(role: .destructive) {
+                            showDeleteEventConfirm = true
+                        } label: {
+                            Label("删除一场事", systemImage: "trash")
+                        }
+                    } label: {
+                        Label("更多操作", systemImage: "ellipsis.circle")
+                    }
+                    .foregroundStyle(LWColors.cinnabar)
+                }
+            }
+        }
         .sheet(item: $editingRecord) { record in
             NavigationStack {
                 AddRecordView(editingRecord: record)
@@ -47,13 +90,21 @@ struct EventDetailView: View {
         }
         .sheet(isPresented: $showAddRecord) {
             NavigationStack {
-               AddRecordView(
-                   presetType: .received,
-                   presetEventType: event.eventType,
-                   presetDate: event.date,
-                    presetNote: event.title,
+                AddRecordView(
+                    presetType: .received,
+                    presetEventType: displayEventType,
+                    presetDate: displayDate,
+                    presetNote: displayTitle,
                     presetEventID: event.hostedEventID
-               )
+                )
+            }
+        }
+        .sheet(item: $presentedEventSheet) { destination in
+            switch destination {
+            case .create:
+                EmptyView()
+            case .edit(let hostedEvent):
+                HostedEventEditorSheet(event: hostedEvent, linkedRecords: records)
             }
         }
         .confirmationDialog("确认删除这条往来记录？", isPresented: $showDeleteConfirm, titleVisibility: .visible) {
@@ -61,9 +112,6 @@ struct EventDetailView: View {
                 if let pendingDelete {
                     do {
                         try RecordService.delete(pendingDelete, in: modelContext)
-                        if records.count <= 1 {
-                            dismiss()
-                        }
                     } catch {
                         dataErrorMessage = error.localizedDescription
                     }
@@ -75,6 +123,18 @@ struct EventDetailView: View {
             }
         } message: {
             Text("删除后将无法在这场事和礼簿中查看这笔记录。")
+        }
+        .confirmationDialog("确认删除这场事？", isPresented: $showDeleteEventConfirm, titleVisibility: .visible) {
+            Button("删除一场事", role: .destructive) {
+                deleteHostedEvent()
+            }
+            Button("取消", role: .cancel) {}
+        } message: {
+            if records.isEmpty {
+                Text("这场事目前没有礼簿记录，删除后无法恢复。")
+            } else {
+                Text("这场事会被删除；其中 \(records.count) 笔礼簿记录会保留，并转为普通收礼记录。")
+            }
         }
         .alert("操作失败", isPresented: Binding(
             get: { dataErrorMessage != nil },
@@ -98,10 +158,12 @@ struct EventDetailView: View {
 
             HStack(alignment: .top) {
                 VStack(alignment: .leading, spacing: 6) {
-                    Text(event.title)
+                    Text(displayTitle)
                         .font(.titleSong(40))
                         .foregroundStyle(LWColors.ink)
-                    Text("\(event.monthKey) · 我家办的事")
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.72)
+                    Text("\(displayDate?.lwDualDateText ?? event.monthKey) · \(displayEventType?.title ?? "我家办的事")")
                         .font(.bodySong(17))
                         .foregroundStyle(LWColors.warmGold)
                 }
@@ -133,6 +195,18 @@ struct EventDetailView: View {
             overviewRow(title: "收礼", value: totalReceived.yuanText, color: LWColors.cinnabar)
             GoldLineDivider()
             overviewRow(title: "未回礼", value: "\(pendingReturnCount) 笔", color: pendingReturnCount > 0 ? LWColors.cinnabar : LWColors.muted)
+            if !displayNote.isEmpty {
+                GoldLineDivider()
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("备注")
+                        .font(.titleSong(13))
+                        .foregroundStyle(LWColors.ink)
+                    Text(displayNote)
+                        .font(.bodySong(13))
+                        .foregroundStyle(LWColors.inkSoft)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+            }
         }
     }
 
@@ -198,6 +272,17 @@ struct EventDetailView: View {
     private var addRecordButton: some View {
         SealButton(title: "新增一笔", systemImage: "plus.circle", fontSize: 15, verticalPadding: 11, cornerRadius: 18) {
             showAddRecord = true
+        }
+    }
+
+    private func deleteHostedEvent() {
+        guard let hostedEvent else { return }
+        do {
+            try HostedEventService.delete(hostedEvent, linkedRecords: records, in: modelContext)
+            HapticsManager.success()
+            dismiss()
+        } catch {
+            dataErrorMessage = error.localizedDescription
         }
     }
 }

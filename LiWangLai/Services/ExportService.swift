@@ -12,7 +12,7 @@ enum ExportService {
         }
     }
 
-    private static let columns = ["姓名", "类型", "金额", "事件", "关系", "日期", "备注", "地点", "礼品", "联系方式", "是否回礼"]
+    private static let columns = ["姓名", "类型", "金额", "事件", "关系", "公历日期", "农历日期", "备注", "地点", "礼品", "联系方式", "是否回礼", "提醒日期"]
 
     static func excelString(from records: [GiftRecord]) -> String {
         worksheetXML(from: records)
@@ -30,21 +30,6 @@ enum ExportService {
         return url
     }
 
-    static func writeCSV(from records: [GiftRecord]) throws -> URL {
-        guard !records.isEmpty else {
-            throw ExportError.emptyRecords
-        }
-        let fileName = "礼往来-\(Int(Date().timeIntervalSince1970)).csv"
-        let url = FileManager.default.temporaryDirectory.appendingPathComponent(fileName)
-        var csv = columns.joined(separator: ",") + "\n"
-        for record in records.sorted(by: { $0.date > $1.date }) {
-            let row = rowValues(for: record).map { "\"\($0.text.replacingOccurrences(of: "\"", with: "\"\""))\"" }.joined(separator: ",")
-            csv += row + "\n"
-        }
-        try csv.write(to: url, atomically: true, encoding: .utf8)
-        return url
-    }
-
     private static func rowValues(for record: GiftRecord) -> [(text: String, type: String)] {
         [
             (record.personName, "String"),
@@ -53,11 +38,13 @@ enum ExportService {
             (record.eventType.title, "String"),
             (record.relationship.title, "String"),
             (record.date.lwDayText, "String"),
+            (record.date.lwLunarText, "String"),
             (record.note, "String"),
             (record.location, "String"),
             (record.giftName, "String"),
             (record.contact, "String"),
-            (record.isReturned ? "是" : "否", "String")
+            (record.isReturned ? "是" : "否", "String"),
+            (record.returnReminderDate.map { "\($0.lwDayText) \($0.lwTimeText)" } ?? "", "String")
         ]
     }
 
@@ -94,7 +81,8 @@ enum ExportService {
             <col min="1" max="1" width="14" customWidth="1"/>
             <col min="2" max="5" width="10" customWidth="1"/>
             <col min="6" max="6" width="16" customWidth="1"/>
-            <col min="7" max="11" width="18" customWidth="1"/>
+            <col min="7" max="7" width="16" customWidth="1"/>
+            <col min="8" max="13" width="18" customWidth="1"/>
           </cols>
           <sheetData>
             \(header)

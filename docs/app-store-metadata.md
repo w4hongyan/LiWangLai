@@ -22,10 +22,15 @@
 
 - 快速记录收礼和送礼
 - 按人查看完整往来
-- 回礼提醒和金额参考
+- 送礼、回礼提醒和金额参考
+- 公历与农历日期同步显示
 - 我家一场事集中记账
 - 本地数据保存
-- 导出 Excel 文件
+- Excel 导入与导出，自动跳过重复项
+- 明确重复记录安全合并
+- iPhone 本地通知提醒
+- 完整备份与恢复
+- Face ID / Touch ID 隐私解锁
 - 多套中式主题
 
 当前版本不需要登录账号，不接入广告，不上传你的礼簿数据。
@@ -41,24 +46,24 @@
 - 礼簿：按月查看往来记录
 - 人情：按人查看往来关系
 - 一场事：我家办事集中入簿
-- 我的：主题和 Excel 导出
+- 我的：主题、隐私解锁、Excel 导入导出、去重合并和通知
 
-## 上架 URL（部署到 GitHub Pages 后填入 App Store Connect）
+## 上架 URL
 
-将 `docs/` 目录部署到 GitHub Pages 后，使用以下 URL：
-
-- 隐私政策 URL：`https://<你的GitHub用户名>.github.io/LiWangLai/privacy-policy.html`
-- 支持 URL：`https://<你的GitHub用户名>.github.io/LiWangLai/support.html`
+- 隐私政策 URL：`https://w4hongyan.github.io/LiWangLai/privacy-policy.html`
+- 支持 URL：`https://w4hongyan.github.io/LiWangLai/support.html`
+- 用户反馈：`https://github.com/w4hongyan/LiWangLai/issues`
 
 部署方式：
 1. 将 `docs/privacy-policy.html` 和 `docs/support.html` 推送到仓库 `main` 分支的 `docs/` 目录
 2. 在 GitHub 仓库 Settings → Pages → Source 选择 `main` 分支，目录选择 `/docs`
 3. 等待部署完成后，复制 URL 填入 App Store Connect
 
-## 仍需完成
+## 提交前确认
 
-- [ ] 部署 docs/ 到 GitHub Pages 获取公网 URL
-- [ ] 在 App Store Connect 填写隐私政策 URL 和支持 URL
-- [ ] 提交 Apple Developer Team 信息（已配置 Team ID: 3VL637VQRM）
-- [ ] 上传 App Store 截图（已有 screenshots/ 目录中的截图）
+- [x] 部署 docs/ 到 GitHub Pages，并确认隐私政策与支持页面可公开访问
+- [ ] 在 App Store Connect 填写上述隐私政策 URL 和支持 URL
+- [ ] 提交 Apple Developer Team 信息（工程当前配置 Team ID: FGB346G6W6）
+- [ ] 优先上传 `AppStoreScreenshots/1320x2868/` 中当前版本的 6.9 英寸截图；旧版 6.5 英寸截图保留在 `AppStoreScreenshots/1284x2778/`
+- [ ] 完成新版年龄分级、App 隐私、价格、销售地区和税务类别
 - [ ] 填写 App Store 审核备注

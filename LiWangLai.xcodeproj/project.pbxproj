@@ -8,6 +8,12 @@
 
 /* Begin PBXBuildFile section */
 		0412D6FA5474FBE03A3A402E /* ReminderServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6AF61AC6D7DC4159C89CBB50 /* ReminderServiceTests.swift */; };
+		10A001000000000000000001 /* DuplicateMergeService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 10B001000000000000000001 /* DuplicateMergeService.swift */; };
+		10A001000000000000000002 /* ExcelImportService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 10B001000000000000000002 /* ExcelImportService.swift */; };
+		10A001000000000000000003 /* LocalNotificationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 10B001000000000000000003 /* LocalNotificationService.swift */; };
+		10A001000000000000000004 /* DataManagementViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 10B001000000000000000004 /* DataManagementViews.swift */; };
+		10A001000000000000000005 /* DataToolsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 10B001000000000000000005 /* DataToolsTests.swift */; };
+		C0D3F00D1234567890ABCDE0 /* FurtherCoverageTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0D3F00D1234567890ABCDEF /* FurtherCoverageTests.swift */; };
 		0420CCA01C043800BF5943C6 /* EmptyStateView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E58150A5F72644593A8DF076 /* EmptyStateView.swift */; };
 		05071FEB9ACBCE548C1F2A47 /* SearchService.swift in Sources */ = {isa = PBXBuildFile; fileRef = B57F06FA33F2375655355DF6 /* SearchService.swift */; };
 		137F706FB910133B13F2DA0C /* RecordService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8B7795163A4D238E3214D8BB /* RecordService.swift */; };
@@ -78,6 +84,11 @@
 
 /* Begin PBXFileReference section */
 		002246CD0FCD9E252FC539D4 /* ReminderItem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReminderItem.swift; sourceTree = "<group>"; };
+		10B001000000000000000001 /* DuplicateMergeService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DuplicateMergeService.swift; sourceTree = "<group>"; };
+		10B001000000000000000002 /* ExcelImportService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExcelImportService.swift; sourceTree = "<group>"; };
+		10B001000000000000000003 /* LocalNotificationService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalNotificationService.swift; sourceTree = "<group>"; };
+		10B001000000000000000004 /* DataManagementViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DataManagementViews.swift; sourceTree = "<group>"; };
+		10B001000000000000000005 /* DataToolsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DataToolsTests.swift; sourceTree = "<group>"; };
 		00C354D615DEB433AAB18D7E /* ReminderService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReminderService.swift; sourceTree = "<group>"; };
 		024582F209E44CEE68FEC7C9 /* EventDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EventDetailView.swift; sourceTree = "<group>"; };
 		1B59F75B529689053AE88B27 /* LiWangLaiTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = LiWangLaiTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -123,6 +134,7 @@
 		ABCEE97AC1B66A50631E3A95 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		AE5A261233B11DD25D68AA4F /* ExportServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExportServiceTests.swift; sourceTree = "<group>"; };
 		B57F06FA33F2375655355DF6 /* SearchService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SearchService.swift; sourceTree = "<group>"; };
+		C0D3F00D1234567890ABCDEF /* FurtherCoverageTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FurtherCoverageTests.swift; sourceTree = "<group>"; };
 		B8F6C0CC53291E262CCC00AC /* LiWangLai.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = LiWangLai.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		BADEF26DC77D0F9E8BC22F8E /* AddRecordView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AddRecordView.swift; sourceTree = "<group>"; };
 		CABDF78E467E7380435E48EA /* ExportService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExportService.swift; sourceTree = "<group>"; };
@@ -144,7 +156,9 @@
 			isa = PBXGroup;
 			children = (
 				3876708F10C7504FD112520F /* BackupServiceTests.swift */,
+				10B001000000000000000005 /* DataToolsTests.swift */,
 				AE5A261233B11DD25D68AA4F /* ExportServiceTests.swift */,
+				C0D3F00D1234567890ABCDEF /* FurtherCoverageTests.swift */,
 				D04CDFCB1ADED7F287DB1F61 /* HostedEventServiceTests.swift */,
 				A5CF0038ABA744E6895A6C4A /* RecordServiceTests.swift */,
 				6AF61AC6D7DC4159C89CBB50 /* ReminderServiceTests.swift */,
@@ -195,10 +209,13 @@
 			children = (
 				272977CF053F5E4BB0EF6CBA /* BackupService.swift */,
 				F6428E6225DE7E1C460C82D8 /* BiometricService.swift */,
+				10B001000000000000000001 /* DuplicateMergeService.swift */,
+				10B001000000000000000002 /* ExcelImportService.swift */,
 				CABDF78E467E7380435E48EA /* ExportService.swift */,
 				83BF463E7AF9EC9961459AC6 /* HostedEventService.swift */,
 				8B7795163A4D238E3214D8BB /* RecordService.swift */,
 				00C354D615DEB433AAB18D7E /* ReminderService.swift */,
+				10B001000000000000000003 /* LocalNotificationService.swift */,
 				B57F06FA33F2375655355DF6 /* SearchService.swift */,
 			);
 			path = Services;
@@ -353,6 +370,7 @@
 		F162004F427550AEC2E3711B /* Settings */ = {
 			isa = PBXGroup;
 			children = (
+				10B001000000000000000004 /* DataManagementViews.swift */,
 				91B06E5931C8C180D89DD1DB /* SettingsView.swift */,
 			);
 			path = Settings;
@@ -458,6 +476,9 @@
 				4F70ABC3CDBAC71C041759D4 /* AppState.swift in Sources */,
 				F8B3EABA087ECD1F83CDE416 /* BackupService.swift in Sources */,
 				289C51A5E3B84F6FCD638D04 /* BiometricService.swift in Sources */,
+				10A001000000000000000004 /* DataManagementViews.swift in Sources */,
+				10A001000000000000000001 /* DuplicateMergeService.swift in Sources */,
+				10A001000000000000000002 /* ExcelImportService.swift in Sources */,
 				E19AF1B4AE6F9F5597158C43 /* ChineseDatePickerButton.swift in Sources */,
 				D0C76EE7F6396896DCB98867 /* CurrencyFormatter+.swift in Sources */,
 				210C1B10C55D5F090E2222BB /* DateFormatter+.swift in Sources */,
@@ -475,6 +496,7 @@
 				61D74DB54C853B782002BD28 /* HostedEventsView.swift in Sources */,
 				88B04895D7E802AD55748955 /* LWDesign.swift in Sources */,
 				65F2722B74D854625D17C7E3 /* LedgerView.swift in Sources */,
+				10A001000000000000000003 /* LocalNotificationService.swift in Sources */,
 				CDD276BBD29984B497CCBB56 /* LiWangLaiApp.swift in Sources */,
 				8939CD024A9AF38C84AD107F /* LiWangLaiSchema.swift in Sources */,
 				F01F6E6C829956B66B784FAF /* LockScreenView.swift in Sources */,
@@ -506,7 +528,9 @@
 			buildActionMask = 2147483647;
 			files = (
 				236FC8E4D13479C58160F069 /* BackupServiceTests.swift in Sources */,
+				10A001000000000000000005 /* DataToolsTests.swift in Sources */,
 				BB6FEB78699B73DBC9BDA37E /* ExportServiceTests.swift in Sources */,
+				C0D3F00D1234567890ABCDE0 /* FurtherCoverageTests.swift in Sources */,
 				D1AF59A101321C82CC8363DD /* HostedEventServiceTests.swift in Sources */,
 				31C120562BADBB806E9DBF95 /* RecordServiceTests.swift in Sources */,
 				0412D6FA5474FBE03A3A402E /* ReminderServiceTests.swift in Sources */,
@@ -577,7 +601,7 @@
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 2;
 				DEBUG_INFORMATION_FORMAT = dwarf;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_TESTABILITY = YES;
@@ -642,7 +666,7 @@
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 2;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				ENABLE_NS_ASSERTIONS = NO;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;

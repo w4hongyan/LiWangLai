@@ -4,11 +4,13 @@ import SwiftUI
 struct LedgerView: View {
     @Environment(AppState.self) private var appState
     @Environment(\.modelContext) private var modelContext
+    @Query(sort: \HostedGiftEvent.date, order: .reverse) private var hostedEvents: [HostedGiftEvent]
 
     let records: [GiftRecord]
     @State private var typeFilter: LedgerTypeFilter = .all
     @State private var timeFilter: LedgerTimeFilter = .thisYear
-    @State private var customDateRange: ClosedRange<Date>?
+    @State private var customStartDate = Calendar.current.date(byAdding: .month, value: -1, to: .now) ?? .now
+    @State private var customEndDate = Date.now
     @State private var showCustomDatePicker = false
     @State private var editingRecord: GiftRecord?
     @State private var pendingDelete: GiftRecord?
@@ -22,8 +24,6 @@ struct LedgerView: View {
                 case .all: return true
                 case .received: return record.type == .received
                 case .given: return record.type == .given
-                case .notReturned: return record.needsReturn
-                case .returned: return record.isReturned
                 }
             }
             .filter { record in
@@ -35,10 +35,11 @@ struct LedgerView: View {
                 case .all:
                     return true
                 case .custom:
-                    if let range = customDateRange {
-                        return range.contains(record.date)
-                    }
-                    return true
+                    return RecordDateRange.contains(
+                        record.date,
+                        start: customStartDate,
+                        end: customEndDate
+                    )
                 }
             }
     }
@@ -86,13 +87,13 @@ struct LedgerView: View {
                                     .frame(width: 56, height: 18)
                                     .opacity(0.72)
                             }
-                            eventStrip(for: records, month: month)
+                            eventStrip(for: records)
                             PaperCard(padding: 11) {
                                 ForEach(records) { record in
                                     NavigationLink {
                                         RecordDetailView(record: record)
                                     } label: {
-                                        RecordRow(record: record)
+                                        RecordRow(record: record, showsReturnStatus: false)
                                     }
                                     .buttonStyle(.plain)
                                     .swipeActions(edge: .trailing, allowsFullSwipe: false) {
@@ -112,13 +113,6 @@ struct LedgerView: View {
                                     .contextMenu {
                                         Button("编辑") {
                                             editingRecord = record
-                                        }
-                                        Button("标记已回") {
-                                            do {
-                                                try RecordService.markReturned(record, in: modelContext)
-                                            } catch {
-                                                dataErrorMessage = error.localizedDescription
-                                            }
                                         }
                                         Button("删除", role: .destructive) {
                                             pendingDelete = record
@@ -261,20 +255,14 @@ struct LedgerView: View {
             NavigationStack {
                 VStack(spacing: 16) {
                     DatePicker("开始日期", selection: Binding(
-                        get: { customDateRange?.lowerBound ?? Calendar.current.date(byAdding: .month, value: -1, to: .now) ?? .now },
-                        set: { newStart in
-                            let end = customDateRange?.upperBound ?? .now
-                            customDateRange = newStart...end
-                        }
+                        get: { customStartDate },
+                        set: { customStartDate = $0 }
                     ), displayedComponents: .date)
                     .datePickerStyle(.graphical)
 
                     DatePicker("结束日期", selection: Binding(
-                        get: { customDateRange?.upperBound ?? .now },
-                        set: { newEnd in
-                            let start = customDateRange?.lowerBound ?? Calendar.current.date(byAdding: .month, value: -1, to: .now) ?? .now
-                            customDateRange = start...newEnd
-                        }
+                        get: { customEndDate },
+                        set: { customEndDate = $0 }
                     ), displayedComponents: .date)
                     .datePickerStyle(.graphical)
                 }
@@ -289,6 +277,9 @@ struct LedgerView: View {
                     }
                     ToolbarItem(placement: .confirmationAction) {
                         Button("确定") {
+                            if customStartDate > customEndDate {
+                                swap(&customStartDate, &customEndDate)
+                            }
                             timeFilter = .custom
                             showCustomDatePicker = false
                         }
@@ -313,27 +304,13 @@ struct LedgerView: View {
             )
     }
 
-    private func events(for records: [GiftRecord], month: String) -> [GiftEvent] {
-        let hostedRecords = records.filter { $0.type == .received }
-        return Dictionary(grouping: hostedRecords, by: \.eventTypeRawValue)
-            .map { _, records in
-                let sortedRecords = records.sorted { $0.date > $1.date }
-                return GiftEvent(
-                    title: sortedRecords.first?.eventType.title ?? "其他",
-                    monthKey: month,
-                    eventType: sortedRecords.first?.eventType,
-                    date: sortedRecords.first?.date,
-                    records: sortedRecords
-                )
-            }
-            .sorted { lhs, rhs in
-                (lhs.records.first?.date ?? .distantPast) > (rhs.records.first?.date ?? .distantPast)
-            }
+    private func events(for records: [GiftRecord]) -> [GiftEvent] {
+        HostedEventService.giftEvents(from: hostedEvents, records: records)
     }
 
     @ViewBuilder
-    private func eventStrip(for records: [GiftRecord], month: String) -> some View {
-        let events = events(for: records, month: month)
+    private func eventStrip(for records: [GiftRecord]) -> some View {
+        let events = events(for: records)
         if !events.isEmpty {
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 8) {
@@ -388,8 +365,6 @@ private enum LedgerTypeFilter: String, CaseIterable, Identifiable {
     case all
     case received
     case given
-    case notReturned
-    case returned
 
     var id: String { rawValue }
     var title: String {
@@ -397,8 +372,6 @@ private enum LedgerTypeFilter: String, CaseIterable, Identifiable {
         case .all: "全部"
         case .received: "收礼"
         case .given: "送礼"
-        case .notReturned: "未回礼"
-        case .returned: "已回礼"
         }
     }
 }

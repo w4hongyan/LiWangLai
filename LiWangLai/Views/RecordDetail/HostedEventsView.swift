@@ -6,7 +6,7 @@ struct HostedEventsView: View {
     @Query(sort: \HostedGiftEvent.date, order: .reverse) private var hostedEvents: [HostedGiftEvent]
     @Query(sort: \GiftRecord.date, order: .reverse) private var records: [GiftRecord]
 
-    @State private var showCreate = false
+    @State private var presentedSheet: HostedEventSheetDestination?
 
     var body: some View {
         ScrollView {
@@ -19,7 +19,7 @@ struct HostedEventsView: View {
                         message: "先建一场婚礼、满月或乔迁，再从这场事里连续入簿。",
                         buttonTitle: "新建一场事"
                     ) {
-                        showCreate = true
+                        presentedSheet = .create
                     }
                 } else {
                     ForEach(hostedEvents) { hostedEvent in
@@ -42,16 +42,20 @@ struct HostedEventsView: View {
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
                 Button {
-                    showCreate = true
+                    presentedSheet = .create
                 } label: {
                     Label("新建", systemImage: "plus")
                 }
                 .foregroundStyle(LWColors.cinnabar)
             }
         }
-        .sheet(isPresented: $showCreate) {
-            NewHostedEventSheet()
-                .presentationDetents([.height(430)])
+        .sheet(item: $presentedSheet) { destination in
+            switch destination {
+            case .create:
+                HostedEventEditorSheet(event: nil, linkedRecords: records)
+            case .edit(let event):
+                HostedEventEditorSheet(event: event, linkedRecords: records)
+            }
         }
     }
 
@@ -90,7 +94,7 @@ struct HostedEventsView: View {
                     Text(hostedEvent.title)
                         .font(.bodyKai(19))
                         .foregroundStyle(LWColors.ink)
-                    Text("\(hostedEvent.date.lwDayText) · \(hostedEvent.eventType.title)")
+                    Text("\(hostedEvent.date.lwDualDateText) · \(hostedEvent.eventType.title)")
                         .font(.bodySong(12))
                         .foregroundStyle(LWColors.muted)
                     Text("收礼 \(event.records.count) 笔 · 合计 \(event.totalAmount.yuanText)")
@@ -105,51 +109,75 @@ struct HostedEventsView: View {
         }
     }
 
-   private func giftEvent(from hostedEvent: HostedGiftEvent) -> GiftEvent {
-       let eventRecords = HostedEventService.records(for: hostedEvent, from: records)
-       return GiftEvent(
-           title: hostedEvent.title,
-           monthKey: hostedEvent.date.lwDayText,
-           eventType: hostedEvent.eventType,
-           date: hostedEvent.date,
+    private func giftEvent(from hostedEvent: HostedGiftEvent) -> GiftEvent {
+        let eventRecords = HostedEventService.records(for: hostedEvent, from: records)
+        return GiftEvent(
+            title: hostedEvent.title,
+            monthKey: hostedEvent.date.lwDayText,
+            eventType: hostedEvent.eventType,
+            date: hostedEvent.date,
             records: eventRecords,
-            hostedEventID: hostedEvent.id
-       )
-   }
+            hostedEventID: hostedEvent.id,
+            hostedEvent: hostedEvent
+        )
+    }
 }
 
-private struct NewHostedEventSheet: View {
+enum HostedEventSheetDestination: Identifiable {
+    case create
+    case edit(HostedGiftEvent)
+
+    var id: String {
+        switch self {
+        case .create: "create"
+        case .edit(let event): "edit-\(event.id.uuidString)"
+        }
+    }
+}
+
+struct HostedEventEditorSheet: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
 
-    @State private var title = ""
-    @State private var eventType: GiftEventType = .wedding
-    @State private var date = Date()
-    @State private var note = ""
+    let event: HostedGiftEvent?
+    let linkedRecords: [GiftRecord]
+
+    @State private var title: String
+    @State private var eventType: GiftEventType
+    @State private var date: Date
+    @State private var note: String
     @State private var saveErrorMessage: String?
+
+    init(event: HostedGiftEvent?, linkedRecords: [GiftRecord]) {
+        self.event = event
+        self.linkedRecords = linkedRecords
+        _title = State(initialValue: event?.title ?? "")
+        _eventType = State(initialValue: event?.eventType ?? .wedding)
+        _date = State(initialValue: event?.date ?? .now)
+        _note = State(initialValue: event?.note ?? "")
+    }
 
     private var effectiveTitle: String {
         let trimmed = title.trimmingCharacters(in: .whitespacesAndNewlines)
         if !trimmed.isEmpty {
             return trimmed
         }
-        switch eventType {
-        case .wedding: return "我家婚礼"
-        case .baby: return "我家满月酒"
-        case .housewarming: return "我家乔迁"
-        case .birthday: return "我家生日宴"
-        case .funeral: return "我家白事"
-        case .school: return "我家升学宴"
-        case .festival: return "我家节礼"
-        case .other: return "我家一场事"
-        }
+        return HostedEventService.defaultTitle(for: eventType)
     }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("新建一场事")
-                .font(.titleSong(24))
-                .foregroundStyle(LWColors.ink)
+            HStack {
+                Text(event == nil ? "新建一场事" : "编辑一场事")
+                    .font(.titleSong(24))
+                    .foregroundStyle(LWColors.ink)
+                Spacer()
+                Button("取消") {
+                    dismiss()
+                }
+                .font(.bodySong(13))
+                .foregroundStyle(LWColors.muted)
+            }
 
             PaperCard(padding: 12, spacing: 10) {
                 fieldRow("名称") {
@@ -190,12 +218,14 @@ private struct NewHostedEventSheet: View {
                 }
             }
 
-            SealButton(title: "保存一场事", systemImage: "checkmark.seal", fontSize: 14, verticalPadding: 10, cornerRadius: 12) {
+            SealButton(title: event == nil ? "保存一场事" : "保存修改", systemImage: "checkmark.seal", fontSize: 14, verticalPadding: 10, cornerRadius: 12) {
                 save()
             }
         }
         .padding(20)
         .background(PaperTexture())
+        .presentationDetents([.height(470), .large])
+        .presentationDragIndicator(.visible)
         .alert("保存失败", isPresented: Binding(
             get: { saveErrorMessage != nil },
             set: { if !$0 { saveErrorMessage = nil } }
@@ -207,15 +237,27 @@ private struct NewHostedEventSheet: View {
     }
 
     private func save() {
-        let event = HostedGiftEvent(
-            title: effectiveTitle,
-            eventType: eventType,
-            date: date,
-            note: note.trimmingCharacters(in: .whitespacesAndNewlines)
-        )
-        modelContext.insert(event)
         do {
-            try modelContext.save()
+            if let event {
+                try HostedEventService.update(
+                    event,
+                    title: effectiveTitle,
+                    eventType: eventType,
+                    date: date,
+                    note: note,
+                    linkedRecords: linkedRecords,
+                    in: modelContext
+                )
+            } else {
+                let newEvent = HostedGiftEvent(
+                    title: effectiveTitle,
+                    eventType: eventType,
+                    date: date,
+                    note: note.trimmingCharacters(in: .whitespacesAndNewlines)
+                )
+                modelContext.insert(newEvent)
+                try modelContext.save()
+            }
             HapticsManager.success()
             dismiss()
         } catch {

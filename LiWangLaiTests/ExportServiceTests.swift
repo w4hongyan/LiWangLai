@@ -24,19 +24,26 @@ struct ExportServiceTests {
         let xml = ExportService.excelString(from: [record])
         #expect(xml.contains("姓名"), "Should contain column header 姓名")
         #expect(xml.contains("金额"), "Should contain column header 金额")
+        #expect(xml.contains("公历日期"))
+        #expect(xml.contains("农历日期"))
     }
 
     @Test func excelStringContainsRecordData() {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(secondsFromGMT: 0)!
+        let date = calendar.date(from: DateComponents(year: 2026, month: 7, day: 17))!
         let record = GiftRecord(
             personName: "张三",
             type: .received,
             amountYuan: 888,
             eventType: .wedding,
-            relationship: .friend
+            relationship: .friend,
+            date: date
         )
         let xml = ExportService.excelString(from: [record])
         #expect(xml.contains("张三"), "Should contain person name")
         #expect(xml.contains("888"), "Should contain amount")
+        #expect(xml.contains("农历六月初四"))
     }
 
     @Test func writeExcelReturnsURL() throws {
@@ -81,5 +88,12 @@ struct ExportServiceTests {
         let earlyIndex = xml.range(of: "早的人")!.lowerBound
         let lateIndex = xml.range(of: "晚的人")!.lowerBound
         #expect(lateIndex < earlyIndex, "Newer record should appear first (sorted by date descending)")
+    }
+
+    @Test func yuanTextUsesGroupedWholeYuanFormat() {
+        let text = 1_234_567.yuanText
+        #expect(text.contains("¥"))
+        #expect(text.contains("1,234,567"))
+        #expect(!text.contains(".00"))
     }
 }

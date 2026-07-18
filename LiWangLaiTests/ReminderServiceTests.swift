@@ -32,7 +32,7 @@ struct ReminderServiceTests {
         #expect(reminders.isEmpty)
     }
 
-    @Test func givenRecordWithReminderDateDoesNotAppear() {
+    @Test func givenRecordWithReminderDateAppearsAsSendGiftReminder() {
         let record = GiftRecord(
             personName: "李四",
             type: .given,
@@ -41,7 +41,9 @@ struct ReminderServiceTests {
             relationship: .relative,
             returnReminderDate: Date(timeIntervalSince1970: 2_000_000)
         )
-        #expect(ReminderService.reminders(from: [record]).isEmpty)
+        let reminders = ReminderService.reminders(from: [record])
+        #expect(reminders.count == 1)
+        #expect(reminders.first?.title.contains("送礼") == true)
     }
 
     @Test func returnedRecordDoesNotAppearInReminders() {
@@ -69,6 +71,8 @@ struct ReminderServiceTests {
         let reminders = ReminderService.reminders(from: [record])
         #expect(reminders.count == 1)
         #expect(reminders.first?.isDateReminder == true)
+        #expect(reminders.first?.subtitle.contains("计划于") == true)
+        #expect(reminders.first?.subtitle.contains(record.returnReminderDate!.lwDayText) == true)
     }
 
     @Test func multipleRemindersAreSortedByDate() {
@@ -119,6 +123,29 @@ struct ReminderServiceTests {
 
         #expect(record.isReturned)
         #expect(record.returnReminderDate == nil)
+        #expect(ReminderService.reminders(from: [record]).isEmpty)
+    }
+
+    @MainActor
+    @Test func completingGivenReminderOnlyClearsReminder() throws {
+        let schema = Schema([HostedGiftEvent.self, GiftRecord.self])
+        let configuration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: true)
+        let container = try ModelContainer(for: schema, configurations: [configuration])
+        let record = GiftRecord(
+            personName: "待送礼",
+            type: .given,
+            amountYuan: 600,
+            eventType: .wedding,
+            relationship: .friend,
+            returnReminderDate: Date(timeIntervalSinceNow: 86_400)
+        )
+        container.mainContext.insert(record)
+        try container.mainContext.save()
+
+        try RecordService.completeReminder(record, in: container.mainContext)
+
+        #expect(record.returnReminderDate == nil)
+        #expect(record.isReturned == false)
         #expect(ReminderService.reminders(from: [record]).isEmpty)
     }
 }
