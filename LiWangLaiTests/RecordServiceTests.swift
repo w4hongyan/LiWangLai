@@ -3,6 +3,7 @@ import Foundation
 import SwiftData
 @testable import LiWangLai
 
+@Suite(.serialized)
 struct RecordServiceTests {
     @Test func peopleGroupsByName() {
         let records = [

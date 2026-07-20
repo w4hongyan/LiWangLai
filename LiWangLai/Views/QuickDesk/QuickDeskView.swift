@@ -1,39 +1,149 @@
 import SwiftData
 import SwiftUI
+import UIKit
 
-struct QuickDeskView: View {
-    @Environment(\.modelContext) private var modelContext
-    @Query(sort: \GiftRecord.createdAt, order: .reverse) private var records: [GiftRecord]
-    @Query(sort: \HostedGiftEvent.date, order: .reverse) private var hostedEvents: [HostedGiftEvent]
+struct IPadRootView: View {
+    let records: [GiftRecord]
+    let hostedEvents: [HostedGiftEvent]
 
-    @State private var name = ""
-    @State private var amount = "600"
-    @State private var note = ""
-    @State private var eventType: GiftEventType = .baby
-    @State private var selectedHostedEventID: UUID?
-    @State private var newHostedEventTitle = ""
-    @State private var saveErrorMessage: String?
-
-    private var todayRecords: [GiftRecord] {
-        records.filter { Calendar.current.isDateInToday($0.createdAt) }
+    var body: some View {
+        IPadQuickDeskView(records: records, hostedEvents: hostedEvents, openSettings: {})
+            .background(PaperTexture())
     }
+}
+
+struct IPadPortraitPrompt: View {
+    var body: some View {
+        VStack(spacing: 18) {
+            Image("ceremony_table_badge")
+                .resizable()
+                .scaledToFit()
+                .frame(width: 86, height: 86)
+            Text("横过来，更好记")
+                .font(.titleSong(30))
+                .foregroundStyle(LWColors.ink)
+            Text("iPad 礼台模式为横屏现场登记设计")
+                .font(.bodySong(16))
+                .foregroundStyle(LWColors.muted)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(PaperTexture())
+    }
+}
+
+// Kept as a compatibility entry point for any existing navigation links.
+struct QuickDeskView: View {
+    @Query(sort: \GiftRecord.date, order: .reverse) private var records: [GiftRecord]
+    @Query(sort: \HostedGiftEvent.date, order: .reverse) private var hostedEvents: [HostedGiftEvent]
 
     var body: some View {
         GeometryReader { geometry in
             if geometry.size.width > geometry.size.height {
-                landscapeBody
+                VStack(spacing: 0) {
+                    IPadQuickDeskView(records: records, hostedEvents: hostedEvents, openSettings: {})
+                    Spacer(minLength: 0)
+                }
             } else {
-                portraitHint
+                IPadPortraitPrompt()
             }
         }
         .background(PaperTexture())
-        .navigationTitle("横屏记账台")
-        .navigationBarTitleDisplayMode(.inline)
-        .onChange(of: selectedHostedEventID) { _, eventID in
-            guard let eventID,
-                  let event = hostedEvents.first(where: { $0.id == eventID }) else { return }
-            newHostedEventTitle = ""
-            eventType = event.eventType
+    }
+}
+
+struct IPadQuickDeskView: View {
+    @Environment(\.modelContext) private var modelContext
+
+    let records: [GiftRecord]
+    let hostedEvents: [HostedGiftEvent]
+    let initialHostedEventID: UUID?
+    let openSettings: () -> Void
+
+    @State private var name = ""
+    @State private var amount = "600"
+    @State private var note = ""
+    @State private var eventType: GiftEventType = .wedding
+    @State private var selectedHostedEventID: UUID?
+    @State private var saveErrorMessage: String?
+    @State private var showSaved = false
+    @State private var showCreateEvent = false
+    @FocusState private var nameFocused: Bool
+
+    init(
+        records: [GiftRecord],
+        hostedEvents: [HostedGiftEvent],
+        initialHostedEventID: UUID? = nil,
+        openSettings: @escaping () -> Void
+    ) {
+        self.records = records
+        self.hostedEvents = hostedEvents
+        self.initialHostedEventID = initialHostedEventID
+        self.openSettings = openSettings
+        _selectedHostedEventID = State(initialValue: initialHostedEventID)
+    }
+
+    private var currentEvent: HostedGiftEvent? {
+        hostedEvents.first { $0.id == selectedHostedEventID }
+    }
+
+    private var currentEventRecords: [GiftRecord] {
+        guard let selectedHostedEventID else { return [] }
+        return records
+            .filter { $0.hostedEventID == selectedHostedEventID && $0.type == .received }
+            .sorted { $0.createdAt > $1.createdAt }
+    }
+
+    private var todayRecords: [GiftRecord] {
+        guard let selectedHostedEventID else { return [] }
+        return records.filter {
+            $0.hostedEventID == selectedHostedEventID && Calendar.current.isDateInToday($0.createdAt)
+        }
+    }
+
+    private var recentRecords: [GiftRecord] {
+        guard currentEvent != nil else { return [] }
+        return Array(currentEventRecords.prefix(10))
+    }
+
+    private var uniquePeople: [GiftRecord] {
+        var names = Set<String>()
+        return records
+            .sorted { $0.date > $1.date }
+            .filter { names.insert($0.personName).inserted }
+            .prefix(12)
+            .map { $0 }
+    }
+
+    var body: some View {
+        GeometryReader { geometry in
+            let compact = geometry.size.height < 760
+            VStack(spacing: 0) {
+                IPadBrandHeader(
+                    style: .desk,
+                    searchText: nil,
+                    openSettings: openSettings
+                )
+                .frame(height: compact ? 116 : 150)
+
+                HStack(spacing: compact ? 10 : 14) {
+                    sceneColumn(compact: compact)
+                        .frame(width: geometry.size.width * 0.255)
+                    ZStack {
+                        entryColumn(compact: compact)
+                            .disabled(currentEvent == nil)
+                            .opacity(currentEvent == nil ? 0.30 : 1)
+
+                        if currentEvent == nil {
+                            eventRequiredOverlay(compact: compact)
+                        }
+                    }
+                        .frame(maxWidth: .infinity)
+                    recentColumn(compact: compact)
+                        .frame(width: geometry.size.width * 0.295)
+                }
+                .padding(.horizontal, compact ? 16 : 22)
+                .padding(.bottom, compact ? 10 : 14)
+            }
         }
         .alert("保存失败", isPresented: Binding(
             get: { saveErrorMessage != nil },
@@ -43,129 +153,1248 @@ struct QuickDeskView: View {
         } message: {
             Text(saveErrorMessage ?? "请稍后再试。")
         }
+        .sheet(isPresented: $showCreateEvent) {
+            HostedEventEditorSheet(event: nil, linkedRecords: records) { event in
+                selectedHostedEventID = event.id
+                eventType = event.eventType
+            }
+        }
+        .overlay(alignment: .top) {
+            if showSaved {
+                Label("已记入礼簿", systemImage: "checkmark.seal.fill")
+                    .font(.bodySong(14).weight(.semibold))
+                    .foregroundStyle(.white)
+                    .padding(.horizontal, 18)
+                    .padding(.vertical, 9)
+                    .background(LWColors.jade, in: Capsule())
+                    .shadow(radius: 8)
+                    .padding(.top, 92)
+                    .transition(.move(edge: .top).combined(with: .opacity))
+            }
+        }
+        .onAppear {
+            if let initialHostedEventID,
+               let event = hostedEvents.first(where: { $0.id == initialHostedEventID }) {
+                selectedHostedEventID = event.id
+                eventType = event.eventType
+            }
+        }
+        .onChange(of: hostedEvents.map(\.id)) { _, eventIDs in
+            guard let selectedHostedEventID else { return }
+            if !eventIDs.contains(selectedHostedEventID) {
+                self.selectedHostedEventID = nil
+            }
+        }
+        .onChange(of: selectedHostedEventID) { _, eventID in
+            guard let eventID,
+                  let event = hostedEvents.first(where: { $0.id == eventID }) else { return }
+            eventType = event.eventType
+        }
     }
 
-    private var landscapeBody: some View {
-        HStack(spacing: 22) {
-            VStack(alignment: .leading, spacing: 18) {
-                PageHeader(title: "记账台", subtitle: "现场连续入簿")
-                PaperCard {
-                    TextField("姓名", text: $name)
-                        .font(.titleSong(32))
-                        .textFieldStyle(.plain)
-                    GoldLineDivider()
-                    AmountTextField(amountText: $amount)
-                    chipEvents
-                    hostedEventSelection
-                    TextField("临时备注", text: $note)
-                        .font(.bodySong(18))
-                    SealButton(title: "保存并继续", systemImage: "plus.circle") {
-                        saveAndContinue()
+    private func sceneColumn(compact: Bool) -> some View {
+        IPadPanel(padding: compact ? 11 : 14, fillsHeight: true) {
+            Text("当前场景")
+                .font(.titleSong(compact ? 15 : 17))
+                .foregroundStyle(LWColors.ink)
+
+            VStack(alignment: .leading, spacing: compact ? 7 : 9) {
+                Menu {
+                    Button {
+                        showCreateEvent = true
+                    } label: {
+                        Label("新建一场事", systemImage: "plus")
+                    }
+                    ForEach(hostedEvents) { event in
+                        Button {
+                            selectedHostedEventID = event.id
+                        } label: {
+                            Text("\(event.title) · \(event.date.lwDayText)")
+                        }
+                    }
+                } label: {
+                    HStack(spacing: 11) {
+                        Image("ledger_book_badge")
+                            .resizable()
+                            .scaledToFit()
+                            .frame(width: compact ? 38 : 46, height: compact ? 38 : 46)
+                        VStack(alignment: .leading, spacing: 3) {
+                            Text(currentEvent?.title ?? "请选择一场事")
+                                .font(.titleSong(compact ? 15 : 17))
+                                .foregroundStyle(LWColors.ink)
+                                .lineLimit(1)
+                            Text(currentEvent == nil ? "选择或新建后才能录入" : "共 \(currentEventRecords.count) 笔")
+                                .font(.bodySong(compact ? 10 : 12))
+                                .foregroundStyle(LWColors.muted)
+                        }
+                        Spacer(minLength: 4)
+                        Image(systemName: "chevron.right")
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(LWColors.warmGold)
                     }
                 }
-                Spacer()
+                .buttonStyle(.plain)
+                .frame(height: compact ? 46 : 54)
+
+                GoldLineDivider()
+                sceneInfoRow(
+                    "事件类型",
+                    value: currentEvent?.eventType.title ?? "未选择",
+                    image: currentEvent?.eventType == .wedding ? "double_happiness_badge" : nil,
+                    compact: compact
+                )
+                GoldLineDivider()
+                sceneInfoRow("当前模式", value: "礼台模式", image: "ceremony_table_badge", compact: compact)
+                GoldLineDivider()
+                sceneInfoRow("礼台编号", value: "1 号礼台", image: nil, compact: compact)
+            }
+            .padding(compact ? 10 : 12)
+            .background(
+                RoundedRectangle(cornerRadius: 10)
+                    .fill(Color.white.opacity(0.24))
+                    .overlay(RoundedRectangle(cornerRadius: 10).stroke(LWColors.cardStroke.opacity(0.40)))
+            )
+
+            GoldLineDivider()
+            Text("今日统计")
+                .font(.titleSong(compact ? 15 : 17))
+                .foregroundStyle(LWColors.ink)
+
+            HStack(spacing: 0) {
+                statItem(icon: "doc.text", title: "今日登记", value: "\(todayRecords.count) 份", compact: compact)
+                Divider()
+                    .overlay(LWColors.cardStroke.opacity(0.38))
+                    .frame(height: compact ? 54 : 64)
+                statItem(icon: "tray.and.arrow.down", title: "今日收礼", value: todayReceivedAmount.yuanText, compact: compact)
+                Divider()
+                    .overlay(LWColors.cardStroke.opacity(0.38))
+                    .frame(height: compact ? 54 : 64)
+                statItem(icon: "person.2", title: "来宾人数", value: "\(Set(todayRecords.map(\.personName)).count) 人", compact: compact)
+            }
+            .padding(.vertical, compact ? 8 : 10)
+            .background(
+                RoundedRectangle(cornerRadius: 10)
+                    .fill(Color.white.opacity(0.20))
+                    .overlay(RoundedRectangle(cornerRadius: 10).stroke(LWColors.cardStroke.opacity(0.34)))
+            )
+
+            Spacer(minLength: 0)
+
+            totalPanel(compact: compact)
+        }
+    }
+
+    private func eventRequiredOverlay(compact: Bool) -> some View {
+        VStack(spacing: compact ? 10 : 14) {
+            Image("ledger_book_badge")
+                .resizable()
+                .scaledToFit()
+                .frame(width: compact ? 48 : 60, height: compact ? 48 : 60)
+
+            Text("先选择一场事")
+                .font(.titleSong(compact ? 20 : 24))
+                .foregroundStyle(LWColors.ink)
+
+            Text("每笔现场收礼都要归入明确的场次\n选择已有场次，或先新建一场事")
+                .font(.bodySong(compact ? 11 : 13))
+                .foregroundStyle(LWColors.muted)
+                .multilineTextAlignment(.center)
+                .lineSpacing(4)
+
+            Menu {
+                ForEach(hostedEvents) { event in
+                    Button {
+                        selectedHostedEventID = event.id
+                    } label: {
+                        Text("\(event.title) · \(event.date.lwDayText)")
+                    }
+                }
+            } label: {
+                HStack {
+                    Image(systemName: "list.bullet.rectangle")
+                    Text(hostedEvents.isEmpty ? "暂无可选场次" : "选择已有场次")
+                    Spacer()
+                    Image(systemName: "chevron.down")
+                }
+                .font(.titleSong(compact ? 12 : 14))
+                .foregroundStyle(LWColors.ink)
+                .padding(.horizontal, 14)
+                .frame(width: compact ? 250 : 290, height: compact ? 38 : 44)
+                .background(fieldBackground)
+            }
+            .buttonStyle(.plain)
+            .disabled(hostedEvents.isEmpty)
+
+            Button {
+                showCreateEvent = true
+            } label: {
+                Label("新建一场事", systemImage: "plus.circle.fill")
+                    .font(.titleSong(compact ? 13 : 15))
+                    .foregroundStyle(.white)
+                    .frame(width: compact ? 250 : 290, height: compact ? 40 : 46)
+                    .background(LWColors.cinnabar, in: RoundedRectangle(cornerRadius: 10))
+            }
+            .buttonStyle(.plain)
+        }
+        .padding(compact ? 18 : 24)
+        .background(
+            RoundedRectangle(cornerRadius: 16)
+                .fill(LWColors.card.opacity(0.96))
+                .overlay(RoundedRectangle(cornerRadius: 16).stroke(LWColors.cardStroke.opacity(0.75)))
+                .shadow(color: LWColors.ink.opacity(0.10), radius: 18, y: 8)
+        )
+    }
+
+    private func entryColumn(compact: Bool) -> some View {
+        IPadPanel(padding: compact ? 14 : 20, fillsHeight: true) {
+            VStack(spacing: 2) {
+                Text("礼台 · 快速登记")
+                    .font(.titleSong(compact ? 21 : 24))
+                    .foregroundStyle(LWColors.ink)
+                Text("主礼台快速录入，有时有心")
+                    .font(.bodySong(compact ? 10 : 12))
+                    .foregroundStyle(LWColors.muted)
             }
             .frame(maxWidth: .infinity)
 
-            VStack(alignment: .leading, spacing: 14) {
-                Text("今日已录 \(todayRecords.count) 笔 · 合计 \(todayRecords.reduce(0) { $0 + $1.amountYuan }.yuanText)")
-                    .font(.titleSong(24))
+            Spacer(minLength: compact ? 2 : 6)
+
+            fieldTitle("来宾姓名", compact: compact)
+            HStack(spacing: 0) {
+                TextField("请输入来宾姓名", text: $name)
+                    .font(.bodySong(compact ? 15 : 17))
                     .foregroundStyle(LWColors.ink)
-                PaperCard {
-                    ForEach(todayRecords.prefix(12)) { record in
-                        RecordRow(record: record, showChevron: false)
-                        if record.id != todayRecords.prefix(12).last?.id {
-                            GoldLineDivider()
+                    .textInputAutocapitalization(.never)
+                    .focused($nameFocused)
+                    .padding(.horizontal, 14)
+                Divider().overlay(LWColors.cardStroke.opacity(0.5))
+                Menu {
+                    ForEach(uniquePeople) { record in
+                        Button(record.personName) {
+                            name = record.personName
+                        }
+                    }
+                } label: {
+                    VStack(spacing: 2) {
+                        Image(systemName: "person.crop.circle.badge.checkmark")
+                            .font(.system(size: compact ? 17 : 20))
+                        Text("通讯录")
+                            .font(.bodySong(9))
+                    }
+                    .foregroundStyle(LWColors.warmGold)
+                    .frame(width: compact ? 64 : 76)
+                }
+            }
+            .frame(height: compact ? 42 : 48)
+            .background(fieldBackground)
+
+            Spacer(minLength: compact ? 2 : 6)
+
+            fieldTitle("礼金金额", compact: compact)
+            HStack(alignment: .firstTextBaseline, spacing: 7) {
+                TextField("请输入礼金金额", text: $amount)
+                    .keyboardType(.numberPad)
+                    .font(.amountKai(compact ? 19 : 22))
+                    .foregroundStyle(LWColors.ink)
+                    .onChange(of: amount) { _, value in
+                        amount = String(value.filter(\.isNumber).prefix(7))
+                    }
+                Text("元")
+                    .font(.titleSong(compact ? 13 : 15))
+                    .foregroundStyle(LWColors.inkSoft)
+            }
+            .padding(.horizontal, 14)
+            .frame(height: compact ? 42 : 48)
+            .background(fieldBackground)
+
+            Spacer(minLength: compact ? 2 : 6)
+
+            HStack {
+                fieldTitle("常用金额", compact: compact)
+                Spacer()
+                Text("点选后仍可修改")
+                    .font(.bodySong(9))
+                    .foregroundStyle(LWColors.muted)
+            }
+
+            LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: compact ? 8 : 10), count: 4), spacing: compact ? 7 : 9) {
+                ForEach([200, 300, 500, 600, 800, 1000, 1200, 1600], id: \.self) { value in
+                    Button {
+                        amount = "\(value)"
+                        HapticsManager.lightTap()
+                    } label: {
+                        Text(value.formatted())
+                            .font(.amountKai(compact ? 16 : 19))
+                            .foregroundStyle(amount == "\(value)" ? LWColors.cinnabar : LWColors.ink)
+                            .frame(maxWidth: .infinity)
+                            .frame(height: compact ? 34 : 40)
+                            .background(
+                                RoundedRectangle(cornerRadius: 8)
+                                    .fill(LWColors.card.opacity(0.62))
+                                    .overlay(RoundedRectangle(cornerRadius: 8).stroke(amount == "\(value)" ? LWColors.cinnabar.opacity(0.7) : LWColors.cardStroke.opacity(0.6)))
+                            )
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+
+            Spacer(minLength: compact ? 2 : 6)
+
+            fieldTitle("备注（选填）", compact: compact)
+            HStack(alignment: .bottom) {
+                TextField("如：关系、桌号、备注等", text: $note, axis: .vertical)
+                    .font(.bodySong(compact ? 12 : 14))
+                    .lineLimit(1...2)
+                    .onChange(of: note) { _, value in
+                        if value.count > 50 { note = String(value.prefix(50)) }
+                    }
+                Text("\(note.count)/50")
+                    .font(.bodySong(9))
+                    .foregroundStyle(LWColors.muted)
+            }
+            .padding(.horizontal, 14)
+            .padding(.vertical, compact ? 8 : 10)
+            .background(fieldBackground)
+
+            Spacer(minLength: 0)
+
+            Button {
+                saveAndContinue()
+            } label: {
+                HStack(spacing: 14) {
+                    Text("记入并继续")
+                        .font(.titleSong(compact ? 18 : 21))
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 15, weight: .semibold))
+                }
+                .foregroundStyle(.white)
+                .frame(maxWidth: .infinity)
+                .frame(height: compact ? 46 : 54)
+                .background(
+                    Image("red_button_texture")
+                        .resizable()
+                        .scaledToFill()
+                        .overlay(LWColors.cinnabar.opacity(0.48))
+                )
+                .clipShape(RoundedRectangle(cornerRadius: 11))
+                .overlay(RoundedRectangle(cornerRadius: 11).stroke(LWColors.warmGold.opacity(0.75), lineWidth: 1.2))
+            }
+            .buttonStyle(.plain)
+            .disabled(currentEvent == nil || name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || (Int(amount) ?? 0) == 0)
+            .opacity(currentEvent == nil || name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || (Int(amount) ?? 0) == 0 ? 0.55 : 1)
+
+            Label("保存后自动清空，继续登记下一位", systemImage: "checkmark.square.fill")
+                .font(.bodySong(compact ? 9 : 10))
+                .foregroundStyle(LWColors.warmGold)
+                .frame(maxWidth: .infinity)
+        }
+        .frame(maxHeight: .infinity, alignment: .top)
+    }
+
+    private func recentColumn(compact: Bool) -> some View {
+        IPadPanel(padding: 0) {
+            HStack {
+                Text("最近记录")
+                    .font(.titleSong(compact ? 15 : 17))
+                    .foregroundStyle(LWColors.ink)
+                Spacer()
+                Text("共 \(currentEventRecords.count) 笔")
+                    .font(.bodySong(compact ? 10 : 11))
+                    .foregroundStyle(LWColors.muted)
+            }
+            .padding(.horizontal, compact ? 13 : 16)
+            .padding(.top, compact ? 12 : 15)
+            .padding(.bottom, compact ? 7 : 9)
+
+            if recentRecords.isEmpty {
+                VStack(spacing: 10) {
+                    Image(systemName: "book.pages")
+                        .font(.system(size: 30, weight: .light))
+                    Text(currentEvent == nil ? "选择一场事后显示现场记录" : "第一位来宾登记后会显示在这里")
+                        .font(.bodySong(12))
+                }
+                .foregroundStyle(LWColors.muted)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else {
+                ScrollView {
+                    LazyVStack(spacing: 0) {
+                        ForEach(recentRecords) { record in
+                            HStack(spacing: 8) {
+                                Text(record.personName)
+                                    .font(.titleSong(compact ? 13 : 15))
+                                    .foregroundStyle(LWColors.ink)
+                                    .lineLimit(1)
+                                Spacer(minLength: 4)
+                                Text(record.amountYuan.yuanText)
+                                    .font(.amountKai(compact ? 14 : 16))
+                                    .foregroundStyle(record.type.accentColor)
+                                Text(record.createdAt.lwTimeText)
+                                    .font(.bodySong(compact ? 9 : 10))
+                                    .foregroundStyle(LWColors.muted)
+                                    .frame(width: compact ? 34 : 40)
+                                Text(record.relationship.title)
+                                    .font(.bodySong(9))
+                                    .foregroundStyle(LWColors.warmGold)
+                                    .padding(.horizontal, 6)
+                                    .padding(.vertical, 3)
+                                    .background(LWColors.goldPale.opacity(0.20), in: RoundedRectangle(cornerRadius: 5))
+                            }
+                            .padding(.horizontal, compact ? 13 : 16)
+                            .frame(height: compact ? 42 : 48)
+                            Divider()
+                                .overlay(LWColors.cardStroke.opacity(0.35))
+                                .padding(.horizontal, compact ? 13 : 16)
                         }
                     }
                 }
-                Spacer()
             }
-            .frame(maxWidth: .infinity)
         }
-        .padding(24)
+        .frame(maxHeight: .infinity)
     }
 
-    private var portraitHint: some View {
-        VStack(spacing: 18) {
-            SealStamp(text: "台", size: 82)
-            Text("横屏记账台")
-                .font(.titleSong(30))
+    private var fieldBackground: some View {
+        RoundedRectangle(cornerRadius: 9)
+            .fill(Color.white.opacity(0.38))
+            .overlay(RoundedRectangle(cornerRadius: 9).stroke(LWColors.cardStroke.opacity(0.55)))
+    }
+
+    private func fieldTitle(_ title: String, compact: Bool) -> some View {
+        Text(title)
+            .font(.titleSong(compact ? 12 : 14))
+            .foregroundStyle(LWColors.ink)
+    }
+
+    private func sceneInfoRow(_ title: String, value: String, image: String?, compact: Bool) -> some View {
+        HStack(spacing: compact ? 7 : 9) {
+            Text(title)
+                .font(.bodySong(compact ? 11 : 13))
                 .foregroundStyle(LWColors.ink)
-            Text("请横屏使用。现场记账时会提供更大的姓名和金额输入框。")
-                .font(.bodySong(17))
-                .foregroundStyle(LWColors.muted)
-                .multilineTextAlignment(.center)
-                .padding(.horizontal, 36)
+                .frame(width: compact ? 60 : 70, alignment: .leading)
+            Text(value)
+                .font(.bodySong(compact ? 11 : 13))
+                .foregroundStyle(LWColors.inkSoft)
+                .frame(maxWidth: .infinity, alignment: .trailing)
+                .lineLimit(1)
+            if let image {
+                Image(image)
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: compact ? 22 : 26, height: compact ? 22 : 26)
+            } else {
+                Color.clear
+                    .frame(width: compact ? 22 : 26, height: compact ? 22 : 26)
+            }
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .frame(height: compact ? 24 : 28)
     }
 
-    private var chipEvents: some View {
-        HStack {
-            ForEach([GiftEventType.wedding, .baby, .housewarming, .birthday, .funeral], id: \.id) { event in
-                Button {
-                    if hostedEvents.first(where: { $0.id == selectedHostedEventID })?.eventType != event {
-                        selectedHostedEventID = nil
-                    }
-                    eventType = event
-                } label: {
-                    RelationshipTag(title: event.title, isSelected: eventType == event)
-                }
-                .buttonStyle(.plain)
-            }
+    private func statItem(icon: String, title: String, value: String, compact: Bool) -> some View {
+        VStack(spacing: compact ? 3 : 5) {
+            Image(systemName: icon)
+                .font(.system(size: compact ? 14 : 17, weight: .light))
+                .foregroundStyle(LWColors.warmGold)
+                .frame(width: compact ? 32 : 38, height: compact ? 32 : 38)
+                .overlay(Circle().stroke(LWColors.warmGold.opacity(0.65)))
+            Text(title)
+                .font(.bodySong(compact ? 8 : 9))
+                .foregroundStyle(LWColors.inkSoft)
+            Text(value)
+                .font(.amountKai(compact ? 12 : 14))
+                .foregroundStyle(LWColors.cinnabar)
+                .lineLimit(1)
+                .minimumScaleFactor(0.7)
         }
+        .frame(maxWidth: .infinity)
     }
 
-    private var hostedEventSelection: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack(spacing: 10) {
-                Text("一场事")
-                    .font(.titleSong(15))
-                    .foregroundStyle(LWColors.ink)
-                Picker("一场事", selection: $selectedHostedEventID) {
-                    Text("自动新建 · \(HostedEventService.defaultTitle(for: eventType))")
-                        .tag(nil as UUID?)
-                    ForEach(hostedEvents) { event in
-                        Text("\(event.title) · \(event.date.lwDayText)")
-                            .tag(event.id as UUID?)
-                    }
-                }
-                .labelsHidden()
-                .tint(LWColors.cinnabar)
-                Spacer()
-            }
-            if selectedHostedEventID == nil {
-                TextField(
-                    "场次名称（默认：\(HostedEventService.defaultTitle(for: eventType))）",
-                    text: $newHostedEventTitle
-                )
-                .font(.bodySong(14))
-                .textInputAutocapitalization(.never)
+    private func totalPanel(compact: Bool) -> some View {
+        VStack(alignment: .leading, spacing: compact ? 7 : 10) {
+            Text("总计数据")
+                .font(.titleSong(compact ? 14 : 16))
+            HStack(spacing: 0) {
+                totalItem("总收礼", value: receivedAmount, compact: compact)
+                Divider().overlay(Color.white.opacity(0.32))
+                totalItem("总送礼", value: givenAmount, compact: compact)
+                Divider().overlay(Color.white.opacity(0.32))
+                totalItem("往来结余", value: receivedAmount - givenAmount, compact: compact)
             }
         }
+        .foregroundStyle(.white)
+        .padding(compact ? 11 : 14)
+        .background(
+            Image("red_ledger_texture")
+                .resizable()
+                .scaledToFill()
+                .overlay(LWColors.cinnabarDark.opacity(0.36))
+        )
+        .clipShape(RoundedRectangle(cornerRadius: 10))
+        .overlay(RoundedRectangle(cornerRadius: 10).stroke(LWColors.warmGold.opacity(0.65)))
+        .frame(height: compact ? 112 : 128)
+    }
+
+    private func totalItem(_ title: String, value: Int, compact: Bool) -> some View {
+        VStack(spacing: 2) {
+            Text(title).font(.bodySong(compact ? 8 : 9))
+            Text(value.yuanText)
+                .font(.amountKai(compact ? 12 : 15))
+                .lineLimit(1)
+                .minimumScaleFactor(0.65)
+        }
+        .frame(maxWidth: .infinity)
+    }
+
+    private var todayReceivedAmount: Int {
+        todayRecords.filter { $0.type == .received }.reduce(0) { $0 + $1.amountYuan }
+    }
+
+    private var receivedAmount: Int {
+        records.filter { $0.type == .received }.reduce(0) { $0 + $1.amountYuan }
+    }
+
+    private var givenAmount: Int {
+        records.filter { $0.type == .given }.reduce(0) { $0 + $1.amountYuan }
     }
 
     private func saveAndContinue() {
-        let draft = GiftRecordDraft(personName: name, type: .received)
-        var finalDraft = draft
-        finalDraft.amountText = amount
-        finalDraft.note = note
-        finalDraft.eventType = eventType
-        finalDraft.hostedEventID = selectedHostedEventID
-        finalDraft.hostedEventTitle = newHostedEventTitle
-        guard finalDraft.isValid else { return }
+        guard let currentEvent else { return }
+        var draft = GiftRecordDraft(personName: name, type: .received)
+        draft.amountText = amount
+        draft.note = note
+        draft.eventType = currentEvent.eventType
+        draft.relationship = records.first(where: { $0.personName == name })?.relationship ?? .friend
+        draft.hostedEventID = currentEvent.id
+        guard draft.isValid else { return }
+
         do {
-            let record = try RecordService.insert(finalDraft, in: modelContext)
+            let record = try RecordService.insert(draft, in: modelContext)
             selectedHostedEventID = record.hostedEventID
-            newHostedEventTitle = ""
             eventType = record.eventType
             name = ""
-            amount = "600"
             note = ""
+            showSaved = true
+            nameFocused = true
             HapticsManager.success()
+            Task { @MainActor in
+                try? await Task.sleep(for: .seconds(1.2))
+                withAnimation { showSaved = false }
+            }
         } catch {
             saveErrorMessage = error.localizedDescription
         }
     }
+}
+
+private struct IPadLedgerView: View {
+    @Environment(\.modelContext) private var modelContext
+
+    let records: [GiftRecord]
+    let hostedEvents: [HostedGiftEvent]
+    let startsSearching: Bool
+    let openSettings: () -> Void
+
+    @State private var searchText = ""
+    @State private var filter: IPadLedgerFilter = .all
+    @State private var selectedRecordID: UUID?
+    @State private var editingRecord: GiftRecord?
+    @State private var newRecordRequest: IPadNewRecordRequest?
+    @State private var pendingDelete: GiftRecord?
+    @State private var exportURL: URL?
+    @State private var errorMessage: String?
+    @FocusState private var searchFocused: Bool
+
+    private var filteredRecords: [GiftRecord] {
+        SearchService.filter(records, query: searchText)
+            .filter(filter.includes)
+            .sorted { $0.date > $1.date }
+    }
+
+    private var groupedRecords: [(String, [GiftRecord])] {
+        Dictionary(grouping: filteredRecords, by: { $0.date.lwMonthText })
+            .map { month, records in (month, records.sorted { $0.date > $1.date }) }
+            .sorted { ($0.1.first?.date ?? .distantPast) > ($1.1.first?.date ?? .distantPast) }
+    }
+
+    private var selectedRecord: GiftRecord? {
+        if let selectedRecordID, let match = records.first(where: { $0.id == selectedRecordID }) {
+            return match
+        }
+        return filteredRecords.first
+    }
+
+    var body: some View {
+        GeometryReader { geometry in
+            let compact = geometry.size.height < 760
+            VStack(spacing: 0) {
+                IPadBrandHeader(
+                    style: .ledger,
+                    searchText: $searchText,
+                    openSettings: openSettings
+                )
+                .focused($searchFocused)
+                .frame(height: compact ? 116 : 150)
+
+                HStack(spacing: compact ? 10 : 14) {
+                    filtersColumn(compact: compact)
+                        .frame(width: geometry.size.width * 0.245)
+                    recordsColumn(compact: compact)
+                        .frame(width: geometry.size.width * 0.37)
+                    detailColumn(compact: compact)
+                        .frame(maxWidth: .infinity)
+                }
+                .padding(.horizontal, compact ? 16 : 22)
+                .padding(.bottom, compact ? 10 : 14)
+            }
+        }
+        .onAppear {
+            selectedRecordID = selectedRecordID ?? filteredRecords.first?.id
+            if startsSearching {
+                Task { @MainActor in
+                    try? await Task.sleep(for: .milliseconds(250))
+                    searchFocused = true
+                }
+            }
+        }
+        .onChange(of: filteredRecords.map(\.id)) { _, ids in
+            if selectedRecordID == nil || !ids.contains(selectedRecordID!) {
+                selectedRecordID = ids.first
+            }
+        }
+        .sheet(item: $editingRecord) { record in
+            NavigationStack { AddRecordView(editingRecord: record) }
+                .presentationDetents([.large])
+        }
+        .sheet(item: $newRecordRequest) { request in
+            NavigationStack {
+                AddRecordView(presetName: request.name, presetType: .received)
+            }
+            .presentationDetents([.large])
+        }
+        .sheet(item: $exportURL) { url in
+            IPadShareSheet(items: [url])
+        }
+        .confirmationDialog("确认删除这条往来记录？", isPresented: Binding(
+            get: { pendingDelete != nil },
+            set: { if !$0 { pendingDelete = nil } }
+        ), titleVisibility: .visible) {
+            Button("删除记录", role: .destructive) { deletePendingRecord() }
+            Button("取消", role: .cancel) { pendingDelete = nil }
+        } message: {
+            Text("删除后无法恢复，但同一人的其他往来记录会继续保留。")
+        }
+        .alert("操作失败", isPresented: Binding(
+            get: { errorMessage != nil },
+            set: { if !$0 { errorMessage = nil } }
+        )) {
+            Button("知道了", role: .cancel) {}
+        } message: {
+            Text(errorMessage ?? "请稍后再试。")
+        }
+    }
+
+    private func filtersColumn(compact: Bool) -> some View {
+        IPadPanel(padding: compact ? 11 : 14) {
+            HStack {
+                Text("账本与筛选")
+                    .font(.titleSong(compact ? 14 : 16))
+                Spacer()
+                Button {
+                    filter = .all
+                    searchText = ""
+                } label: {
+                    Label("重置", systemImage: "arrow.counterclockwise")
+                        .font(.bodySong(compact ? 9 : 10))
+                }
+                .buttonStyle(.plain)
+                .foregroundStyle(LWColors.cinnabar)
+            }
+
+            ledgerSourceRow(
+                image: "ledger_book_badge",
+                title: "礼往来总礼簿",
+                subtitle: "共 \(records.count) 条",
+                selected: filter == .all,
+                compact: compact
+            ) { filter = .all }
+
+            ledgerSourceRow(
+                systemImage: "rectangle.stack",
+                title: "我家办事",
+                subtitle: "共 \(hostedEvents.count) 场",
+                selected: false,
+                compact: compact
+            ) { filter = .received }
+
+            ledgerSourceRow(
+                systemImage: "arrow.up.right.circle",
+                title: "送礼往来",
+                subtitle: "共 \(records.filter { $0.type == .given }.count) 条",
+                selected: filter == .given,
+                compact: compact
+            ) { filter = .given }
+
+            GoldLineDivider()
+            Text("筛选分类")
+                .font(.titleSong(compact ? 13 : 15))
+                .padding(.top, 2)
+
+            ForEach(IPadLedgerFilter.allCases) { item in
+                Button {
+                    filter = item
+                } label: {
+                    HStack(spacing: 10) {
+                        Image(systemName: item.icon)
+                            .font(.system(size: compact ? 12 : 14))
+                            .frame(width: 20)
+                        Text(item.title)
+                            .font(.bodySong(compact ? 11 : 13))
+                        Spacer()
+                        Text("\(records.filter(item.includes).count)")
+                            .font(.bodySong(compact ? 10 : 11))
+                    }
+                    .foregroundStyle(filter == item ? .white : LWColors.inkSoft)
+                    .padding(.horizontal, 12)
+                    .frame(height: compact ? 34 : 40)
+                    .background(filter == item ? LWColors.cinnabar : Color.clear, in: RoundedRectangle(cornerRadius: 8))
+                }
+                .buttonStyle(.plain)
+            }
+
+            Spacer(minLength: 0)
+            Button {
+                searchFocused = true
+            } label: {
+                Label("筛选条件", systemImage: "line.3.horizontal.decrease")
+                    .font(.bodySong(compact ? 11 : 12))
+                    .foregroundStyle(LWColors.inkSoft)
+                    .frame(maxWidth: .infinity)
+                    .frame(height: compact ? 36 : 42)
+                    .background(fieldBackground)
+            }
+            .buttonStyle(.plain)
+        }
+        .frame(maxHeight: .infinity)
+    }
+
+    private func recordsColumn(compact: Bool) -> some View {
+        VStack(spacing: compact ? 8 : 10) {
+            HStack {
+                Text("往来记录（\(filteredRecords.count)）")
+                    .font(.titleSong(compact ? 14 : 16))
+                Spacer()
+                Button { } label: {
+                    Label("按日期", systemImage: "line.3.horizontal.decrease")
+                }
+                .buttonStyle(.plain)
+                Button { exportRecords() } label: {
+                    Label("导出", systemImage: "square.and.arrow.up")
+                }
+                .buttonStyle(.plain)
+            }
+            .font(.bodySong(compact ? 9 : 10))
+            .foregroundStyle(LWColors.inkSoft)
+            .padding(.horizontal, 6)
+
+            ScrollView {
+                LazyVStack(spacing: compact ? 7 : 9) {
+                    if groupedRecords.isEmpty {
+                        VStack(spacing: 10) {
+                            Image(systemName: "magnifyingglass")
+                                .font(.system(size: 30, weight: .light))
+                            Text("没有符合条件的记录")
+                                .font(.bodySong(13))
+                        }
+                        .foregroundStyle(LWColors.muted)
+                        .frame(maxWidth: .infinity)
+                        .padding(.top, 80)
+                    }
+
+                    ForEach(groupedRecords, id: \.0) { month, monthRecords in
+                        IPadPanel(padding: 0) {
+                            HStack {
+                                Text(month)
+                                    .font(.titleSong(compact ? 12 : 14))
+                                Spacer()
+                                Text("收礼 \(monthRecords.filter { $0.type == .received }.count) ｜ 送礼 \(monthRecords.filter { $0.type == .given }.count)")
+                                    .font(.bodySong(compact ? 8 : 9))
+                                    .foregroundStyle(LWColors.muted)
+                            }
+                            .padding(.horizontal, 12)
+                            .frame(height: compact ? 31 : 36)
+
+                            ForEach(monthRecords.prefix(compact ? 5 : 7)) { record in
+                                Button {
+                                    selectedRecordID = record.id
+                                } label: {
+                                    recordListRow(record, selected: selectedRecordID == record.id, compact: compact)
+                                }
+                                .buttonStyle(.plain)
+                            }
+
+                            if monthRecords.count > (compact ? 5 : 7) {
+                                Text("本月另有 \(monthRecords.count - (compact ? 5 : 7)) 条记录")
+                                    .font(.bodySong(9))
+                                    .foregroundStyle(LWColors.muted)
+                                    .frame(maxWidth: .infinity)
+                                    .frame(height: 26)
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        .frame(maxHeight: .infinity)
+    }
+
+    private func detailColumn(compact: Bool) -> some View {
+        IPadPanel(padding: compact ? 13 : 17) {
+            if let record = selectedRecord {
+                Text("\(record.type.title)记录")
+                    .font(.bodySong(compact ? 9 : 10))
+                    .foregroundStyle(LWColors.warmGold)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
+                    .background(LWColors.goldPale.opacity(0.18), in: RoundedRectangle(cornerRadius: 5))
+
+                HStack(alignment: .firstTextBaseline) {
+                    Text(record.personName)
+                        .font(.titleSong(compact ? 22 : 27))
+                        .foregroundStyle(LWColors.ink)
+                    Text(record.relationship.title)
+                        .font(.bodySong(compact ? 9 : 10))
+                        .foregroundStyle(LWColors.warmGold)
+                        .padding(.horizontal, 7)
+                        .padding(.vertical, 3)
+                        .background(LWColors.goldPale.opacity(0.20), in: RoundedRectangle(cornerRadius: 5))
+                    Spacer()
+                    Text(signedAmount(record))
+                        .font(.amountKai(compact ? 20 : 25))
+                        .foregroundStyle(record.type.accentColor)
+                }
+
+                GoldLineDivider()
+                detailRow("事件类型", value: record.eventType.title, compact: compact)
+                detailRow("往来类型", value: record.type.title, compact: compact)
+                detailRow("日期时间", value: "\(record.date.lwDayText)  \(record.date.lwTimeText)", compact: compact)
+                detailRow("礼金金额", value: record.amountYuan.yuanText, valueColor: record.type.accentColor, compact: compact)
+                detailRow("关系", value: record.relationship.title, compact: compact)
+
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("备注")
+                        .font(.titleSong(compact ? 11 : 13))
+                    Text(record.note.isEmpty ? "暂无备注" : record.note)
+                        .font(.bodySong(compact ? 10 : 12))
+                        .foregroundStyle(record.note.isEmpty ? LWColors.muted : LWColors.inkSoft)
+                        .lineLimit(compact ? 2 : 3)
+                }
+                .padding(.vertical, 4)
+
+                GoldLineDivider()
+                HStack {
+                    Text("往来历史")
+                        .font(.titleSong(compact ? 12 : 14))
+                    Spacer()
+                    Text("共 \(records.filter { $0.personName == record.personName }.count) 条记录")
+                        .font(.bodySong(compact ? 9 : 10))
+                        .foregroundStyle(LWColors.muted)
+                }
+
+                ScrollView {
+                    LazyVStack(spacing: 0) {
+                        ForEach(records.filter { $0.personName == record.personName }.sorted { $0.date > $1.date }.prefix(compact ? 3 : 4)) { history in
+                            HStack(spacing: 8) {
+                                Text(history.type.shortTitle)
+                                    .font(.titleSong(10))
+                                    .foregroundStyle(.white)
+                                    .frame(width: 24, height: 24)
+                                    .background(history.type.accentColor, in: Circle())
+                                Text(history.date.lwDayText)
+                                    .font(.bodySong(compact ? 9 : 10))
+                                    .foregroundStyle(LWColors.muted)
+                                Text(history.eventType.title)
+                                    .font(.bodySong(compact ? 9 : 10))
+                                    .foregroundStyle(LWColors.inkSoft)
+                                Spacer()
+                                Text(signedAmount(history))
+                                    .font(.amountKai(compact ? 11 : 13))
+                                    .foregroundStyle(history.type.accentColor)
+                            }
+                            .frame(height: compact ? 33 : 38)
+                            Divider().overlay(LWColors.cardStroke.opacity(0.3))
+                        }
+                    }
+                }
+                .frame(maxHeight: compact ? 104 : 160)
+
+                Spacer(minLength: 2)
+                HStack(spacing: compact ? 8 : 10) {
+                    detailAction("编辑", icon: "pencil", compact: compact) {
+                        editingRecord = record
+                    }
+                    detailAction("再记一笔", icon: "plus.circle", prominent: true, compact: compact) {
+                        newRecordRequest = IPadNewRecordRequest(name: record.personName)
+                    }
+                    detailAction("删除", icon: "trash", destructive: true, compact: compact) {
+                        pendingDelete = record
+                    }
+                }
+            } else {
+                VStack(spacing: 12) {
+                    Image(systemName: "book.closed")
+                        .font(.system(size: 34, weight: .light))
+                    Text(records.isEmpty ? "还没有往来记录" : "请选择一条记录")
+                        .font(.bodySong(14))
+                }
+                .foregroundStyle(LWColors.muted)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            }
+        }
+        .frame(maxHeight: .infinity)
+    }
+
+    private var fieldBackground: some View {
+        RoundedRectangle(cornerRadius: 9)
+            .fill(Color.white.opacity(0.34))
+            .overlay(RoundedRectangle(cornerRadius: 9).stroke(LWColors.cardStroke.opacity(0.48)))
+    }
+
+    private func ledgerSourceRow(
+        image: String? = nil,
+        systemImage: String? = nil,
+        title: String,
+        subtitle: String,
+        selected: Bool,
+        compact: Bool,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button(action: action) {
+            HStack(spacing: 10) {
+                if let image {
+                    Image(image)
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: compact ? 34 : 40, height: compact ? 34 : 40)
+                } else if let systemImage {
+                    Image(systemName: systemImage)
+                        .font(.system(size: compact ? 20 : 23, weight: .light))
+                        .foregroundStyle(LWColors.inkSoft)
+                        .frame(width: compact ? 34 : 40)
+                }
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(title)
+                        .font(.titleSong(compact ? 11 : 13))
+                        .foregroundStyle(LWColors.ink)
+                    Text(subtitle)
+                        .font(.bodySong(compact ? 8 : 9))
+                        .foregroundStyle(LWColors.muted)
+                }
+                Spacer()
+                Image(systemName: "chevron.right")
+                    .font(.caption2.weight(.semibold))
+                    .foregroundStyle(LWColors.warmGold)
+            }
+            .padding(.horizontal, 9)
+            .frame(height: compact ? 48 : 55)
+            .background(selected ? LWColors.cinnabar.opacity(0.08) : Color.clear, in: RoundedRectangle(cornerRadius: 8))
+            .overlay(alignment: .leading) {
+                if selected {
+                    RoundedRectangle(cornerRadius: 2).fill(LWColors.cinnabar).frame(width: 3)
+                }
+            }
+        }
+        .buttonStyle(.plain)
+    }
+
+    private func recordListRow(_ record: GiftRecord, selected: Bool, compact: Bool) -> some View {
+        HStack(spacing: compact ? 6 : 8) {
+            Text(String(record.personName.prefix(1)))
+                .font(.titleSong(compact ? 10 : 11))
+                .foregroundStyle(.white)
+                .frame(width: compact ? 23 : 27, height: compact ? 23 : 27)
+                .background(LWColors.inkSoft, in: Circle())
+            Text(record.personName)
+                .font(.titleSong(compact ? 11 : 13))
+                .foregroundStyle(LWColors.ink)
+                .lineLimit(1)
+            Text(record.relationship.title)
+                .font(.bodySong(compact ? 8 : 9))
+                .foregroundStyle(LWColors.warmGold)
+                .padding(.horizontal, 5)
+                .padding(.vertical, 2)
+                .background(LWColors.goldPale.opacity(0.16), in: RoundedRectangle(cornerRadius: 4))
+            Spacer(minLength: 4)
+            Text(record.eventType.title)
+                .font(.bodySong(compact ? 8 : 9))
+                .foregroundStyle(LWColors.muted)
+            Text(record.date.formatted(.dateTime.month().day()))
+                .font(.bodySong(compact ? 8 : 9))
+                .foregroundStyle(LWColors.muted)
+                .frame(width: compact ? 33 : 39)
+            Text(signedAmount(record))
+                .font(.amountKai(compact ? 11 : 13))
+                .foregroundStyle(record.type.accentColor)
+                .frame(width: compact ? 57 : 68, alignment: .trailing)
+        }
+        .padding(.horizontal, 10)
+        .frame(height: compact ? 37 : 42)
+        .background(selected ? LWColors.cinnabar.opacity(0.07) : Color.clear)
+        .overlay {
+            if selected {
+                RoundedRectangle(cornerRadius: 7)
+                    .stroke(LWColors.cinnabar.opacity(0.75), lineWidth: 1)
+                    .padding(.horizontal, 3)
+            }
+        }
+    }
+
+    private func detailRow(_ title: String, value: String, valueColor: Color = LWColors.inkSoft, compact: Bool) -> some View {
+        HStack {
+            Text(title)
+                .font(.titleSong(compact ? 10 : 12))
+                .foregroundStyle(LWColors.ink)
+            Spacer()
+            Text(value)
+                .font(.bodySong(compact ? 10 : 12))
+                .foregroundStyle(valueColor)
+                .lineLimit(1)
+        }
+        .frame(height: compact ? 27 : 33)
+        .overlay(alignment: .bottom) {
+            Divider().overlay(LWColors.cardStroke.opacity(0.3))
+        }
+    }
+
+    private func detailAction(
+        _ title: String,
+        icon: String,
+        prominent: Bool = false,
+        destructive: Bool = false,
+        compact: Bool,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button(action: action) {
+            Label(title, systemImage: icon)
+                .font(.titleSong(compact ? 10 : 12))
+                .foregroundStyle(prominent ? .white : (destructive ? LWColors.cinnabar : LWColors.inkSoft))
+                .frame(maxWidth: .infinity)
+                .frame(height: compact ? 38 : 45)
+                .background(prominent ? LWColors.cinnabar : Color.white.opacity(0.24), in: RoundedRectangle(cornerRadius: 9))
+                .overlay(RoundedRectangle(cornerRadius: 9).stroke(prominent ? LWColors.warmGold.opacity(0.55) : LWColors.cardStroke.opacity(0.5)))
+        }
+        .buttonStyle(.plain)
+    }
+
+    private func signedAmount(_ record: GiftRecord) -> String {
+        "\(record.type == .received ? "+" : "−")\(record.amountYuan.formatted()) 元"
+    }
+
+    private func exportRecords() {
+        do {
+            exportURL = try ExportService.writeExcel(from: filteredRecords)
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    private func deletePendingRecord() {
+        guard let record = pendingDelete else { return }
+        do {
+            try RecordService.delete(record, in: modelContext)
+            if selectedRecordID == record.id {
+                selectedRecordID = filteredRecords.first(where: { $0.id != record.id })?.id
+            }
+            pendingDelete = nil
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+}
+
+private struct IPadBrandHeader: View {
+    enum Style { case desk, ledger }
+
+    let style: Style
+    let searchText: Binding<String>?
+    let openSettings: () -> Void
+
+    var body: some View {
+        ZStack {
+            LinearGradient(
+                colors: [.clear, LWColors.goldPale.opacity(0.07), .clear],
+                startPoint: .leading,
+                endPoint: .trailing
+            )
+            .allowsHitTesting(false)
+
+            Image("prototype_header_mountain_plum")
+                .resizable()
+                .scaledToFit()
+                .frame(width: 236)
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topTrailing)
+                .offset(x: 24, y: 8)
+                .opacity(0.88)
+                .allowsHitTesting(false)
+
+            VStack(spacing: 0) {
+                HStack(spacing: 10) {
+                    Text("礼往来")
+                        .font(.titleSong(38))
+                        .foregroundStyle(LWColors.ink)
+                    SealStamp(text: "礼", size: 30, color: LWColors.cinnabar)
+                }
+                .accessibilityElement(children: .combine)
+                .accessibilityLabel("礼往来")
+                HStack(spacing: 9) {
+                    Rectangle().fill(LWColors.warmGold.opacity(0.55)).frame(width: 22, height: 1)
+                    Text(style == .desk ? "礼有往来，情有分寸" : "人情往来礼簿")
+                        .font(.bodySong(12))
+                        .foregroundStyle(LWColors.inkSoft)
+                    Rectangle().fill(LWColors.warmGold.opacity(0.55)).frame(width: 22, height: 1)
+                }
+            }
+            .padding(.top, 4)
+
+            HStack {
+                if style == .desk {
+                    Label("礼台模式", systemImage: "rectangle.landscape.rotate")
+                        .font(.titleSong(12))
+                        .foregroundStyle(LWColors.inkSoft)
+                        .padding(.horizontal, 13)
+                        .padding(.vertical, 8)
+                        .background(headerPill)
+                } else {
+                    Label("礼往来总礼簿", systemImage: "books.vertical")
+                        .font(.titleSong(12))
+                        .foregroundStyle(LWColors.inkSoft)
+                        .padding(.horizontal, 13)
+                        .padding(.vertical, 8)
+                        .background(headerPill)
+                }
+
+                Spacer()
+
+                if let searchText {
+                    HStack(spacing: 8) {
+                        TextField("搜索姓名、关系或备注", text: searchText)
+                            .font(.bodySong(11))
+                            .textInputAutocapitalization(.never)
+                        Image(systemName: "magnifyingglass")
+                            .font(.system(size: 13))
+                            .foregroundStyle(LWColors.warmGold)
+                    }
+                    .padding(.horizontal, 12)
+                    .frame(width: 245, height: 36)
+                    .background(headerPill)
+                }
+
+                Button(action: openSettings) {
+                    Label("设置", systemImage: "gearshape")
+                        .font(.titleSong(12))
+                        .foregroundStyle(LWColors.inkSoft)
+                        .padding(.horizontal, 13)
+                        .padding(.vertical, 8)
+                        .background(headerPill)
+                }
+                .buttonStyle(.plain)
+            }
+            .padding(.horizontal, 22)
+            .padding(.top, 4)
+
+            Rectangle()
+                .fill(LWColors.warmGold.opacity(0.18))
+                .frame(height: 1)
+                .frame(maxHeight: .infinity, alignment: .bottom)
+                .padding(.horizontal, 22)
+        }
+    }
+
+    private var headerPill: some View {
+        RoundedRectangle(cornerRadius: 14)
+            .fill(LWColors.card.opacity(0.62))
+            .overlay(RoundedRectangle(cornerRadius: 14).stroke(LWColors.cardStroke.opacity(0.42)))
+    }
+}
+
+private struct IPadPanel<Content: View>: View {
+    var padding: CGFloat = 14
+    var fillsHeight = false
+    @ViewBuilder let content: Content
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 9) {
+            content
+        }
+        .padding(padding)
+        .frame(
+            maxWidth: .infinity,
+            maxHeight: fillsHeight ? .infinity : nil,
+            alignment: .topLeading
+        )
+        .background(
+            RoundedRectangle(cornerRadius: 13)
+                .fill(LWColors.card.opacity(0.58))
+                .overlay(RoundedRectangle(cornerRadius: 13).stroke(LWColors.cardStroke.opacity(0.42), lineWidth: 0.8))
+        )
+    }
+}
+
+private enum IPadLedgerFilter: String, CaseIterable, Identifiable {
+    case all
+    case received
+    case given
+    case wedding
+    case funeral
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .all: "全部"
+        case .received: "收礼"
+        case .given: "送礼"
+        case .wedding: "喜事"
+        case .funeral: "白事"
+        }
+    }
+
+    var icon: String {
+        switch self {
+        case .all: "gift"
+        case .received: "arrow.down.circle"
+        case .given: "arrow.up.circle"
+        case .wedding: "heart.circle"
+        case .funeral: "leaf.circle"
+        }
+    }
+
+    func includes(_ record: GiftRecord) -> Bool {
+        switch self {
+        case .all: true
+        case .received: record.type == .received
+        case .given: record.type == .given
+        case .wedding: record.eventType == .wedding
+        case .funeral: record.eventType == .funeral
+        }
+    }
+}
+
+private struct IPadNewRecordRequest: Identifiable {
+    let id = UUID()
+    let name: String
+}
+
+private struct IPadShareSheet: UIViewControllerRepresentable {
+    let items: [Any]
+
+    func makeUIViewController(context: Context) -> UIActivityViewController {
+        UIActivityViewController(activityItems: items, applicationActivities: nil)
+    }
+
+    func updateUIViewController(_ uiViewController: UIActivityViewController, context: Context) {}
+}
+
+#Preview("iPad 横屏") {
+    IPadRootView(records: [], hostedEvents: [])
+        .modelContainer(for: [HostedGiftEvent.self, GiftRecord.self], inMemory: true)
+        .environment(AppState())
+        .frame(width: 1180, height: 820)
 }

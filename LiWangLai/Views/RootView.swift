@@ -10,6 +10,8 @@ struct RootView: View {
 
     @State private var isLocked: Bool
     @State private var migrationErrorMessage: String?
+    @State private var isShowingIPadDesk = false
+    @State private var selectedIPadDeskEventID: UUID?
 
     private var reminderRevision: String {
         records
@@ -29,40 +31,49 @@ struct RootView: View {
         @Bindable var appState = appState
         let activeTheme = appState.selectedTheme
 
-        ZStack(alignment: .bottom) {
-            PaperTexture()
+        GeometryReader { geometry in
+            ZStack(alignment: .bottom) {
+                PaperTexture()
 
-            Group {
-                switch appState.selectedTab {
-                case .home:
-                    NavigationStack {
-                        HomeView(records: records)
+                if UIDevice.current.userInterfaceIdiom == .pad {
+                    Group {
+                        if isShowingIPadDesk {
+                            if geometry.size.width > geometry.size.height {
+                                IPadQuickDeskView(
+                                    records: records,
+                                    hostedEvents: hostedEvents,
+                                    initialHostedEventID: selectedIPadDeskEventID,
+                                    openSettings: {
+                                        isShowingIPadDesk = false
+                                        appState.selectedTab = .settings
+                                    }
+                                )
+                            } else {
+                                IPadPortraitPrompt()
+                            }
+                        } else {
+                            tabContent {
+                                selectedIPadDeskEventID = nil
+                                isShowingIPadDesk = true
+                            }
+                        }
                     }
-                case .ledger:
-                    NavigationStack {
-                        LedgerView(records: records)
+                    .padding(.bottom, 46)
+
+                    TabBar(selectedTab: $appState.selectedTab) { _ in
+                        isShowingIPadDesk = false
                     }
-                case .add:
-                    NavigationStack {
-                        AddRecordView(presetType: appState.addPresetType)
-                    }
-                case .people:
-                    NavigationStack {
-                        PeopleView(records: records)
-                    }
-                case .settings:
-                    NavigationStack {
-                        SettingsView(records: records)
-                    }
+                } else {
+                    tabContent()
+                    .padding(.bottom, 46)
+
+                    TabBar(selectedTab: $appState.selectedTab)
                 }
-            }
-            .padding(.bottom, 46)
 
-            TabBar(selectedTab: $appState.selectedTab)
-
-            if isLocked, appState.isBiometricLockEnabled {
-                LockScreenView {
-                    isLocked = false
+                if isLocked, appState.isBiometricLockEnabled {
+                    LockScreenView {
+                        isLocked = false
+                    }
                 }
             }
         }
@@ -77,7 +88,17 @@ struct RootView: View {
                 isLocked = true
             }
         }
+        .onChange(of: appState.ipadDeskRequest) { _, request in
+            guard UIDevice.current.userInterfaceIdiom == .pad,
+                  let request else { return }
+            selectedIPadDeskEventID = request.hostedEventID
+            isShowingIPadDesk = true
+            appState.selectedTab = .home
+        }
         .task {
+#if DEBUG
+            SampleData.seedIPadPreviewIfRequested(modelContext: modelContext)
+#endif
             do {
                 try HostedEventService.backfillUnambiguousLinks(
                     events: hostedEvents,
@@ -101,10 +122,42 @@ struct RootView: View {
             Text("旧版的一场事关联暂未整理完成，你的原始礼簿记录仍会保留。\n\n\(migrationErrorMessage ?? "")")
         }
     }
+
+    @ViewBuilder
+    private func tabContent(onOpenDeskMode: (() -> Void)? = nil) -> some View {
+        switch appState.selectedTab {
+        case .home:
+            NavigationStack {
+                HomeView(records: records, onOpenDeskMode: onOpenDeskMode)
+            }
+        case .ledger:
+            NavigationStack {
+                LedgerView(records: records)
+            }
+        case .add:
+            NavigationStack {
+                AddRecordView(presetType: appState.addPresetType)
+            }
+        case .people:
+            NavigationStack {
+                PeopleView(records: records)
+            }
+        case .settings:
+            NavigationStack {
+                SettingsView(records: records)
+            }
+        }
+    }
 }
 
 private struct TabBar: View {
     @Binding var selectedTab: AppTab
+    var onSelect: ((AppTab) -> Void)?
+
+    init(selectedTab: Binding<AppTab>, onSelect: ((AppTab) -> Void)? = nil) {
+        _selectedTab = selectedTab
+        self.onSelect = onSelect
+    }
 
     var body: some View {
         HStack(alignment: .bottom) {
@@ -126,6 +179,7 @@ private struct TabBar: View {
     private func tab(_ tab: AppTab, title: String, image: String) -> some View {
         Button {
             selectedTab = tab
+            onSelect?(tab)
             HapticsManager.lightTap()
         } label: {
             VStack(spacing: 2) {
@@ -143,6 +197,7 @@ private struct TabBar: View {
     private var addTab: some View {
         Button {
             selectedTab = .add
+            onSelect?(.add)
             HapticsManager.lightTap()
         } label: {
             VStack(spacing: 2) {

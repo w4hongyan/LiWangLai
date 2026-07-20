@@ -4,6 +4,7 @@ import SwiftUI
 struct EventDetailView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
+    @Environment(AppState.self) private var appState
 
     let event: GiftEvent
 
@@ -52,6 +53,9 @@ struct EventDetailView: View {
             VStack(alignment: .leading, spacing: 12) {
                 detailHeader
                 overviewCard
+                if UIDevice.current.userInterfaceIdiom == .pad, hostedEvent != nil {
+                    deskModeButton
+                }
                 recordsCard
                 addRecordButton
             }
@@ -267,6 +271,40 @@ struct EventDetailView: View {
                 }
             }
         }
+    }
+
+    private var deskModeButton: some View {
+        Button {
+            guard let hostedEvent else { return }
+            appState.ipadDeskRequest = IPadDeskRequest(hostedEventID: hostedEvent.id)
+            HapticsManager.lightTap()
+        } label: {
+            PaperCard(padding: 12) {
+                HStack(spacing: 12) {
+                    Image("ceremony_table_badge")
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: 40, height: 40)
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("进入礼台模式")
+                            .font(.titleSong(16))
+                            .foregroundStyle(LWColors.ink)
+                        Text("继续为“\(displayTitle)”现场收礼入簿")
+                            .font(.bodySong(12))
+                            .foregroundStyle(LWColors.muted)
+                    }
+                    Spacer()
+                    Image(systemName: "rectangle.landscape.rotate")
+                        .font(.system(size: 18, weight: .medium))
+                        .foregroundStyle(LWColors.cinnabar)
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundStyle(LWColors.cinnabar)
+                }
+            }
+        }
+        .buttonStyle(.plain)
+        .accessibilityIdentifier("event.ipadDeskMode")
     }
 
     private var addRecordButton: some View {

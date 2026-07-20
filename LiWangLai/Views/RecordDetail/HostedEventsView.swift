@@ -3,6 +3,7 @@ import SwiftUI
 
 struct HostedEventsView: View {
     @Environment(\.modelContext) private var modelContext
+    @Environment(AppState.self) private var appState
     @Query(sort: \HostedGiftEvent.date, order: .reverse) private var hostedEvents: [HostedGiftEvent]
     @Query(sort: \GiftRecord.date, order: .reverse) private var records: [GiftRecord]
 
@@ -23,12 +24,16 @@ struct HostedEventsView: View {
                     }
                 } else {
                     ForEach(hostedEvents) { hostedEvent in
-                        NavigationLink {
-                            EventDetailView(event: giftEvent(from: hostedEvent))
-                        } label: {
-                            hostedEventCard(hostedEvent)
+                        if UIDevice.current.userInterfaceIdiom == .pad {
+                            ipadHostedEventCard(hostedEvent)
+                        } else {
+                            NavigationLink {
+                                EventDetailView(event: giftEvent(from: hostedEvent))
+                            } label: {
+                                hostedEventCard(hostedEvent)
+                            }
+                            .buttonStyle(.plain)
                         }
-                        .buttonStyle(.plain)
                     }
                 }
             }
@@ -85,23 +90,68 @@ struct HostedEventsView: View {
         .frame(height: 124)
     }
 
-    private func hostedEventCard(_ hostedEvent: HostedGiftEvent) -> some View {
-        let event = giftEvent(from: hostedEvent)
-        return PaperCard(padding: 12) {
-            HStack(spacing: 12) {
-                SealStamp(text: hostedEvent.eventType == .wedding ? "囍" : "事", size: 46, color: LWColors.cinnabar)
-                VStack(alignment: .leading, spacing: 5) {
-                    Text(hostedEvent.title)
-                        .font(.bodyKai(19))
-                        .foregroundStyle(LWColors.ink)
-                    Text("\(hostedEvent.date.lwDualDateText) · \(hostedEvent.eventType.title)")
-                        .font(.bodySong(12))
-                        .foregroundStyle(LWColors.muted)
-                    Text("收礼 \(event.records.count) 笔 · 合计 \(event.totalAmount.yuanText)")
-                        .font(.bodySong(13))
-                        .foregroundStyle(LWColors.cinnabar)
+    private func ipadHostedEventCard(_ hostedEvent: HostedGiftEvent) -> some View {
+        PaperCard(padding: 12) {
+            hostedEventSummary(hostedEvent, showsChevron: false)
+            GoldLineDivider()
+            HStack(spacing: 10) {
+                NavigationLink {
+                    EventDetailView(event: giftEvent(from: hostedEvent))
+                } label: {
+                    Label("默认模式", systemImage: "rectangle.portrait")
+                        .font(.titleSong(13))
+                        .foregroundStyle(LWColors.inkSoft)
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 40)
+                        .background(
+                            RoundedRectangle(cornerRadius: 9)
+                                .fill(Color.white.opacity(0.30))
+                                .overlay(RoundedRectangle(cornerRadius: 9).stroke(LWColors.cardStroke.opacity(0.55)))
+                        )
                 }
-                Spacer()
+                .buttonStyle(.plain)
+                .accessibilityIdentifier("hostedEvent.openDefault.\(hostedEvent.id.uuidString)")
+
+                Button {
+                    appState.ipadDeskRequest = IPadDeskRequest(hostedEventID: hostedEvent.id)
+                    HapticsManager.lightTap()
+                } label: {
+                    Label("礼台模式", systemImage: "rectangle.landscape.rotate")
+                        .font(.titleSong(13))
+                        .foregroundStyle(.white)
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 40)
+                        .background(LWColors.cinnabar, in: RoundedRectangle(cornerRadius: 9))
+                }
+                .buttonStyle(.plain)
+                .accessibilityIdentifier("hostedEvent.openDesk.\(hostedEvent.id.uuidString)")
+            }
+        }
+    }
+
+    private func hostedEventCard(_ hostedEvent: HostedGiftEvent) -> some View {
+        PaperCard(padding: 12) {
+            hostedEventSummary(hostedEvent, showsChevron: true)
+        }
+    }
+
+    private func hostedEventSummary(_ hostedEvent: HostedGiftEvent, showsChevron: Bool) -> some View {
+        let event = giftEvent(from: hostedEvent)
+        return HStack(spacing: 12) {
+            SealStamp(text: hostedEvent.eventType == .wedding ? "囍" : "事", size: 46, color: LWColors.cinnabar)
+            VStack(alignment: .leading, spacing: 5) {
+                Text(hostedEvent.title)
+                    .font(.bodyKai(19))
+                    .foregroundStyle(LWColors.ink)
+                Text("\(hostedEvent.date.lwDualDateText) · \(hostedEvent.eventType.title)")
+                    .font(.bodySong(12))
+                    .foregroundStyle(LWColors.muted)
+                Text("收礼 \(event.records.count) 笔 · 合计 \(event.totalAmount.yuanText)")
+                    .font(.bodySong(13))
+                    .foregroundStyle(LWColors.cinnabar)
+            }
+            Spacer()
+            if showsChevron {
                 Image(systemName: "chevron.right")
                     .font(.system(size: 12, weight: .semibold))
                     .foregroundStyle(LWColors.muted.opacity(0.7))
@@ -141,6 +191,7 @@ struct HostedEventEditorSheet: View {
 
     let event: HostedGiftEvent?
     let linkedRecords: [GiftRecord]
+    let onSaved: ((HostedGiftEvent) -> Void)?
 
     @State private var title: String
     @State private var eventType: GiftEventType
@@ -148,9 +199,14 @@ struct HostedEventEditorSheet: View {
     @State private var note: String
     @State private var saveErrorMessage: String?
 
-    init(event: HostedGiftEvent?, linkedRecords: [GiftRecord]) {
+    init(
+        event: HostedGiftEvent?,
+        linkedRecords: [GiftRecord],
+        onSaved: ((HostedGiftEvent) -> Void)? = nil
+    ) {
         self.event = event
         self.linkedRecords = linkedRecords
+        self.onSaved = onSaved
         _title = State(initialValue: event?.title ?? "")
         _eventType = State(initialValue: event?.eventType ?? .wedding)
         _date = State(initialValue: event?.date ?? .now)
@@ -248,6 +304,7 @@ struct HostedEventEditorSheet: View {
                     linkedRecords: linkedRecords,
                     in: modelContext
                 )
+                onSaved?(event)
             } else {
                 let newEvent = HostedGiftEvent(
                     title: effectiveTitle,
@@ -257,6 +314,7 @@ struct HostedEventEditorSheet: View {
                 )
                 modelContext.insert(newEvent)
                 try modelContext.save()
+                onSaved?(newEvent)
             }
             HapticsManager.success()
             dismiss()

@@ -8,6 +8,7 @@ final class AppState {
     var ledgerSearchText = ""
     var peopleSearchText = ""
     var addPresetType: GiftRecordType = .received
+    var ipadDeskRequest: IPadDeskRequest?
     var selectedTheme: AppTheme = .paper {
         didSet {
             UserDefaults.standard.set(selectedTheme.rawValue, forKey: Self.themeKey)
@@ -30,6 +31,11 @@ final class AppState {
         }
         LWThemeStore.current = selectedTheme
     }
+}
+
+struct IPadDeskRequest: Equatable {
+    let id = UUID()
+    let hostedEventID: UUID?
 }
 
 enum AppTab: Hashable {

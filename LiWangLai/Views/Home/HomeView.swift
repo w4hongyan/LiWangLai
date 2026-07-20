@@ -3,6 +3,12 @@ import SwiftUI
 struct HomeView: View {
     @Environment(AppState.self) private var appState
     let records: [GiftRecord]
+    let onOpenDeskMode: (() -> Void)?
+
+    init(records: [GiftRecord], onOpenDeskMode: (() -> Void)? = nil) {
+        self.records = records
+        self.onOpenDeskMode = onOpenDeskMode
+    }
 
     private var filteredRecords: [GiftRecord] {
         SearchService.filter(records, query: appState.homeSearchText)
@@ -30,6 +36,10 @@ struct HomeView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 11) {
                 homeHero
+
+                if let onOpenDeskMode {
+                    deskModeButton(action: onOpenDeskMode)
+                }
 
                 SearchField(placeholder: "搜索姓名 / 事件 / 备注", text: $appState.homeSearchText, fontSize: 14, iconSize: 18, verticalPadding: 9)
 
@@ -77,6 +87,42 @@ struct HomeView: View {
             }
         }
         .frame(height: 124)
+    }
+
+    private func deskModeButton(action: @escaping () -> Void) -> some View {
+        Button {
+            action()
+            HapticsManager.lightTap()
+        } label: {
+            PaperCard(padding: 12) {
+                HStack(spacing: 12) {
+                    Image("ceremony_table_badge")
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: 42, height: 42)
+
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("礼台模式")
+                            .font(.titleSong(17))
+                            .foregroundStyle(LWColors.ink)
+                        Text("横屏连续收礼，适合现场快速登记")
+                            .font(.bodySong(12))
+                            .foregroundStyle(LWColors.muted)
+                    }
+
+                    Spacer()
+
+                    Text("进入")
+                        .font(.bodySong(12).weight(.semibold))
+                        .foregroundStyle(LWColors.cinnabar)
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundStyle(LWColors.cinnabar)
+                }
+            }
+        }
+        .buttonStyle(.plain)
+        .accessibilityIdentifier("home.ipadDeskMode")
     }
 
     private var reminderCard: some View {

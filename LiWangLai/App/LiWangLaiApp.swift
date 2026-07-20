@@ -8,6 +8,10 @@ struct LiWangLaiApp: App {
     private let modelBootstrap = ModelContainerBootstrap.make()
     private let notificationDelegate = AppNotificationDelegate()
 
+    private var isRunningUnitTests: Bool {
+        ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil
+    }
+
     init() {
         UNUserNotificationCenter.current().delegate = notificationDelegate
     }
@@ -15,7 +19,12 @@ struct LiWangLaiApp: App {
     var body: some Scene {
         WindowGroup {
             Group {
-                if let errorDescription = modelBootstrap.errorDescription {
+                if isRunningUnitTests {
+                    // Unit tests create their own isolated SwiftData containers. Keeping the
+                    // app's @Query views alive in the test host makes them observe unrelated
+                    // save notifications and can trip SwiftData's internal consistency checks.
+                    Color.clear
+                } else if let errorDescription = modelBootstrap.errorDescription {
                     DataStoreRecoveryView(errorDescription: errorDescription)
                 } else {
                     RootView()
