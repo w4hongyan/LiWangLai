@@ -7,6 +7,10 @@ final class GiftRecord {
     var personName: String
     var typeRawValue: String
     var amountYuan: Int
+    /// 新版精确金额（分）。旧数据为空时由 amountYuan × 100 兼容读取。
+    var amountFen: Int?
+    /// 稳定人物身份；避免修改手机号后被拆成两个往来人。
+    var personID: UUID?
     var eventTypeRawValue: String
     var relationshipRawValue: String
     var date: Date
@@ -25,6 +29,8 @@ final class GiftRecord {
        personName: String,
        type: GiftRecordType,
        amountYuan: Int,
+       amountFen: Int? = nil,
+       personID: UUID? = nil,
        eventType: GiftEventType,
        relationship: RelationshipType,
        date: Date = .now,
@@ -42,6 +48,8 @@ final class GiftRecord {
        self.personName = personName
        self.typeRawValue = type.rawValue
        self.amountYuan = amountYuan
+       self.amountFen = amountFen ?? amountYuan * 100
+       self.personID = personID
        self.eventTypeRawValue = eventType.rawValue
        self.relationshipRawValue = relationship.rawValue
        self.date = date
@@ -71,7 +79,24 @@ final class GiftRecord {
         set { relationshipRawValue = newValue.rawValue }
     }
 
+    var amountFenValue: Int {
+        amountFen ?? amountYuan * 100
+    }
+
+    func setAmount(fen: Int) {
+        amountFen = fen
+        // 保留旧字段，便于旧格式备份以及降级诊断；精确值始终读取 amountFen。
+        amountYuan = fen / 100
+    }
+
     var needsReturn: Bool {
-        type == .received && !isReturned
+        type == .received && !isReturned && returnReminderDate != nil
+    }
+
+    var returnStatusText: String? {
+        guard type == .received else { return nil }
+        if isReturned { return "已回" }
+        if needsReturn { return "待回" }
+        return nil
     }
 }

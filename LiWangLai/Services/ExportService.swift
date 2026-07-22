@@ -12,29 +12,30 @@ enum ExportService {
         }
     }
 
-    private static let columns = ["姓名", "类型", "金额", "事件", "关系", "公历日期", "农历日期", "备注", "地点", "礼品", "联系方式", "是否回礼", "提醒日期"]
+    private static let columns = ["姓名", "类型", "金额", "事件", "关系", "公历日期", "农历日期", "备注", "地点", "礼品", "联系方式", "是否回礼", "提醒日期", "场次"]
 
-    static func excelString(from records: [GiftRecord]) -> String {
-        worksheetXML(from: records)
+    static func excelString(from records: [GiftRecord], events: [HostedGiftEvent] = []) -> String {
+        worksheetXML(from: records, events: events)
     }
 
-    static func writeExcel(from records: [GiftRecord]) throws -> URL {
+    static func writeExcel(from records: [GiftRecord], events: [HostedGiftEvent] = []) throws -> URL {
         guard !records.isEmpty else {
             throw ExportError.emptyRecords
         }
         let fileName = "礼往来-\(Int(Date().timeIntervalSince1970)).xlsx"
         let url = FileManager.default.temporaryDirectory.appendingPathComponent(fileName)
-        let package = xlsxPackage(from: records)
+        let package = xlsxPackage(from: records, events: events)
         let archive = ZipArchive.makeArchive(files: package)
         try archive.write(to: url, options: .atomic)
         return url
     }
 
-    private static func rowValues(for record: GiftRecord) -> [(text: String, type: String)] {
-        [
+    private static func rowValues(for record: GiftRecord, events: [HostedGiftEvent]) -> [(text: String, type: String)] {
+        let hostedEventTitle = record.hostedEventID.flatMap { id in events.first { $0.id == id }?.title } ?? ""
+        return [
             (record.personName, "String"),
             (record.type.title, "String"),
-            ("\(record.amountYuan)", "Number"),
+            (MoneyAmount.inputText(fromFen: record.amountFenValue), "Number"),
             (record.eventType.title, "String"),
             (record.relationship.title, "String"),
             (record.date.lwDayText, "String"),
@@ -44,28 +45,29 @@ enum ExportService {
             (record.giftName, "String"),
             (record.contact, "String"),
             (record.isReturned ? "是" : "否", "String"),
-            (record.returnReminderDate.map { "\($0.lwDayText) \($0.lwTimeText)" } ?? "", "String")
+            (record.returnReminderDate.map { "\($0.lwDayText) \($0.lwTimeText)" } ?? "", "String"),
+            (hostedEventTitle, "String")
         ]
     }
 
-    private static func xlsxPackage(from records: [GiftRecord]) -> [(path: String, data: Data)] {
+    private static func xlsxPackage(from records: [GiftRecord], events: [HostedGiftEvent]) -> [(path: String, data: Data)] {
         [
             ("[Content_Types].xml", data(contentTypesXML)),
             ("_rels/.rels", data(rootRelationshipsXML)),
             ("xl/workbook.xml", data(workbookXML)),
             ("xl/_rels/workbook.xml.rels", data(workbookRelationshipsXML)),
             ("xl/styles.xml", data(stylesXML)),
-            ("xl/worksheets/sheet1.xml", data(worksheetXML(from: records)))
+            ("xl/worksheets/sheet1.xml", data(worksheetXML(from: records, events: events)))
         ]
     }
 
-    private static func worksheetXML(from records: [GiftRecord]) -> String {
+    private static func worksheetXML(from records: [GiftRecord], events: [HostedGiftEvent]) -> String {
         let header = rowXML(values: columns.map { ($0, "String") }, rowIndex: 1, style: 1)
         let rows = records
             .sorted { $0.date > $1.date }
             .enumerated()
             .map { index, record in
-                rowXML(values: rowValues(for: record), rowIndex: index + 2, style: nil)
+                rowXML(values: rowValues(for: record, events: events), rowIndex: index + 2, style: nil)
             }
             .joined()
 
@@ -82,7 +84,7 @@ enum ExportService {
             <col min="2" max="5" width="10" customWidth="1"/>
             <col min="6" max="6" width="16" customWidth="1"/>
             <col min="7" max="7" width="16" customWidth="1"/>
-            <col min="8" max="13" width="18" customWidth="1"/>
+            <col min="8" max="14" width="18" customWidth="1"/>
           </cols>
           <sheetData>
             \(header)

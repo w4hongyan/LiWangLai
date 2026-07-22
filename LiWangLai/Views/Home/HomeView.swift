@@ -2,6 +2,7 @@ import SwiftUI
 
 struct HomeView: View {
     @Environment(AppState.self) private var appState
+    @Environment(PurchaseManager.self) private var purchases
     let records: [GiftRecord]
     let onOpenDeskMode: (() -> Void)?
 
@@ -18,16 +19,35 @@ struct HomeView: View {
         ReminderService.reminders(from: records)
     }
 
+    private var returnGiftReminderCount: Int {
+        reminders.filter { $0.kind == .returnGift }.count
+    }
+
+    private var sendGiftReminderCount: Int {
+        reminders.filter { $0.kind == .sendGift }.count
+    }
+
     private var currentYearRecords: [GiftRecord] {
         records.filter { Calendar.current.component(.year, from: $0.date) == Calendar.current.component(.year, from: .now) }
     }
 
-    private var totalReceived: Int {
-        currentYearRecords.filter { $0.type == .received }.reduce(0) { $0 + $1.amountYuan }
+    private var lastYearRecords: [GiftRecord] {
+        let lastYear = Calendar.current.component(.year, from: .now) - 1
+        return records.filter { Calendar.current.component(.year, from: $0.date) == lastYear }
     }
 
-    private var totalGiven: Int {
-        currentYearRecords.filter { $0.type == .given }.reduce(0) { $0 + $1.amountYuan }
+    private var totalReceivedFen: Int {
+        currentYearRecords.filter { $0.type == .received }.reduce(0) { $0 + $1.amountFenValue }
+    }
+
+    private var totalGivenFen: Int {
+        currentYearRecords.filter { $0.type == .given }.reduce(0) { $0 + $1.amountFenValue }
+    }
+
+    private var lastYearNetFen: Int {
+        let received = lastYearRecords.filter { $0.type == .received }.reduce(0) { $0 + $1.amountFenValue }
+        let given = lastYearRecords.filter { $0.type == .given }.reduce(0) { $0 + $1.amountFenValue }
+        return received - given
     }
 
     var body: some View {
@@ -58,9 +78,6 @@ struct HomeView: View {
         }
         .scrollIndicators(.hidden)
         .background(PaperTexture())
-        .navigationDestination(for: String.self) { name in
-            PersonDetailView(summary: RecordService.people(from: records).first { $0.name == name })
-        }
     }
 
     private var homeHero: some View {
@@ -86,7 +103,7 @@ struct HomeView: View {
                 .padding(.top, 18)
             }
         }
-        .frame(height: 124)
+        .frame(minHeight: 124, alignment: .top)
     }
 
     private func deskModeButton(action: @escaping () -> Void) -> some View {
@@ -112,6 +129,14 @@ struct HomeView: View {
 
                     Spacer()
 
+                    if !purchases.isProUnlocked {
+                        Text("PRO")
+                            .font(.system(size: 9, weight: .black, design: .rounded))
+                            .foregroundStyle(.white)
+                            .padding(.horizontal, 7)
+                            .padding(.vertical, 3)
+                            .background(LWColors.cinnabar, in: Capsule())
+                    }
                     Text("进入")
                         .font(.bodySong(12).weight(.semibold))
                         .foregroundStyle(LWColors.cinnabar)
@@ -122,7 +147,7 @@ struct HomeView: View {
             }
         }
         .buttonStyle(.plain)
-        .accessibilityIdentifier("home.ipadDeskMode")
+        .accessibilityIdentifier("home.deskMode")
     }
 
     private var reminderCard: some View {
@@ -135,11 +160,11 @@ struct HomeView: View {
                         .resizable()
                         .scaledToFit()
                         .frame(width: 32, height: 32)
-                    Text("回礼提醒")
+                    Text("心意提醒")
                         .font(.titleSong(16))
                         .foregroundStyle(LWColors.ink)
                     Spacer()
-                    Text("待回礼 \(reminders.count) 项")
+                    Text("待处理 \(reminders.count) 项")
                         .font(.titleSong(15))
                         .foregroundStyle(LWColors.cinnabar)
                     Image(systemName: "chevron.right")
@@ -147,10 +172,10 @@ struct HomeView: View {
                 }
                 GoldLineDivider()
                 if let first = reminders.first {
-                    Label("优先处理： \(first.record.personName) · \(first.record.eventType.title) · \(first.record.date.lwDualDateText)", systemImage: "clock")
+                    Label("回礼 \(returnGiftReminderCount) · 送礼 \(sendGiftReminderCount)", systemImage: "checklist")
                         .font(.bodySong(12))
                         .foregroundStyle(LWColors.inkSoft)
-                    Label("建议回礼： \(suggestionRange(for: first.record))", systemImage: "tag")
+                    Label(first.subtitle, systemImage: first.kind == .returnGift ? "arrow.uturn.right" : "gift")
                         .font(.bodySong(13))
                         .foregroundStyle(LWColors.cinnabar)
                 } else {
@@ -179,14 +204,26 @@ struct HomeView: View {
             }
 
             HStack(spacing: 0) {
-                statItem(seal: "收", title: "收礼", value: totalReceived.yuanText, color: LWColors.cinnabar)
+                statItem(seal: "收", title: "今年收礼", value: totalReceivedFen.fenCurrencyText, color: LWColors.cinnabar)
                 statDivider
-                statItem(seal: "送", title: "送礼", value: totalGiven.yuanText, color: LWColors.warmGold)
+                statItem(seal: "送", title: "今年送礼", value: totalGivenFen.fenCurrencyText, color: LWColors.warmGold)
                 statDivider
-                statItem(icon: .document, title: "未回礼", value: "\(records.filter(\.needsReturn).count) 笔", color: LWColors.muted)
+                statItem(icon: .document, title: "今年待回礼", value: "\(currentYearRecords.filter(\.needsReturn).count) 笔", color: LWColors.muted)
                 statDivider
-                statItem(icon: .trendUp, title: "净额", value: (totalReceived - totalGiven).yuanText, color: LWColors.cinnabar)
+                statItem(icon: .trendUp, title: "今年净额", value: (totalReceivedFen - totalGivenFen).fenCurrencyText, color: LWColors.cinnabar)
             }
+            GoldLineDivider()
+            HStack(spacing: 6) {
+                Image(systemName: "calendar.badge.clock")
+                    .foregroundStyle(LWColors.warmGold)
+                Text("去年净额 \(lastYearNetFen.fenCurrencyText)")
+                Spacer()
+                let delta = totalReceivedFen - totalGivenFen - lastYearNetFen
+                Text("同比 \(delta >= 0 ? "+" : "")\(delta.fenCurrencyText)")
+                    .foregroundStyle(delta >= 0 ? LWColors.cinnabar : LWColors.jade)
+            }
+            .font(.bodySong(11))
+            .foregroundStyle(LWColors.inkSoft)
         }
     }
 
@@ -346,7 +383,7 @@ struct HomeView: View {
                     .lineLimit(1)
             }
             Spacer(minLength: 8)
-            Text(record.amountYuan.yuanText)
+            Text(record.amountFenValue.fenCurrencyText)
                 .font(.amountKai(13))
                 .foregroundStyle(record.type == .received ? LWColors.cinnabar : LWColors.ink)
             Image(systemName: "chevron.right")
@@ -510,9 +547,4 @@ struct HomeView: View {
         }
     }
 
-    private func suggestionRange(for record: GiftRecord) -> String {
-        let lower = max(100, record.amountYuan / 100 * 100)
-        let upper = lower + 200
-        return "\(lower.yuanText) - \(upper.yuanText)"
-    }
 }

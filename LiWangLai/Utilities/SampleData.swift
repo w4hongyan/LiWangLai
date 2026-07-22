@@ -22,6 +22,13 @@ enum SampleData {
 
         for (name, type, amount, event, relationship, note, daysAgo) in records {
             let date = calendar.date(byAdding: .day, value: daysAgo, to: now) ?? now
+            let reminderDate: Date? = switch name {
+            case "宋雨晴": calendar.date(byAdding: .day, value: 14, to: now)
+            case "赵秀兰": calendar.date(byAdding: .day, value: 7, to: now)
+            case "陈美玲": calendar.date(byAdding: .day, value: 21, to: now)
+            case "吴俊杰": calendar.date(byAdding: .day, value: 5, to: now)
+            default: nil
+            }
             let record = GiftRecord(
                 personName: name,
                 type: type,
@@ -30,7 +37,8 @@ enum SampleData {
                 relationship: relationship,
                 date: date,
                 note: note,
-                isReturned: type == .given
+                isReturned: type == .given,
+                returnReminderDate: reminderDate
             )
             modelContext.insert(record)
         }

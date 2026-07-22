@@ -90,6 +90,37 @@ struct ExportServiceTests {
         #expect(lateIndex < earlyIndex, "Newer record should appear first (sorted by date descending)")
     }
 
+    @Test func excelStringIncludesHostedEventColumn() {
+        let event = HostedGiftEvent(title: "我家婚礼", eventType: .wedding)
+        let linked = GiftRecord(
+            personName: "张三",
+            type: .received,
+            amountYuan: 600,
+            eventType: .wedding,
+            relationship: .friend,
+            hostedEventID: event.id
+        )
+        let xml = ExportService.excelString(from: [linked], events: [event])
+        #expect(xml.contains("场次"), "Should contain column header 场次")
+        #expect(xml.contains("我家婚礼"), "Should contain hosted event title")
+    }
+
+    @Test func excelStringLeavesHostedEventEmptyWhenUnlinkedOrUnknown() {
+        let unlinked = GiftRecord(personName: "张三", type: .received, amountYuan: 600, eventType: .wedding, relationship: .friend)
+        let unknown = GiftRecord(
+            personName: "李四",
+            type: .given,
+            amountYuan: 800,
+            eventType: .baby,
+            relationship: .relative,
+            hostedEventID: UUID()
+        )
+        let other = HostedGiftEvent(title: "别家满月", eventType: .baby)
+        let xml = ExportService.excelString(from: [unlinked, unknown], events: [other])
+        #expect(xml.contains("场次"), "Should contain column header 场次")
+        #expect(!xml.contains("别家满月"), "Records not belonging to the event should leave 场次 empty")
+    }
+
     @Test func yuanTextUsesGroupedWholeYuanFormat() {
         let text = 1_234_567.yuanText
         #expect(text.contains("¥"))

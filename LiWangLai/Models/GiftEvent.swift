@@ -63,7 +63,9 @@ struct GiftEvent: Identifiable {
         self.hostedEvent = hostedEvent
     }
 
-    var totalAmount: Int {
-        records.reduce(0) { $0 + $1.amountYuan }
+    var totalAmountFen: Int {
+        records.reduce(0) { $0 + $1.amountFenValue }
     }
+
+    var totalAmount: Int { totalAmountFen / 100 }
 }

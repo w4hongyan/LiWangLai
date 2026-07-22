@@ -12,8 +12,8 @@ struct ReminderListView: View {
         ReminderService.reminders(from: records).filter { item in
             switch filter {
             case .all: true
-            case .returnGift: item.record.needsReturn
-            case .date: item.isDateReminder
+            case .returnGift: item.kind == .returnGift
+            case .sendGift: item.kind == .sendGift
             }
         }
     }
@@ -54,15 +54,26 @@ struct ReminderListView: View {
                     ForEach(reminders) { item in
                         PaperCard(padding: 12) {
                             HStack(spacing: 10) {
-                                SealStamp(text: item.record.type == .received ? "礼" : "记", size: 40, color: item.record.needsReturn ? LWColors.cinnabar : LWColors.warmGold)
+                                SealStamp(text: item.kind == .returnGift ? "回" : "送", size: 40, color: item.kind == .returnGift ? LWColors.cinnabar : LWColors.warmGold)
                                 VStack(alignment: .leading, spacing: 4) {
-                                    Text(item.title)
-                                        .font(.titleSong(14))
-                                        .foregroundStyle(LWColors.ink)
-                                        .lineLimit(1)
-                                    Label(item.subtitle, systemImage: item.isDateReminder ? "calendar" : "clock")
+                                    HStack(spacing: 6) {
+                                        Text(item.title)
+                                            .font(.titleSong(14))
+                                            .foregroundStyle(LWColors.ink)
+                                            .lineLimit(1)
+                                        if item.isOverdue {
+                                            Text("已逾期 \(item.overdueDayCount) 天")
+                                                .font(.bodySong(10).weight(.semibold))
+                                                .foregroundStyle(.white)
+                                                .padding(.horizontal, 6)
+                                                .padding(.vertical, 2)
+                                                .background(LWColors.cinnabar, in: Capsule())
+                                                .layoutPriority(1)
+                                        }
+                                    }
+                                    Label(item.subtitle, systemImage: "calendar")
                                         .font(.bodySong(11))
-                                        .foregroundStyle(LWColors.muted)
+                                        .foregroundStyle(item.isOverdue ? LWColors.cinnabar : LWColors.muted)
                                         .lineLimit(1)
                                 }
                                 Spacer()
@@ -79,13 +90,15 @@ struct ReminderListView: View {
                                 Button {
                                     markHandled(item.record)
                                 } label: {
-                                    Label(item.record.type == .received ? "标记已回礼" : "标记已送礼", systemImage: "checkmark.circle")
+                                    Label(item.kind == .returnGift ? "标记已回礼" : "标记已送礼", systemImage: "checkmark.circle")
                                 }
-                                if item.record.type == .received {
+                                if item.kind == .returnGift {
                                     Spacer()
                                     NavigationLink {
                                         AddRecordView(
                                             presetName: item.record.personName,
+                                            presetContact: item.record.contact,
+                                            presetPersonID: item.record.personID,
                                             presetType: .given,
                                             returningRecord: item.record
                                         )
@@ -131,8 +144,8 @@ struct ReminderListView: View {
             return "当前没有需要处理的提醒。"
         case .returnGift:
             return "没有待回礼记录，心里可以稍微松一口气。"
-        case .date:
-            return "还没有设置日期提醒。"
+        case .sendGift:
+            return "还没有待处理的送礼提醒。"
         }
     }
 
@@ -159,7 +172,7 @@ struct ReminderListView: View {
                 .padding(.top, 18)
             }
         }
-        .frame(height: 124)
+        .frame(minHeight: 124, alignment: .top)
     }
 
     private var filterChips: some View {
@@ -192,14 +205,14 @@ private extension ReminderListView {
 private enum ReminderFilter: String, CaseIterable, Identifiable {
     case all
     case returnGift
-    case date
+    case sendGift
 
     var id: String { rawValue }
     var title: String {
         switch self {
         case .all: "全部"
         case .returnGift: "待回礼"
-        case .date: "日期提醒"
+        case .sendGift: "待送礼"
         }
     }
 }

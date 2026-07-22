@@ -18,7 +18,8 @@ struct LedgerView: View {
     @State private var dataErrorMessage: String?
 
     private var filteredRecords: [GiftRecord] {
-        SearchService.filter(records, query: appState.ledgerSearchText)
+        let isSearching = !appState.ledgerSearchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        return SearchService.filter(records, query: appState.ledgerSearchText)
             .filter { record in
                 switch typeFilter {
                 case .all: return true
@@ -27,6 +28,7 @@ struct LedgerView: View {
                 }
             }
             .filter { record in
+                if isSearching { return true }
                 switch timeFilter {
                 case .thisYear:
                     return Calendar.current.component(.year, from: record.date) == Calendar.current.component(.year, from: .now)
@@ -61,6 +63,11 @@ struct LedgerView: View {
                 SearchField(placeholder: "搜索姓名 / 事件 / 备注", text: $appState.ledgerSearchText, fontSize: 14, iconSize: 18, verticalPadding: 9)
                 typeFilters
                 timeFilters
+                if !appState.ledgerSearchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                    Label("搜索结果已自动覆盖全部年份", systemImage: "clock.arrow.circlepath")
+                        .font(.bodySong(11))
+                        .foregroundStyle(LWColors.warmGold)
+                }
 
                 if filteredRecords.isEmpty {
                     if records.isEmpty {
@@ -83,6 +90,11 @@ struct LedgerView: View {
                                     .font(.titleSong(16))
                                     .foregroundStyle(LWColors.ink)
                                 Spacer()
+                                Text(monthSummary(records))
+                                    .font(.bodySong(10))
+                                    .foregroundStyle(LWColors.muted)
+                                    .lineLimit(1)
+                                    .minimumScaleFactor(0.75)
                                 MountainDecoration()
                                     .frame(width: 56, height: 18)
                                     .opacity(0.72)
@@ -191,7 +203,7 @@ struct LedgerView: View {
                     .padding(.top, 20)
             }
         }
-        .frame(height: 124)
+        .frame(minHeight: 124, alignment: .top)
     }
 
     private var exportButton: some View {
@@ -308,6 +320,12 @@ struct LedgerView: View {
         HostedEventService.giftEvents(from: hostedEvents, records: records)
     }
 
+    private func monthSummary(_ records: [GiftRecord]) -> String {
+        let receivedFen = records.filter { $0.type == .received }.reduce(0) { $0 + $1.amountFenValue }
+        let givenFen = records.filter { $0.type == .given }.reduce(0) { $0 + $1.amountFenValue }
+        return "收 \(receivedFen.fenCurrencyText) · 送 \(givenFen.fenCurrencyText)"
+    }
+
     @ViewBuilder
     private func eventStrip(for records: [GiftRecord]) -> some View {
         let events = events(for: records)
@@ -334,7 +352,7 @@ struct LedgerView: View {
                 Text(event.title)
                     .font(.titleSong(13))
                     .foregroundStyle(LWColors.ink)
-                Text("我家 · \(event.records.count) 笔 · \(event.totalAmount.yuanText)")
+                Text("我家 · \(event.records.count) 笔 · \(event.totalAmountFen.fenCurrencyText)")
                     .font(.bodySong(10))
                     .foregroundStyle(LWColors.muted)
             }

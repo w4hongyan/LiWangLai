@@ -7,6 +7,12 @@ struct EventDetailView: View {
     @Environment(AppState.self) private var appState
 
     let event: GiftEvent
+    /// 非场次聚合只保留记录主键，不在 body 重算时读取传入快照中的 SwiftData 对象。
+    private let initialRecordIDs: Set<UUID>
+
+    /// 视图自持实时查询：页内删除/新增后列表与统计自动刷新，
+    /// 避免重算时访问已删除的快照对象导致崩溃
+    @Query(sort: \GiftRecord.date, order: .reverse) private var allRecords: [GiftRecord]
 
     @State private var editingRecord: GiftRecord?
     @State private var showAddRecord = false
@@ -15,6 +21,11 @@ struct EventDetailView: View {
     @State private var presentedEventSheet: HostedEventSheetDestination?
     @State private var showDeleteEventConfirm = false
     @State private var dataErrorMessage: String?
+
+    init(event: GiftEvent) {
+        self.event = event
+        initialRecordIDs = Set(event.records.map(\.id))
+    }
 
     private var hostedEvent: HostedGiftEvent? {
         event.hostedEvent
@@ -37,15 +48,31 @@ struct EventDetailView: View {
     }
 
     private var records: [GiftRecord] {
-        event.records.sorted { $0.date > $1.date }
+        guard let hostedEventID = event.hostedEventID else {
+            return allRecords
+                .filter { initialRecordIDs.contains($0.id) }
+                .sorted { $0.date > $1.date }
+        }
+        return allRecords
+            .filter { $0.type == .received && $0.hostedEventID == hostedEventID }
+            .sorted { $0.date > $1.date }
     }
 
-    private var totalReceived: Int {
-        records.filter { $0.type == .received }.reduce(0) { $0 + $1.amountYuan }
+    private var totalReceivedFen: Int {
+        records.filter { $0.type == .received }.reduce(0) { $0 + $1.amountFenValue }
     }
 
     private var pendingReturnCount: Int {
         records.filter(\.needsReturn).count
+    }
+
+    /// 这些宾客的历史「我方送礼」合计（排除归属本场的记录）
+    private var historicalGivenTotalFen: Int {
+        HostedEventService.givenTotalFenForGuests(
+            of: records,
+            excludingHostedEventID: event.hostedEventID,
+            in: allRecords
+        )
     }
 
     var body: some View {
@@ -53,7 +80,7 @@ struct EventDetailView: View {
             VStack(alignment: .leading, spacing: 12) {
                 detailHeader
                 overviewCard
-                if UIDevice.current.userInterfaceIdiom == .pad, hostedEvent != nil {
+                if hostedEvent != nil {
                     deskModeButton
                 }
                 recordsCard
@@ -175,7 +202,7 @@ struct EventDetailView: View {
                 .padding(.top, 18)
             }
         }
-        .frame(height: 124)
+        .frame(minHeight: 124, alignment: .top)
     }
 
     private var overviewCard: some View {
@@ -196,7 +223,15 @@ struct EventDetailView: View {
             }
             overviewRow(title: "记录", value: "\(records.count) 笔", color: LWColors.ink)
             GoldLineDivider()
-            overviewRow(title: "收礼", value: totalReceived.yuanText, color: LWColors.cinnabar)
+            overviewRow(title: "收礼", value: totalReceivedFen.fenCurrencyText, color: LWColors.cinnabar)
+            if !records.isEmpty {
+                GoldLineDivider()
+                overviewRow(
+                    title: "收送对比",
+                    value: "本场收 \(records.count) 笔 \(totalReceivedFen.fenCurrencyText) · 历史送出 \(historicalGivenTotalFen.fenCurrencyText)",
+                    color: LWColors.ink
+                )
+            }
             GoldLineDivider()
             overviewRow(title: "未回礼", value: "\(pendingReturnCount) 笔", color: pendingReturnCount > 0 ? LWColors.cinnabar : LWColors.muted)
             if !displayNote.isEmpty {
@@ -276,7 +311,7 @@ struct EventDetailView: View {
     private var deskModeButton: some View {
         Button {
             guard let hostedEvent else { return }
-            appState.ipadDeskRequest = IPadDeskRequest(hostedEventID: hostedEvent.id)
+            appState.deskRequest = DeskRequest(hostedEventID: hostedEvent.id)
             HapticsManager.lightTap()
         } label: {
             PaperCard(padding: 12) {
@@ -304,7 +339,7 @@ struct EventDetailView: View {
             }
         }
         .buttonStyle(.plain)
-        .accessibilityIdentifier("event.ipadDeskMode")
+        .accessibilityIdentifier("event.deskMode")
     }
 
     private var addRecordButton: some View {

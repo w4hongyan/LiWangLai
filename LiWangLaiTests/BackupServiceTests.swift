@@ -104,10 +104,13 @@ struct BackupServiceTests {
     @MainActor
     @Test func restoreReplacesExistingDataAndPreservesLinks() throws {
         let backupEvent = HostedGiftEvent(title: "备份里的婚礼", eventType: .wedding)
+        let personID = UUID()
         let backupRecord = GiftRecord(
             personName: "备份用户",
             type: .received,
             amountYuan: 888,
+            amountFen: 88_850,
+            personID: personID,
             eventType: .wedding,
             relationship: .friend,
             hostedEventID: backupEvent.id
@@ -133,12 +136,40 @@ struct BackupServiceTests {
         let events = try container.mainContext.fetch(FetchDescriptor<HostedGiftEvent>())
         #expect(records.count == 1)
         #expect(records.first?.personName == "备份用户")
+        #expect(records.first?.amountFenValue == 88_850)
+        #expect(records.first?.personID == personID)
         #expect(records.first?.hostedEventID == events.first?.id)
     }
 
     @MainActor
+    @Test func restoreClearsDanglingHostedEventReferences() throws {
+        // 手工编辑过的备份：记录引用了备份中不存在的场次，恢复后归属应置空而不是留下悬空引用。
+        let dangling = GiftRecord(
+            personName: "悬空引用",
+            type: .received,
+            amountYuan: 600,
+            eventType: .wedding,
+            relationship: .friend,
+            hostedEventID: UUID()
+        )
+        let data = try BackupService.makeData(records: [dangling], events: [])
+        let backup = try BackupService.prepareRestore(from: data)
+
+        let schema = Schema([HostedGiftEvent.self, GiftRecord.self])
+        let configuration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: true)
+        let container = try ModelContainer(for: schema, configurations: [configuration])
+
+        try BackupService.restore(backup, in: container.mainContext)
+
+        let records = try container.mainContext.fetch(FetchDescriptor<GiftRecord>())
+        #expect(records.count == 1)
+        #expect(records.first?.personName == "悬空引用")
+        #expect(records.first?.hostedEventID == nil)
+    }
+
+    @MainActor
     @Test func versionedSchemaCreatesContainer() throws {
-        let schema = Schema(versionedSchema: LiWangLaiSchemaV1.self)
+        let schema = Schema(versionedSchema: LiWangLaiSchemaV2.self)
         let configuration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: true)
         _ = try ModelContainer(
             for: schema,
@@ -156,23 +187,26 @@ struct BackupServiceTests {
 
         let storeURL = directory.appending(path: "legacy.store")
         do {
-            let legacySchema = Schema([HostedGiftEvent.self, GiftRecord.self])
+            let legacySchema = Schema([
+                LiWangLaiSchemaV1.HostedGiftEvent.self,
+                LiWangLaiSchemaV1.GiftRecord.self
+            ])
             let legacyConfiguration = ModelConfiguration(schema: legacySchema, url: storeURL)
             let legacyContainer = try ModelContainer(
                 for: legacySchema,
                 configurations: [legacyConfiguration]
             )
-            legacyContainer.mainContext.insert(GiftRecord(
+            legacyContainer.mainContext.insert(LiWangLaiSchemaV1.GiftRecord(
                 personName: "旧版本数据",
-                type: .received,
+                typeRawValue: GiftRecordType.received.rawValue,
                 amountYuan: 600,
-                eventType: .wedding,
-                relationship: .friend
+                eventTypeRawValue: GiftEventType.wedding.rawValue,
+                relationshipRawValue: RelationshipType.friend.rawValue
             ))
             try legacyContainer.mainContext.save()
         }
 
-        let currentSchema = Schema(versionedSchema: LiWangLaiSchemaV1.self)
+        let currentSchema = Schema(versionedSchema: LiWangLaiSchemaV2.self)
         let currentConfiguration = ModelConfiguration(schema: currentSchema, url: storeURL)
         let currentContainer = try ModelContainer(
             for: currentSchema,
@@ -183,6 +217,8 @@ struct BackupServiceTests {
 
         #expect(records.count == 1)
         #expect(records.first?.personName == "旧版本数据")
+        #expect(records.first?.amountFen == nil)
+        #expect(records.first?.amountFenValue == 60_000)
     }
 
     @MainActor
@@ -212,7 +248,7 @@ struct BackupServiceTests {
 
     @MainActor
     private func makeInMemoryContainer() throws -> ModelContainer {
-        let schema = Schema(versionedSchema: LiWangLaiSchemaV1.self)
+        let schema = Schema(versionedSchema: LiWangLaiSchemaV2.self)
         let configuration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: true)
         return try ModelContainer(
             for: schema,

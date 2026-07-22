@@ -15,6 +15,31 @@ struct RecordServiceTests {
         #expect(people.count == 2)
     }
 
+    @Test func peopleNormalizesWhitespaceAndFullWidthNames() {
+        let records = [
+            GiftRecord(personName: "张 三", type: .received, amountYuan: 600, eventType: .wedding, relationship: .friend),
+            GiftRecord(personName: "张三", type: .given, amountYuan: 800, eventType: .baby, relationship: .friend)
+        ]
+
+        let people = RecordService.people(from: records)
+
+        #expect(people.count == 1)
+        #expect(people.first?.records.count == 2)
+    }
+
+    @Test func sameNameWithDifferentContactsStaysSeparated() {
+        let records = [
+            GiftRecord(personName: "张伟", type: .received, amountYuan: 600, eventType: .wedding, relationship: .friend, contact: "13800138000"),
+            GiftRecord(personName: "张伟", type: .given, amountYuan: 800, eventType: .baby, relationship: .colleague, contact: "13900139000")
+        ]
+
+        let people = RecordService.people(from: records)
+
+        #expect(people.count == 2)
+        #expect(Set(people.map(\.id)).count == 2)
+        #expect(people.allSatisfy { $0.identityHint != nil })
+    }
+
     @Test func peopleSortsByLatestRecordDate() {
         let recent = GiftRecord(personName: "张三", type: .received, amountYuan: 600, eventType: .wedding, relationship: .friend, date: Date(timeIntervalSince1970: 3_000_000))
         let older = GiftRecord(personName: "李四", type: .given, amountYuan: 800, eventType: .baby, relationship: .relative, date: Date(timeIntervalSince1970: 1_000_000))
@@ -39,7 +64,7 @@ struct RecordServiceTests {
 
     @Test func peoplePendingReturnCount() {
         let records = [
-            GiftRecord(personName: "张三", type: .received, amountYuan: 600, eventType: .wedding, relationship: .friend, isReturned: false),
+            GiftRecord(personName: "张三", type: .received, amountYuan: 600, eventType: .wedding, relationship: .friend, isReturned: false, returnReminderDate: .now),
             GiftRecord(personName: "张三", type: .received, amountYuan: 200, eventType: .baby, relationship: .friend, isReturned: true),
             GiftRecord(personName: "张三", type: .given, amountYuan: 800, eventType: .housewarming, relationship: .friend)
         ]
@@ -63,7 +88,7 @@ struct RecordServiceTests {
 
     @Test func statusTextReflectsPendingReturn() {
         let records = [
-            GiftRecord(personName: "张三", type: .received, amountYuan: 600, eventType: .wedding, relationship: .friend, isReturned: false)
+            GiftRecord(personName: "张三", type: .received, amountYuan: 600, eventType: .wedding, relationship: .friend, isReturned: false, returnReminderDate: .now)
         ]
         let people = RecordService.people(from: records)
         #expect(people.first?.statusText == "记得回礼")
@@ -103,19 +128,31 @@ struct RecordServiceTests {
     }
 
     @MainActor
-    @Test func receivedRecordAutomaticallyCreatesAndLinksHostedEvent() throws {
+    @Test func ordinaryReceivedRecordDoesNotCreateHostedEvent() throws {
         let container = try makeContainer()
         let date = Date(timeIntervalSince1970: 2_000_000)
-        var draft = GiftRecordDraft(personName: "自动建场", type: .received, eventType: .wedding, date: date)
+        var draft = GiftRecordDraft(personName: "普通收礼", type: .received, eventType: .wedding, date: date)
         draft.amountText = "800"
+
+        let record = try RecordService.insert(draft, in: container.mainContext)
+        let events = try container.mainContext.fetch(FetchDescriptor<HostedGiftEvent>())
+
+        #expect(events.isEmpty)
+        #expect(record.hostedEventID == nil)
+    }
+
+    @MainActor
+    @Test func receivedRecordCreatesHostedEventOnlyWhenRequested() throws {
+        let container = try makeContainer()
+        var draft = GiftRecordDraft(personName: "主动建场", type: .received, eventType: .wedding)
+        draft.amountText = "800"
+        draft.createsHostedEvent = true
 
         let record = try RecordService.insert(draft, in: container.mainContext)
         let events = try container.mainContext.fetch(FetchDescriptor<HostedGiftEvent>())
 
         #expect(events.count == 1)
         #expect(events.first?.title == "我家婚礼")
-        #expect(events.first?.eventType == .wedding)
-        #expect(events.first?.date == date)
         #expect(record.hostedEventID == events.first?.id)
     }
 
@@ -341,6 +378,93 @@ struct RecordServiceTests {
         }
         #expect(record.personName == "原姓名")
         #expect(record.amountYuan == 500)
+    }
+
+    @Test func amountTextAcceptsUpToTwoDecimalPlaces() {
+        var draft = GiftRecordDraft()
+        draft.personName = "张三"
+        draft.amountText = "100.5"
+
+        #expect(draft.amountYuan == Decimal(string: "100.5"))
+        #expect(draft.amountFen == 10_050)
+        #expect(draft.isValid)
+    }
+
+    @Test func amountTextRejectsMoreThanTwoDecimalPlaces() {
+        var draft = GiftRecordDraft()
+        draft.personName = "张三"
+        draft.amountText = "100.501"
+
+        #expect(draft.amountFen == 0)
+        #expect(!draft.isValid)
+    }
+
+    @Test func amountTextParsesThousandsSeparator() {
+        var draft = GiftRecordDraft()
+        draft.amountText = "1,000"
+
+        #expect(draft.amountYuan == 1000)
+    }
+
+    @Test func amountTextOverflowIsRejected() {
+        var draft = GiftRecordDraft()
+        draft.personName = "张三"
+        draft.amountText = "99999999999999999999999999"
+
+        #expect(draft.amountYuan == 0)
+        #expect(!draft.isValid)
+    }
+
+    @MainActor
+    @Test func decimalAmountPersistsExactlyInFen() throws {
+        let container = try makeContainer()
+        var draft = GiftRecordDraft()
+        draft.personName = "小数金额"
+        draft.amountText = "100.50"
+
+        let record = try RecordService.insert(draft, in: container.mainContext)
+
+        #expect(record.amountFenValue == 10_050)
+        #expect(MoneyAmount.inputText(fromFen: record.amountFenValue) == "100.5")
+    }
+
+    @MainActor
+    @Test func changingPhoneKeepsRecordsUnderStablePersonIdentity() throws {
+        let container = try makeContainer()
+        var firstDraft = GiftRecordDraft()
+        firstDraft.personName = "张三"
+        firstDraft.contact = "13800138000"
+        firstDraft.amountText = "600"
+        let first = try RecordService.insert(firstDraft, in: container.mainContext)
+
+        var secondDraft = GiftRecordDraft()
+        secondDraft.personName = "张三"
+        secondDraft.contact = "13800138000"
+        secondDraft.amountText = "800"
+        let second = try RecordService.insert(secondDraft, in: container.mainContext)
+        #expect(first.personID == second.personID)
+
+        var editDraft = GiftRecordDraft(record: second)
+        editDraft.contact = "13911112222"
+        try RecordService.update(second, with: editDraft, in: container.mainContext)
+
+        #expect(RecordService.people(from: [first, second]).count == 1)
+    }
+
+    @MainActor
+    @Test func backfillAssignsStablePersonIDsToLegacyGroups() throws {
+        let container = try makeContainer()
+        let first = GiftRecord(personName: "张 三", type: .received, amountYuan: 600, eventType: .wedding, relationship: .friend)
+        let second = GiftRecord(personName: "张三", type: .given, amountYuan: 800, eventType: .baby, relationship: .friend)
+        first.personID = nil
+        second.personID = nil
+        container.mainContext.insert(first)
+        container.mainContext.insert(second)
+        try container.mainContext.save()
+
+        #expect(try RecordService.backfillPersonIDs(records: [first, second], in: container.mainContext) == 2)
+        #expect(first.personID != nil)
+        #expect(first.personID == second.personID)
     }
 
     @MainActor

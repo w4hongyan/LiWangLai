@@ -30,6 +30,7 @@ enum HostedEventService {
         }
 
         let customTitle = draft.hostedEventTitle.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard draft.createsHostedEvent || !customTitle.isEmpty else { return nil }
         let event = HostedGiftEvent(
             title: customTitle.isEmpty ? defaultTitle(for: draft.eventType) : customTitle,
             eventType: draft.eventType,
@@ -62,7 +63,8 @@ enum HostedEventService {
         event.note = note.trimmingCharacters(in: .whitespacesAndNewlines)
         event.updatedAt = .now
 
-        for record in records(for: event, from: linkedRecords) {
+        // 内部自取全量关联记录，避免调用方传入被过滤的 linkedRecords 时漏同步
+        for record in try allLinkedRecords(for: event.id, in: context) {
             record.eventType = eventType
             record.date = date
             record.updatedAt = .now
@@ -82,7 +84,8 @@ enum HostedEventService {
         linkedRecords: [GiftRecord],
         in context: ModelContext
     ) throws {
-        for record in records(for: event, from: linkedRecords) {
+        // 内部自取全量关联记录，避免调用方传入被过滤的 linkedRecords 时漏解绑
+        for record in try allLinkedRecords(for: event.id, in: context) {
             record.hostedEventID = nil
             record.updatedAt = .now
         }
@@ -94,6 +97,47 @@ enum HostedEventService {
             context.rollback()
             throw error
         }
+    }
+
+    /// 按 hostedEventID 从上下文中自取全量关联收礼记录（保持 records(for:from:) 的口径）
+    @MainActor
+    private static func allLinkedRecords(for eventID: UUID, in context: ModelContext) throws -> [GiftRecord] {
+        let descriptor = FetchDescriptor<GiftRecord>(
+            predicate: #Predicate { $0.hostedEventID == eventID }
+        )
+        return try context.fetch(descriptor).filter { $0.type == .received }
+    }
+
+    /// 本场收礼人的历史「我方送礼」合计：按本场收礼人的规范化姓名集合，
+    /// 统计 type == .given 的记录总额，并排除归属本场的记录避免自洽循环
+    static func givenTotalFenForGuests(
+        of eventRecords: [GiftRecord],
+        excludingHostedEventID: UUID?,
+        in allRecords: [GiftRecord]
+    ) -> Int {
+        let guestNames = Set(eventRecords.map { PersonIdentity.normalizedName($0.personName) })
+        guard !guestNames.isEmpty else { return 0 }
+        return allRecords
+            .filter { record in
+                guard record.type == .given else { return false }
+                if let excludingHostedEventID, record.hostedEventID == excludingHostedEventID {
+                    return false
+                }
+                return guestNames.contains(PersonIdentity.normalizedName(record.personName))
+            }
+            .reduce(0) { $0 + $1.amountFenValue }
+    }
+
+    static func givenTotalForGuests(
+        of eventRecords: [GiftRecord],
+        excludingHostedEventID: UUID?,
+        in allRecords: [GiftRecord]
+    ) -> Int {
+        givenTotalFenForGuests(
+            of: eventRecords,
+            excludingHostedEventID: excludingHostedEventID,
+            in: allRecords
+        ) / 100
     }
 
     static func giftEvents(

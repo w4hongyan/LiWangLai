@@ -24,16 +24,7 @@ struct HostedEventsView: View {
                     }
                 } else {
                     ForEach(hostedEvents) { hostedEvent in
-                        if UIDevice.current.userInterfaceIdiom == .pad {
-                            ipadHostedEventCard(hostedEvent)
-                        } else {
-                            NavigationLink {
-                                EventDetailView(event: giftEvent(from: hostedEvent))
-                            } label: {
-                                hostedEventCard(hostedEvent)
-                            }
-                            .buttonStyle(.plain)
-                        }
+                        hostedEventActionsCard(hostedEvent)
                     }
                 }
             }
@@ -87,10 +78,10 @@ struct HostedEventsView: View {
                 .padding(.top, 18)
             }
         }
-        .frame(height: 124)
+        .frame(minHeight: 124, alignment: .top)
     }
 
-    private func ipadHostedEventCard(_ hostedEvent: HostedGiftEvent) -> some View {
+    private func hostedEventActionsCard(_ hostedEvent: HostedGiftEvent) -> some View {
         PaperCard(padding: 12) {
             hostedEventSummary(hostedEvent, showsChevron: false)
             GoldLineDivider()
@@ -113,7 +104,7 @@ struct HostedEventsView: View {
                 .accessibilityIdentifier("hostedEvent.openDefault.\(hostedEvent.id.uuidString)")
 
                 Button {
-                    appState.ipadDeskRequest = IPadDeskRequest(hostedEventID: hostedEvent.id)
+                    appState.deskRequest = DeskRequest(hostedEventID: hostedEvent.id)
                     HapticsManager.lightTap()
                 } label: {
                     Label("礼台模式", systemImage: "rectangle.landscape.rotate")
@@ -146,7 +137,7 @@ struct HostedEventsView: View {
                 Text("\(hostedEvent.date.lwDualDateText) · \(hostedEvent.eventType.title)")
                     .font(.bodySong(12))
                     .foregroundStyle(LWColors.muted)
-                Text("收礼 \(event.records.count) 笔 · 合计 \(event.totalAmount.yuanText)")
+                Text("收礼 \(event.records.count) 笔 · 合计 \(event.totalAmountFen.fenCurrencyText)")
                     .font(.bodySong(13))
                     .foregroundStyle(LWColors.cinnabar)
             }

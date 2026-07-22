@@ -187,7 +187,7 @@ struct FurtherCoverageTests {
             AnyView(SettingsView(records: [])),
             AnyView(HostedEventsView()),
             AnyView(PersonDetailView(summary: nil)),
-            AnyView(QuickDeskView()),
+            AnyView(IPadQuickDeskView(records: [], hostedEvents: [], openSettings: {})),
             AnyView(DuplicateMergeView(records: [])),
             AnyView(ExcelImportPreviewView(prepared: importPreview))
         ]
@@ -299,7 +299,7 @@ struct FurtherCoverageTests {
             #expect(render(screen, appState: appState, container: container))
         }
         #expect(render(
-            AnyView(QuickDeskView()),
+            AnyView(IPadQuickDeskView(records: records, hostedEvents: [event], openSettings: {})),
             appState: appState,
             container: container,
             width: 844,
@@ -317,6 +317,7 @@ struct FurtherCoverageTests {
     ) -> Bool {
         let content = NavigationStack { view }
             .environment(appState)
+            .environment(PurchaseManager(defaults: UserDefaults(suiteName: "LiWangLaiTests.Purchases")!))
             .environment(\.locale, Locale(identifier: "zh_Hans_CN"))
             .modelContainer(container)
             .frame(width: width, height: height)
@@ -333,6 +334,105 @@ struct FurtherCoverageTests {
             didDraw = controller.view.drawHierarchy(in: frame, afterScreenUpdates: true)
         }
         return didDraw && image.size == frame.size
+    }
+
+    @Test func contactIdentityRequiresPhoneLikeValue() {
+        // 微信号含字母、桌号过短：不具备身份区分力
+        #expect(PersonIdentity.normalizedContact("abc123") == "")
+        #expect(PersonIdentity.normalizedContact("wxid_8888") == "")
+        #expect(PersonIdentity.normalizedContact("5") == "")
+        #expect(PersonIdentity.normalizedContact("138-0013") == "")
+        // 类手机号（trim 后纯数字且 ≥ 5 位）仍作为拆分依据
+        #expect(PersonIdentity.normalizedContact("13800138000") == "13800138000")
+        #expect(PersonIdentity.normalizedContact("  13911112222  ") == "13911112222")
+        // 脱敏同步适配：非类手机号不再生成身份提示
+        #expect(PersonIdentity.maskedContact("abc123") == nil)
+        #expect(PersonIdentity.maskedContact("13800138000") == "138••••8000")
+    }
+
+    @Test func wechatAndTableNumberContactsDoNotSplitSameNamePeople() {
+        let wechat = GiftRecord(
+            personName: "张三",
+            type: .received,
+            amountYuan: 600,
+            eventType: .wedding,
+            relationship: .friend,
+            contact: "abc123"
+        )
+        let tableNumber = GiftRecord(
+            personName: "张三",
+            type: .given,
+            amountYuan: 500,
+            eventType: .baby,
+            relationship: .friend,
+            contact: "5"
+        )
+
+        let people = RecordService.people(from: [wechat, tableNumber])
+
+        #expect(people.count == 1)
+        #expect(people.first?.records.count == 2)
+    }
+
+    @Test func distinctPhoneNumbersStillSplitSameNamePeople() {
+        let first = GiftRecord(
+            personName: "张三",
+            type: .received,
+            amountYuan: 600,
+            eventType: .wedding,
+            relationship: .friend,
+            contact: "13800138000"
+        )
+        let second = GiftRecord(
+            personName: "张三",
+            type: .received,
+            amountYuan: 800,
+            eventType: .wedding,
+            relationship: .friend,
+            contact: "13911112222"
+        )
+
+        let people = RecordService.people(from: [first, second])
+
+        #expect(people.count == 2)
+        #expect(Set(people.map(\.records.count)) == [1])
+    }
+
+    @MainActor
+    @Test func mergeKeepsKeeperHostedEventLink() throws {
+        let container = try makeContainer()
+        let keeperEventID = UUID()
+        let date = Date(timeIntervalSince1970: 2_000_000)
+        let keeper = GiftRecord(
+            personName: "张三",
+            type: .received,
+            amountYuan: 600,
+            eventType: .wedding,
+            relationship: .friend,
+            date: date,
+            hostedEventID: keeperEventID
+        )
+        let duplicate = GiftRecord(
+            personName: "张 三",
+            type: .received,
+            amountYuan: 600,
+            eventType: .wedding,
+            relationship: .friend,
+            date: date
+        )
+        container.mainContext.insert(keeper)
+        container.mainContext.insert(duplicate)
+        try container.mainContext.save()
+
+        let groups = DuplicateMergeService.groups(in: [keeper, duplicate])
+        #expect(groups.count == 1)
+        // 「张 三」与「张三」按统一规范化口径识别为重复
+        #expect(groups.first?.records.first === keeper)
+
+        try DuplicateMergeService.merge(groups, in: container.mainContext)
+
+        // keeper 已有关联场次时，保留 keeper 的归属而不是依赖数组排序
+        #expect(keeper.hostedEventID == keeperEventID)
     }
 
     @MainActor

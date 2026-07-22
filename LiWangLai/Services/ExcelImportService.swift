@@ -47,7 +47,7 @@ enum ExcelImportService {
     }
 
     @MainActor
-    static func prepare(from data: Data, existingRecords: [GiftRecord]) throws -> PreparedImport {
+    static func prepare(from data: Data, existingRecords: [GiftRecord], existingEvents: [HostedGiftEvent] = []) throws -> PreparedImport {
         guard !data.isEmpty else { throw ImportError.emptyFile }
         let entries: [String: Data]
         do {
@@ -57,11 +57,14 @@ enum ExcelImportService {
         } catch {
             throw ImportError.invalidWorkbook
         }
-        guard let worksheet = entries
-            .filter({ $0.key.hasPrefix("xl/worksheets/") && $0.key.hasSuffix(".xml") })
-            .sorted(by: { $0.key < $1.key })
-            .first?.value else {
-            throw ImportError.invalidWorkbook
+        let worksheetEntries = entries.filter { $0.key.hasPrefix("xl/worksheets/") && $0.key.hasSuffix(".xml") }
+        guard !worksheetEntries.isEmpty else { throw ImportError.invalidWorkbook }
+        // 优先取 workbook.xml 中声明的第一个工作表；声明缺失时回退为按文件名排序。
+        let worksheet: Data
+        if let declaredPath = Self.firstDeclaredWorksheetPath(entries: entries), let declared = worksheetEntries[declaredPath] {
+            worksheet = declared
+        } else {
+            worksheet = worksheetEntries.sorted(by: { $0.key < $1.key }).first!.value
         }
 
         let sharedStrings: [String]
@@ -71,11 +74,11 @@ enum ExcelImportService {
             sharedStrings = []
         }
         let table = try WorksheetParser.parse(worksheet, sharedStrings: sharedStrings)
-        return try prepare(table: table, existingRecords: existingRecords)
+        return try prepare(table: table, existingRecords: existingRecords, existingEvents: existingEvents)
     }
 
     @MainActor
-    static func prepare(table: [[String]], existingRecords: [GiftRecord]) throws -> PreparedImport {
+    static func prepare(table: [[String]], existingRecords: [GiftRecord], existingEvents: [HostedGiftEvent] = []) throws -> PreparedImport {
         guard let headerRow = table.first, !headerRow.isEmpty else { throw ImportError.emptyFile }
         var headers: [String: Int] = [:]
         for (index, header) in headerRow.enumerated() where headers[header.normalizedHeader] == nil {
@@ -96,7 +99,7 @@ enum ExcelImportService {
             guard row.contains(where: { !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }) else { continue }
             nonemptyRowCount += 1
             do {
-                let imported = try ImportedRecord(row: row, headers: headers)
+                let imported = try ImportedRecord(row: row, headers: headers, existingEvents: existingEvents)
                 let identity = imported.identity
                 if identities.contains(identity) {
                     duplicateCount += 1
@@ -146,7 +149,7 @@ private extension ExcelImportService {
             switch self {
             case .missingName: "姓名为空"
             case .invalidType: "收礼/送礼类型无法识别"
-            case .invalidAmount: "金额不是有效的正整数"
+            case .invalidAmount: "金额无效（最多保留两位小数）"
             case .invalidDate: "日期格式无法识别"
             }
         }
@@ -155,7 +158,7 @@ private extension ExcelImportService {
     struct ImportedRecord {
         let personName: String
         let type: GiftRecordType
-        let amountYuan: Int
+        let amountFen: Int
         let eventType: GiftEventType
         let relationship: RelationshipType
         let date: Date
@@ -165,18 +168,19 @@ private extension ExcelImportService {
         let contact: String
         let isReturned: Bool
         let reminderDate: Date?
+        let hostedEventID: UUID?
 
-        init(row: [String], headers: [String: Int]) throws {
+        init(row: [String], headers: [String: Int], existingEvents: [HostedGiftEvent] = []) throws {
             personName = Self.value("姓名", row: row, headers: headers).trimmingCharacters(in: .whitespacesAndNewlines)
             guard !personName.isEmpty else { throw RowError.missingName }
             guard let parsedType = Self.recordType(Self.value("类型", row: row, headers: headers)) else {
                 throw RowError.invalidType
             }
             type = parsedType
-            guard let parsedAmount = Self.amount(Self.value("金额", row: row, headers: headers)), parsedAmount > 0 else {
+            guard let parsedAmount = MoneyAmount.parseFen(Self.value("金额", row: row, headers: headers)), parsedAmount > 0 else {
                 throw RowError.invalidAmount
             }
-            amountYuan = parsedAmount
+            amountFen = parsedAmount
             guard let parsedDate = Self.date(Self.value("日期", row: row, headers: headers)) else {
                 throw RowError.invalidDate
             }
@@ -189,13 +193,16 @@ private extension ExcelImportService {
             contact = Self.value("联系方式", row: row, headers: headers).trimmed
             isReturned = type == .received && Self.bool(Self.value("是否回礼", row: row, headers: headers))
             reminderDate = isReturned ? nil : Self.date(Self.value("提醒日期", row: row, headers: headers))
+            // 场次按标题精确匹配已有场次；匹配不到则不归属，不自动新建。
+            let hostedEventTitle = Self.value("场次", row: row, headers: headers).trimmed
+            hostedEventID = hostedEventTitle.isEmpty ? nil : existingEvents.first { $0.title == hostedEventTitle }?.id
         }
 
         var identity: DuplicateMergeService.RecordIdentity {
             DuplicateMergeService.identity(
                 personName: personName,
                 type: type,
-                amountYuan: amountYuan,
+                amountFen: amountFen,
                 eventType: eventType,
                 date: date
             )
@@ -205,7 +212,8 @@ private extension ExcelImportService {
             GiftRecord(
                 personName: personName,
                 type: type,
-                amountYuan: amountYuan,
+                amountYuan: amountFen / 100,
+                amountFen: amountFen,
                 eventType: eventType,
                 relationship: relationship,
                 date: date,
@@ -214,7 +222,8 @@ private extension ExcelImportService {
                 returnReminderDate: reminderDate,
                 location: location,
                 giftName: giftName,
-                contact: contact
+                contact: contact,
+                hostedEventID: hostedEventID
             )
         }
 
@@ -230,32 +239,30 @@ private extension ExcelImportService {
             return GiftRecordType(rawValue: value)
         }
 
-        private static func amount(_ value: String) -> Int? {
-            let cleaned = value
-                .replacingOccurrences(of: "¥", with: "")
-                .replacingOccurrences(of: "￥", with: "")
-                .replacingOccurrences(of: ",", with: "")
-                .trimmingCharacters(in: .whitespacesAndNewlines)
-            guard let number = Double(cleaned), number.isFinite else { return nil }
-            return Int(number.rounded())
-        }
-
-        private static func date(_ value: String) -> Date? {
-            let value = value.trimmingCharacters(in: .whitespacesAndNewlines)
-            guard !value.isEmpty else { return nil }
-            if let serial = Double(value), serial > 0 {
-                var calendar = Calendar(identifier: .gregorian)
-                calendar.timeZone = .current
-                let origin = calendar.date(from: DateComponents(year: 1899, month: 12, day: 30))!
-                return calendar.date(byAdding: .second, value: Int(serial * 86_400), to: origin)
-            }
+        // 解析入口均在 @MainActor 的 prepare 内，DateFormatter 复用不会跨线程。
+        nonisolated(unsafe) private static let dateFormatters: [DateFormatter] = {
             let formats = ["yyyy年M月d日 HH:mm", "yyyy-M-d HH:mm", "yyyy/M/d HH:mm", "yyyy年M月d日", "yyyy-M-d", "yyyy/M/d", "yyyy.MM.dd", "M/d/yyyy"]
-            for format in formats {
+            return formats.map { format in
                 let formatter = DateFormatter()
                 formatter.locale = Locale(identifier: "zh_Hans_CN")
                 formatter.timeZone = .current
                 formatter.dateFormat = format
                 formatter.isLenient = false
+                return formatter
+            }
+        }()
+
+        private static func date(_ value: String) -> Date? {
+            let value = value.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !value.isEmpty else { return nil }
+            // 纯数字只按 Excel 序列日解析，且限定在约 1954-2119 年，避免把“2025”当成 1905 年。
+            if let serial = Double(value), (20_000...80_000).contains(serial) {
+                var calendar = Calendar(identifier: .gregorian)
+                calendar.timeZone = .current
+                let origin = calendar.date(from: DateComponents(year: 1899, month: 12, day: 30))!
+                return calendar.date(byAdding: .second, value: Int(serial * 86_400), to: origin)
+            }
+            for formatter in dateFormatters {
                 if let date = formatter.date(from: value) { return date }
             }
             return nil
@@ -287,9 +294,23 @@ private extension ExcelImportService {
             "礼品": ["礼品", "礼物"],
             "联系方式": ["联系方式", "电话", "手机号", "联系"],
             "是否回礼": ["是否回礼", "已回礼", "回礼状态"],
-            "提醒日期": ["提醒日期", "送礼提醒", "回礼提醒", "通知日期"]
+            "提醒日期": ["提醒日期", "送礼提醒", "回礼提醒", "通知日期"],
+            "场次": ["场次", "一场事", "所属场次", "活动"]
         ]
         return aliases[canonicalHeader]?.compactMap { headers[$0.normalizedHeader] }.first
+    }
+
+    /// 按 xl/workbook.xml 的 sheet 声明顺序取第一个工作表，经 xl/_rels/workbook.xml.rels 映射为包内路径。
+    static func firstDeclaredWorksheetPath(entries: [String: Data]) -> String? {
+        guard let workbookData = entries["xl/workbook.xml"],
+              let relationshipsData = entries["xl/_rels/workbook.xml.rels"],
+              let relationshipID = WorkbookSheetLocator.firstSheetRelationshipID(in: workbookData),
+              let target = WorkbookSheetLocator.relationshipTargets(in: relationshipsData)[relationshipID] else {
+            return nil
+        }
+        if target.hasPrefix("/") { return String(target.dropFirst()) }
+        if target.hasPrefix("xl/") { return target }
+        return "xl/" + target
     }
 }
 
@@ -312,16 +333,17 @@ private extension String {
 private enum ZipReader {
     enum ZipError: Error { case invalid }
     private static let maxEntrySize = 32 * 1_024 * 1_024
+    private static let maxTotalUncompressedSize = 200 * 1_024 * 1_024
 
     static func entries(from archive: Data) throws -> [String: Data] {
-        guard archive.count >= 22,
-              let endOffset = findSignature(0x06054b50, in: archive, range: max(0, archive.count - 65_557)..<archive.count) else {
+        guard archive.count >= 22, let endOffset = findEndOfCentralDirectory(in: archive) else {
             throw ExcelImportService.ImportError.unsupportedFile
         }
         let entryCount = Int(try archive.uint16(at: endOffset + 10))
         var cursor = Int(try archive.uint32(at: endOffset + 16))
         guard entryCount <= 1_000 else { throw ZipError.invalid }
         var result: [String: Data] = [:]
+        var totalUncompressedSize = 0
 
         for _ in 0..<entryCount {
             guard try archive.uint32(at: cursor) == 0x02014b50 else { throw ZipError.invalid }
@@ -332,7 +354,9 @@ private enum ZipReader {
             let extraLength = Int(try archive.uint16(at: cursor + 30))
             let commentLength = Int(try archive.uint16(at: cursor + 32))
             let localOffset = Int(try archive.uint32(at: cursor + 42))
+            totalUncompressedSize += uncompressedSize
             guard uncompressedSize <= maxEntrySize,
+                  totalUncompressedSize <= maxTotalUncompressedSize,
                   let name = String(data: try archive.slice(cursor + 46, count: nameLength), encoding: .utf8),
                   try archive.uint32(at: localOffset) == 0x04034b50 else {
                 throw ZipError.invalid
@@ -374,10 +398,18 @@ private enum ZipReader {
         return output
     }
 
-    private static func findSignature(_ signature: UInt32, in data: Data, range: Range<Int>) -> Int? {
-        guard range.count >= 4 else { return nil }
-        for offset in stride(from: range.upperBound - 4, through: range.lowerBound, by: -1) {
-            if (try? data.uint32(at: offset)) == signature { return offset }
+    /// 从尾部向前扫描 EOCD，并校验注释长度字段：注释里混入 EOCD 签名字节时不会误判。
+    private static func findEndOfCentralDirectory(in data: Data) -> Int? {
+        let lowerBound = max(0, data.count - 65_557)
+        guard data.count - lowerBound >= 22 else { return nil }
+        var offset = data.count - 22
+        while offset >= lowerBound {
+            if (try? data.uint32(at: offset)) == 0x06054b50,
+               let commentLength = try? data.uint16(at: offset + 20),
+               offset + 22 + Int(commentLength) == data.count {
+                return offset
+            }
+            offset -= 1
         }
         return nil
     }
@@ -404,11 +436,42 @@ private extension Data {
     }
 }
 
+private final class WorkbookSheetLocator: NSObject, XMLParserDelegate {
+    private var relationshipID: String?
+    private var targets: [String: String] = [:]
+
+    static func firstSheetRelationshipID(in data: Data) -> String? {
+        let delegate = WorkbookSheetLocator()
+        let parser = XMLParser(data: data)
+        parser.delegate = delegate
+        guard parser.parse() else { return nil }
+        return delegate.relationshipID
+    }
+
+    static func relationshipTargets(in data: Data) -> [String: String] {
+        let delegate = WorkbookSheetLocator()
+        let parser = XMLParser(data: data)
+        parser.delegate = delegate
+        guard parser.parse() else { return [:] }
+        return delegate.targets
+    }
+
+    func parser(_ parser: XMLParser, didStartElement elementName: String, namespaceURI: String?, qualifiedName qName: String?, attributes attributeDict: [String: String] = [:]) {
+        if elementName == "sheet", relationshipID == nil {
+            relationshipID = attributeDict["r:id"] ?? attributeDict["id"]
+        }
+        if elementName == "Relationship", let id = attributeDict["Id"], let target = attributeDict["Target"] {
+            targets[id] = target
+        }
+    }
+}
+
 private final class SharedStringsParser: NSObject, XMLParserDelegate {
     private var strings: [String] = []
     private var current = ""
     private var text = ""
     private var insideItem = false
+    private var phoneticDepth = 0
 
     static func parse(_ data: Data) throws -> [String] {
         let delegate = SharedStringsParser()
@@ -420,13 +483,16 @@ private final class SharedStringsParser: NSObject, XMLParserDelegate {
 
     func parser(_ parser: XMLParser, didStartElement elementName: String, namespaceURI: String?, qualifiedName qName: String?, attributes attributeDict: [String: String] = [:]) {
         if elementName == "si" { insideItem = true; current = "" }
+        if elementName == "rPh" { phoneticDepth += 1 }
         if elementName == "t" { text = "" }
     }
 
     func parser(_ parser: XMLParser, foundCharacters string: String) { text += string }
 
     func parser(_ parser: XMLParser, didEndElement elementName: String, namespaceURI: String?, qualifiedName qName: String?) {
-        if elementName == "t", insideItem { current += text }
+        // <rPh> 拼音块内的 <t> 不是姓名内容，跳过。
+        if elementName == "t", insideItem, phoneticDepth == 0 { current += text }
+        if elementName == "rPh", phoneticDepth > 0 { phoneticDepth -= 1 }
         if elementName == "si" { strings.append(current); insideItem = false }
     }
 }
@@ -436,6 +502,7 @@ private final class WorksheetParser: NSObject, XMLParserDelegate {
     private var rows: [[String]] = []
     private var currentRow: [Int: String] = [:]
     private var currentColumn = 0
+    private var lastColumn = -1
     private var currentType = ""
     private var value = ""
     private var inlineText = ""
@@ -454,9 +521,17 @@ private final class WorksheetParser: NSObject, XMLParserDelegate {
 
     func parser(_ parser: XMLParser, didStartElement elementName: String, namespaceURI: String?, qualifiedName qName: String?, attributes attributeDict: [String: String] = [:]) {
         switch elementName {
-        case "row": currentRow = [:]
+        case "row":
+            currentRow = [:]
+            lastColumn = -1
         case "c":
-            currentColumn = Self.columnIndex(from: attributeDict["r"] ?? "")
+            // OOXML 允许省略 r，表示紧随前一列。
+            if let reference = attributeDict["r"], !reference.isEmpty {
+                currentColumn = Self.columnIndex(from: reference)
+            } else {
+                currentColumn = lastColumn + 1
+            }
+            lastColumn = currentColumn
             currentType = attributeDict["t"] ?? ""
             value = ""
             inlineText = ""

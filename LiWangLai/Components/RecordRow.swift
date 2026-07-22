@@ -20,11 +20,11 @@ struct RecordRow: View {
             }
             Spacer()
             VStack(alignment: .trailing, spacing: 2) {
-                Text(record.amountYuan.yuanText)
+                Text(record.amountFenValue.fenCurrencyText)
                     .font(.amountKai(13))
                     .foregroundStyle(record.type == .received ? LWColors.cinnabar : LWColors.ink)
-                if showsReturnStatus {
-                    Text(record.isReturned ? "已回" : (record.type == .received ? "未回" : "已记"))
+                if showsReturnStatus, let status = record.returnStatusText {
+                    Text(status)
                         .font(.bodySong(11))
                         .foregroundStyle(record.isReturned ? LWColors.muted : LWColors.cinnabar)
                         .padding(.horizontal, 5)

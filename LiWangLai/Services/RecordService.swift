@@ -41,12 +41,16 @@ enum RecordService {
             draft.hostedEventID = nil
         }
 
+        let personID = try resolvePersonID(for: draft, in: context)
+
         let supportsReturn = draft.type == .received
         let reminderDate = supportsReturn && draft.isReturned ? nil : draft.returnReminderDate
         let record = GiftRecord(
             personName: draft.personName.trimmingCharacters(in: .whitespacesAndNewlines),
             type: draft.type,
-            amountYuan: draft.amountYuan,
+            amountYuan: draft.amountFen / 100,
+            amountFen: draft.amountFen,
+            personID: personID,
             eventType: draft.eventType,
             relationship: draft.relationship,
             date: draft.date,
@@ -87,8 +91,9 @@ enum RecordService {
         let supportsReturn = draft.type == .received
         let reminderDate = supportsReturn && draft.isReturned ? nil : draft.returnReminderDate
         record.personName = draft.personName.trimmingCharacters(in: .whitespacesAndNewlines)
+        record.personID = draft.personID ?? record.personID
         record.type = draft.type
-        record.amountYuan = draft.amountYuan
+        record.setAmount(fen: draft.amountFen)
         record.eventType = draft.eventType
         record.relationship = draft.relationship
         record.date = draft.date
@@ -147,23 +152,117 @@ enum RecordService {
     }
 
     static func people(from records: [GiftRecord]) -> [PersonSummary] {
-        Dictionary(grouping: records, by: { $0.personName })
-            .map { name, records in
-                let relationship = records.sorted { $0.date > $1.date }.first?.relationship ?? .other
-                return PersonSummary(name: name, relationship: relationship, records: records)
-            }
+        let persistedGroups = Dictionary(grouping: records.filter { $0.personID != nil }) {
+            $0.personID!
+        }
+        let persistedPeople = persistedGroups.map { personID, groupedRecords in
+            makePersonSummary(
+                id: personID.uuidString,
+                records: groupedRecords,
+                identityHint: groupedRecords.compactMap { PersonIdentity.maskedContact($0.contact) }.first
+            )
+        }
+        let legacyPeople = legacyPeople(from: records.filter { $0.personID == nil })
+        return (persistedPeople + legacyPeople)
             .sorted {
                 ($0.latestRecord?.date ?? .distantPast) > ($1.latestRecord?.date ?? .distantPast)
             }
+    }
+
+    private static func legacyPeople(from records: [GiftRecord]) -> [PersonSummary] {
+        Dictionary(grouping: records, by: { PersonIdentity.normalizedName($0.personName) })
+            .flatMap { normalizedName, sameNameRecords -> [PersonSummary] in
+                let contacts = Set(sameNameRecords
+                    .map { PersonIdentity.normalizedContact($0.contact) }
+                    .filter { !$0.isEmpty })
+
+                if contacts.count <= 1 {
+                    return [makePersonSummary(
+                        id: normalizedName,
+                        records: sameNameRecords,
+                        identityHint: contacts.first.flatMap(PersonIdentity.maskedContact)
+                    )]
+                }
+
+                return Dictionary(grouping: sameNameRecords) { record in
+                    let contact = PersonIdentity.normalizedContact(record.contact)
+                    return contact.isEmpty ? "no-contact" : contact
+                }
+                .map { contactKey, groupedRecords in
+                    makePersonSummary(
+                        id: "\(normalizedName)|\(contactKey)",
+                        records: groupedRecords,
+                        identityHint: contactKey == "no-contact" ? "联系方式待补充" : PersonIdentity.maskedContact(contactKey)
+                    )
+                }
+            }
+    }
+
+    @MainActor
+    @discardableResult
+    static func backfillPersonIDs(records: [GiftRecord], in context: ModelContext) throws -> Int {
+        let legacyRecords = records.filter { $0.personID == nil }
+        guard !legacyRecords.isEmpty else { return 0 }
+        var count = 0
+        for summary in legacyPeople(from: legacyRecords) {
+            let personID = UUID()
+            for record in summary.records {
+                record.personID = personID
+                record.updatedAt = .now
+                count += 1
+            }
+        }
+        do {
+            try context.save()
+            return count
+        } catch {
+            context.rollback()
+            throw error
+        }
+    }
+
+    private static func makePersonSummary(
+        id: String,
+        records: [GiftRecord],
+        identityHint: String?
+    ) -> PersonSummary {
+        let sorted = records.sorted { $0.date > $1.date }
+        let latest = sorted.first
+        return PersonSummary(
+            id: id,
+            name: latest?.personName ?? "",
+            relationship: latest?.relationship ?? .other,
+            records: records,
+            identityHint: identityHint
+        )
+    }
+
+    @MainActor
+    private static func resolvePersonID(for draft: GiftRecordDraft, in context: ModelContext) throws -> UUID {
+        if let personID = draft.personID { return personID }
+        let records = try context.fetch(FetchDescriptor<GiftRecord>())
+        let matches = records.filter {
+            PersonIdentity.matches($0, name: draft.personName, contact: draft.contact)
+        }
+        let existingIDs = Set(matches.compactMap(\.personID))
+        if existingIDs.count == 1, let existing = existingIDs.first { return existing }
+        let newID = UUID()
+        if existingIDs.isEmpty {
+            for record in matches {
+                record.personID = newID
+                record.updatedAt = .now
+            }
+        }
+        return newID
     }
 }
 
 struct GiftRecordDraft: Equatable {
     var personName = ""
     var type: GiftRecordType = .received
-    var amountText = "600"
-    var eventType: GiftEventType = .baby
-    var relationship: RelationshipType = .friend
+    var amountText = ""
+    var eventType: GiftEventType = .other
+    var relationship: RelationshipType = .other
     var date = Date()
     var note = ""
     var isReturned = false
@@ -171,15 +270,21 @@ struct GiftRecordDraft: Equatable {
     var location = ""
     var giftName = ""
     var contact = ""
+    var personID: UUID?
     var hostedEventID: UUID?
     var hostedEventTitle = ""
+    var createsHostedEvent = false
 
-    var amountYuan: Int {
-        Int(amountText.filter(\.isNumber)) ?? 0
+    var amountFen: Int {
+        MoneyAmount.parseFen(amountText) ?? 0
+    }
+
+    var amountYuan: Decimal {
+        Decimal(amountFen) / 100
     }
 
     var isValid: Bool {
-        !personName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && amountYuan > 0
+        !personName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && amountFen > 0
     }
 
     init(
@@ -195,7 +300,7 @@ struct GiftRecordDraft: Equatable {
         if let record {
             self.personName = record.personName
             self.type = record.type
-            self.amountText = "\(record.amountYuan)"
+            self.amountText = MoneyAmount.inputText(fromFen: record.amountFenValue)
             self.eventType = record.eventType
             self.relationship = record.relationship
             self.date = record.date
@@ -205,7 +310,9 @@ struct GiftRecordDraft: Equatable {
             self.location = record.location
             self.giftName = record.giftName
             self.contact = record.contact
+            self.personID = record.personID
             self.hostedEventID = record.hostedEventID
+            self.createsHostedEvent = false
         } else {
             self.personName = personName
             self.type = type
@@ -218,6 +325,7 @@ struct GiftRecordDraft: Equatable {
             self.note = note
             self.hostedEventID = hostedEventID
             self.hostedEventTitle = hostedEventTitle
+            self.createsHostedEvent = !hostedEventTitle.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
         }
     }
 }

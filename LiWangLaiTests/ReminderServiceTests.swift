@@ -13,11 +13,10 @@ struct ReminderServiceTests {
         date: Date(timeIntervalSince1970: 1_000_000)
     )
 
-    @Test func receivedUnreturnedRecordAppearsInReminders() {
+    @Test func receivedRecordWithoutExplicitReminderStaysOutOfReminders() {
         let record = baseRecord
         let reminders = ReminderService.reminders(from: [record])
-        #expect(reminders.count == 1)
-        #expect(reminders.first?.record.personName == "张三")
+        #expect(reminders.isEmpty)
     }
 
     @Test func givenRecordDoesNotAppearInReminders() {
@@ -44,6 +43,7 @@ struct ReminderServiceTests {
         let reminders = ReminderService.reminders(from: [record])
         #expect(reminders.count == 1)
         #expect(reminders.first?.title.contains("送礼") == true)
+        #expect(reminders.first?.kind == .sendGift)
     }
 
     @Test func returnedRecordDoesNotAppearInReminders() {
@@ -70,6 +70,7 @@ struct ReminderServiceTests {
         )
         let reminders = ReminderService.reminders(from: [record])
         #expect(reminders.count == 1)
+        #expect(reminders.first?.kind == .returnGift)
         #expect(reminders.first?.isDateReminder == true)
         #expect(reminders.first?.subtitle.contains("计划于") == true)
         #expect(reminders.first?.subtitle.contains(record.returnReminderDate!.lwDayText) == true)
@@ -82,7 +83,8 @@ struct ReminderServiceTests {
             amountYuan: 600,
             eventType: .wedding,
             relationship: .friend,
-            date: Date(timeIntervalSince1970: 1_000_000)
+            date: Date(timeIntervalSince1970: 1_000_000),
+            returnReminderDate: Date(timeIntervalSince1970: 1_500_000)
         )
         let late = GiftRecord(
             personName: "晚的人",
@@ -90,7 +92,8 @@ struct ReminderServiceTests {
             amountYuan: 800,
             eventType: .baby,
             relationship: .relative,
-            date: Date(timeIntervalSince1970: 3_000_000)
+            date: Date(timeIntervalSince1970: 3_000_000),
+            returnReminderDate: Date(timeIntervalSince1970: 3_500_000)
         )
         let reminders = ReminderService.reminders(from: [late, early])
         #expect(reminders.count == 2)
@@ -101,6 +104,42 @@ struct ReminderServiceTests {
     @Test func emptyRecordsReturnsEmpty() {
         let reminders = ReminderService.reminders(from: [])
         #expect(reminders.isEmpty)
+    }
+
+    @Test func reminderWithPastDateIsOverdue() {
+        let record = GiftRecord(
+            personName: "逾期的人",
+            type: .received,
+            amountYuan: 600,
+            eventType: .wedding,
+            relationship: .friend,
+            returnReminderDate: Date(timeIntervalSinceNow: -86_400)
+        )
+        let reminders = ReminderService.reminders(from: [record])
+        #expect(reminders.count == 1)
+        #expect(reminders.first?.isOverdue == true)
+    }
+
+    @Test func reminderWithTodayOrFutureDateIsNotOverdue() {
+        let today = GiftRecord(
+            personName: "今天的人",
+            type: .received,
+            amountYuan: 600,
+            eventType: .wedding,
+            relationship: .friend,
+            returnReminderDate: .now
+        )
+        let tomorrow = GiftRecord(
+            personName: "明天的人",
+            type: .given,
+            amountYuan: 300,
+            eventType: .festival,
+            relationship: .friend,
+            returnReminderDate: Date(timeIntervalSinceNow: 86_400)
+        )
+        let reminders = ReminderService.reminders(from: [today, tomorrow])
+        #expect(reminders.count == 2)
+        #expect(reminders.allSatisfy { !$0.isOverdue })
     }
 
     @MainActor

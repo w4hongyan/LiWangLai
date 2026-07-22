@@ -5,7 +5,7 @@ enum DuplicateMergeService {
     struct RecordIdentity: Hashable {
         let personName: String
         let type: GiftRecordType
-        let amountYuan: Int
+        let amountFen: Int
         let eventType: GiftEventType
         let day: Date
     }
@@ -15,14 +15,14 @@ enum DuplicateMergeService {
         let records: [GiftRecord]
 
         var id: String {
-            "\(identity.personName)-\(identity.type.rawValue)-\(identity.amountYuan)-\(identity.eventType.rawValue)-\(identity.day.timeIntervalSinceReferenceDate)"
+            "\(identity.personName)-\(identity.type.rawValue)-\(identity.amountFen)-\(identity.eventType.rawValue)-\(identity.day.timeIntervalSinceReferenceDate)"
         }
 
         var displayName: String { records.first?.personName ?? identity.personName }
         var duplicateCount: Int { max(0, records.count - 1) }
         var summary: String {
             guard let record = records.first else { return "" }
-            return "\(record.date.lwDayText) · \(record.eventType.title) · \(record.type.title) \(record.amountYuan.yuanText)"
+            return "\(record.date.lwDayText) · \(record.eventType.title) · \(record.type.title) \(record.amountFenValue.fenCurrencyText)"
         }
     }
 
@@ -32,14 +32,24 @@ enum DuplicateMergeService {
     }
 
     static func normalizedPersonName(_ name: String) -> String {
-        let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
-        let halfWidth = trimmed.applyingTransform(.fullwidthToHalfwidth, reverse: false) ?? trimmed
-        return halfWidth
-            .folding(options: [.caseInsensitive, .diacriticInsensitive], locale: Locale(identifier: "zh_Hans_CN"))
-            .unicodeScalars
-            .filter { !CharacterSet.whitespacesAndNewlines.contains($0) && $0.value != 0x200B }
-            .map(String.init)
-            .joined()
+        PersonIdentity.normalizedName(name)
+    }
+
+    static func identity(
+        personName: String,
+        type: GiftRecordType,
+        amountFen: Int,
+        eventType: GiftEventType,
+        date: Date,
+        calendar: Calendar = .current
+    ) -> RecordIdentity {
+        RecordIdentity(
+            personName: normalizedPersonName(personName),
+            type: type,
+            amountFen: amountFen,
+            eventType: eventType,
+            day: calendar.startOfDay(for: date)
+        )
     }
 
     static func identity(
@@ -50,12 +60,13 @@ enum DuplicateMergeService {
         date: Date,
         calendar: Calendar = .current
     ) -> RecordIdentity {
-        RecordIdentity(
-            personName: normalizedPersonName(personName),
+        identity(
+            personName: personName,
             type: type,
-            amountYuan: amountYuan,
+            amountFen: amountYuan * 100,
             eventType: eventType,
-            day: calendar.startOfDay(for: date)
+            date: date,
+            calendar: calendar
         )
     }
 
@@ -63,7 +74,7 @@ enum DuplicateMergeService {
         identity(
             personName: record.personName,
             type: record.type,
-            amountYuan: record.amountYuan,
+            amountFen: record.amountFenValue,
             eventType: record.eventType,
             date: record.date,
             calendar: calendar
@@ -126,7 +137,7 @@ private extension DuplicateMergeService {
         keeper.contact = bestText(allRecords.map(\.contact), fallback: keeper.contact)
         keeper.relationship = allRecords.max(by: { $0.updatedAt < $1.updatedAt })?.relationship ?? keeper.relationship
         keeper.isReturned = allRecords.contains(where: \.isReturned)
-        keeper.hostedEventID = allRecords.compactMap(\.hostedEventID).first
+        keeper.hostedEventID = keeper.hostedEventID ?? duplicates.compactMap(\.hostedEventID).first
         keeper.createdAt = allRecords.map(\.createdAt).min() ?? keeper.createdAt
         keeper.updatedAt = .now
 

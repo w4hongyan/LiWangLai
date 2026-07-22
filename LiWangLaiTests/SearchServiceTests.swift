@@ -75,6 +75,21 @@ struct SearchServiceTests {
         #expect(SearchService.filter([record], query: "1380013").count == 1)
     }
 
+    @Test func nameSearchIgnoresInnerWhitespace() {
+        let spaced = GiftRecord(personName: "张 三", type: .received, amountYuan: 600, eventType: .wedding, relationship: .friend)
+        // 记录里带空格，用无空格查询能搜到
+        #expect(SearchService.filter([spaced], query: "张三").count == 1)
+        // 记录里无空格，用带空格查询也能搜到
+        #expect(SearchService.filter(records, query: "张 三").count == 1)
+        #expect(SearchService.filter(records, query: "张 三").first?.personName == "张三")
+    }
+
+    @Test func nameSearchMatchesFullWidthAndCase() {
+        let fullWidth = GiftRecord(personName: "Ａｌｅｘ", type: .given, amountYuan: 500, eventType: .birthday, relationship: .friend)
+        #expect(SearchService.filter([fullWidth], query: "alex").count == 1)
+        #expect(SearchService.filter([fullWidth], query: "ＡＬＥＸ").count == 1)
+    }
+
     @Test func dateRangeIncludesEntireEndDay() {
         var calendar = Calendar(identifier: .gregorian)
         calendar.timeZone = TimeZone(secondsFromGMT: 0)!

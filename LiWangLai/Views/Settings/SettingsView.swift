@@ -5,6 +5,7 @@ import UniformTypeIdentifiers
 
 struct SettingsView: View {
     @Environment(AppState.self) private var appState
+    @Environment(PurchaseManager.self) private var purchases
     @Environment(\.modelContext) private var modelContext
     @Query(sort: \HostedGiftEvent.date, order: .reverse) private var hostedEvents: [HostedGiftEvent]
     let records: [GiftRecord]
@@ -19,6 +20,7 @@ struct SettingsView: View {
     @State private var showTerms = false
     @State private var notificationsEnabled = LocalNotificationService.isEnabled
     @State private var notificationStatus = "正在读取状态"
+    @State private var pendingExport: DataExportKind?
 
     var body: some View {
         @Bindable var appState = appState
@@ -27,6 +29,7 @@ struct SettingsView: View {
             VStack(alignment: .leading, spacing: 11) {
                 settingsHeader
                 appCard
+                proSection
                 dataSection
                 notificationSection
                 privacySection(appState: appState)
@@ -44,6 +47,23 @@ struct SettingsView: View {
             .padding(.bottom, 12)
         }
         .background(PaperTexture())
+        .confirmationDialog(
+            "导出文件包含私人信息",
+            isPresented: Binding(
+                get: { pendingExport != nil },
+                set: { if !$0 { pendingExport = nil } }
+            ),
+            titleVisibility: .visible
+        ) {
+            Button("继续导出") {
+                performPendingExport()
+            }
+            Button("取消", role: .cancel) {
+                pendingExport = nil
+            }
+        } message: {
+            Text("文件可能包含姓名、联系方式、金额和备注，且不会自动加密。请只保存到可信位置。")
+        }
         .alert(item: $activeAlert) { alert in
             switch alert {
             case .error(let message):
@@ -120,36 +140,43 @@ struct SettingsView: View {
             PaperCard(padding: 0) {
                 VStack(spacing: 0) {
                     Button {
-                        exportExcel()
+                        requirePro(.excelTools) {
+                            pendingExport = .excel
+                        }
                     } label: {
-                        settingsRowContent(icon: "tablecells", title: "导出 Excel", subtitle: records.isEmpty ? "暂无记录可导出" : "生成 .xlsx 文件，含完整往来字段")
+                        settingsRowContent(icon: "tablecells", title: "导出 Excel", subtitle: records.isEmpty ? "暂无记录可导出" : "生成 .xlsx 文件，含完整往来字段", premiumFeature: .excelTools)
                     }
                     .buttonStyle(.plain)
                     .contentShape(Rectangle())
 
                     Button {
-                        showExcelImporter = true
+                        requirePro(.excelTools) {
+                            showExcelImporter = true
+                        }
                     } label: {
-                        settingsRowContent(icon: "square.and.arrow.down", title: "导入 Excel", subtitle: "先预览，重复项自动跳过，不覆盖现有数据")
+                        settingsRowContent(icon: "square.and.arrow.down", title: "导入 Excel", subtitle: "先预览，重复项自动跳过，不覆盖现有数据", premiumFeature: .excelTools)
                     }
                     .buttonStyle(.plain)
                     .contentShape(Rectangle())
 
                     Button {
-                        dataSheet = .duplicates
+                        requirePro(.duplicateMerge) {
+                            dataSheet = .duplicates
+                        }
                     } label: {
                         let duplicateCount = DuplicateMergeService.groups(in: records).reduce(0) { $0 + $1.duplicateCount }
                         settingsRowContent(
                             icon: "rectangle.on.rectangle.angled",
                             title: "去重合并",
-                            subtitle: duplicateCount == 0 ? "未发现明确重复记录" : "发现 \(duplicateCount) 笔明确重复记录"
+                            subtitle: duplicateCount == 0 ? "未发现明确重复记录" : "发现 \(duplicateCount) 笔明确重复记录",
+                            premiumFeature: .duplicateMerge
                         )
                     }
                     .buttonStyle(.plain)
                     .contentShape(Rectangle())
 
                     Button {
-                        exportCompleteBackup()
+                        pendingExport = .backup
                     } label: {
                         settingsRowContent(
                             icon: "archivebox",
@@ -191,7 +218,7 @@ struct SettingsView: View {
                         Text("\(notificationStatus) · 在入簿的更多信息中设置日期")
                             .font(.bodySong(10))
                             .foregroundStyle(LWColors.muted)
-                            .lineLimit(1)
+                            .lineLimit(2)
                     }
                     Spacer()
                     Toggle("", isOn: Binding(
@@ -221,19 +248,7 @@ struct SettingsView: View {
                 VStack(spacing: 0) {
                     if BiometricService.isAvailable {
                         HStack(spacing: 10) {
-                            Image(systemName: "faceid")
-                                .font(.system(size: 15, weight: .medium))
-                                .foregroundStyle(LWColors.warmGold)
-                                .frame(width: 20)
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text("\(BiometricService.biometricTypeName) 解锁")
-                                    .font(.bodySong(13))
-                                    .foregroundStyle(LWColors.ink)
-                                Text("打开 App 时验证身份以查看礼簿")
-                                    .font(.bodySong(10))
-                                    .foregroundStyle(LWColors.muted)
-                                    .lineLimit(1)
-                            }
+                            biometricLabel
                             Spacer()
                             Toggle("", isOn: $appState.isBiometricLockEnabled)
                                 .tint(LWColors.cinnabar)
@@ -270,7 +285,7 @@ struct SettingsView: View {
                 .padding(.top, 18)
             }
         }
-        .frame(height: 124)
+        .frame(minHeight: 124, alignment: .top)
     }
 
     private var appCard: some View {
@@ -301,6 +316,56 @@ struct SettingsView: View {
         .buttonStyle(.plain)
     }
 
+    private var proSection: some View {
+        Button {
+            purchases.presentPaywall()
+        } label: {
+            PaperCard(padding: 12) {
+                HStack(spacing: 12) {
+                    ZStack {
+                        Image("ceremony_table_badge")
+                            .resizable()
+                            .scaledToFit()
+                            .frame(width: 46, height: 46)
+                        if !purchases.isProUnlocked {
+                            Text("PRO")
+                                .font(.system(size: 8, weight: .black, design: .rounded))
+                                .foregroundStyle(.white)
+                                .padding(.horizontal, 6)
+                                .padding(.vertical, 3)
+                                .background(LWColors.cinnabar, in: Capsule())
+                                .offset(x: 18, y: 18)
+                        }
+                    }
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(purchases.isProUnlocked ? "礼往来 Pro 已解锁" : "升级礼往来 Pro")
+                            .font(.titleSong(17))
+                            .foregroundStyle(LWColors.ink)
+                        Text(proStatusSubtitle)
+                            .font(.bodySong(11))
+                            .foregroundStyle(LWColors.muted)
+                            .lineLimit(2)
+                    }
+                    Spacer()
+                    Image(systemName: purchases.isProUnlocked ? "checkmark.seal.fill" : "chevron.right")
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundStyle(purchases.isProUnlocked ? LWColors.jade : LWColors.cinnabar)
+                }
+            }
+        }
+        .buttonStyle(.plain)
+    }
+
+    private var proStatusSubtitle: String {
+        if purchases.isFounderUnlocked {
+            return "创始用户礼遇 · 已永久解锁全部付费功能"
+        }
+        if purchases.isProUnlocked {
+            return "永久版 · 手机与 iPad 通用"
+        }
+        return "一次买断：礼台模式、Excel、智能去重与高级主题"
+    }
+
     private func section<Content: View>(title: String, @ViewBuilder content: () -> Content) -> some View {
         VStack(alignment: .leading, spacing: 4) {
             Text(title)
@@ -325,7 +390,11 @@ struct SettingsView: View {
                 HStack(spacing: 6) {
                     ForEach(AppTheme.allCases) { theme in
                         Button {
-                            appState.selectedTheme = theme
+                            if theme == .paper || purchases.isProUnlocked {
+                                appState.selectedTheme = theme
+                            } else {
+                                purchases.presentPaywall(for: .premiumThemes)
+                            }
                         } label: {
                             VStack(spacing: 3) {
                                 Circle()
@@ -334,9 +403,9 @@ struct SettingsView: View {
                                 Text(theme.title)
                                     .font(.bodySong(10))
                                     .foregroundStyle(LWColors.ink)
-                                Image(systemName: appState.selectedTheme == theme ? "checkmark.circle.fill" : "circle")
+                                Image(systemName: theme != .paper && !purchases.isProUnlocked ? "lock.fill" : (appState.selectedTheme == theme ? "checkmark.circle.fill" : "circle"))
                                     .font(.system(size: 10))
-                                    .foregroundStyle(appState.selectedTheme == theme ? LWColors.cinnabar : LWColors.cardStroke)
+                                    .foregroundStyle(theme != .paper && !purchases.isProUnlocked ? LWColors.warmGold : (appState.selectedTheme == theme ? LWColors.cinnabar : LWColors.cardStroke))
                             }
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 5)
@@ -389,7 +458,7 @@ struct SettingsView: View {
         }
     }
 
-    private func settingsRowContent(icon: String, title: String, subtitle: String? = nil) -> some View {
+    private func settingsRowContent(icon: String, title: String, subtitle: String? = nil, premiumFeature: PremiumFeature? = nil) -> some View {
         HStack(spacing: 10) {
             Image(systemName: icon)
                 .font(.system(size: 15, weight: .medium))
@@ -403,10 +472,13 @@ struct SettingsView: View {
                     Text(subtitle)
                         .font(.bodySong(10))
                         .foregroundStyle(LWColors.muted)
-                        .lineLimit(1)
+                        .lineLimit(2)
                 }
             }
             Spacer()
+            if premiumFeature != nil, !purchases.isProUnlocked {
+                proBadge
+            }
             Image(systemName: "chevron.right")
                 .font(.system(size: 12, weight: .semibold))
                 .foregroundStyle(LWColors.muted.opacity(0.7))
@@ -416,6 +488,41 @@ struct SettingsView: View {
         .overlay(alignment: .bottom) {
             GoldLineDivider()
                 .padding(.leading, 44)
+        }
+    }
+
+    private var biometricLabel: some View {
+        Group {
+            Image(systemName: "faceid")
+                .font(.system(size: 15, weight: .medium))
+                .foregroundStyle(LWColors.warmGold)
+                .frame(width: 20)
+            VStack(alignment: .leading, spacing: 2) {
+                Text("\(BiometricService.biometricTypeName) 解锁")
+                    .font(.bodySong(13))
+                    .foregroundStyle(LWColors.ink)
+                Text("打开 App 时验证身份以查看礼簿")
+                    .font(.bodySong(10))
+                    .foregroundStyle(LWColors.muted)
+                    .lineLimit(2)
+            }
+        }
+    }
+
+    private var proBadge: some View {
+        Text("PRO")
+            .font(.system(size: 8, weight: .black, design: .rounded))
+            .foregroundStyle(.white)
+            .padding(.horizontal, 6)
+            .padding(.vertical, 3)
+            .background(LWColors.cinnabar, in: Capsule())
+    }
+
+    private func requirePro(_ feature: PremiumFeature, action: () -> Void) {
+        if purchases.isProUnlocked {
+            action()
+        } else {
+            purchases.presentPaywall(for: feature)
         }
     }
 
@@ -441,6 +548,19 @@ struct SettingsView: View {
             HapticsManager.success()
         } catch {
             activeAlert = .error((error as? LocalizedError)?.errorDescription ?? error.localizedDescription)
+        }
+    }
+
+    private func performPendingExport() {
+        let export = pendingExport
+        pendingExport = nil
+        switch export {
+        case .excel:
+            exportExcel()
+        case .backup:
+            exportCompleteBackup()
+        case nil:
+            break
         }
     }
 
@@ -510,6 +630,11 @@ struct SettingsView: View {
         }
     }
 
+}
+
+private enum DataExportKind {
+    case excel
+    case backup
 }
 
 private enum DataManagementSheet: Identifiable {
@@ -592,9 +717,12 @@ private let privacyContent = """
 数据收集：
 我们不收集任何个人数据。礼往来不使用任何分析工具、广告 SDK 或用户追踪技术。
 
+购买信息：
+礼往来 Pro 的购买与恢复由 Apple App Store 处理。App 仅通过 StoreKit 读取你是否拥有 Pro 权益，不会读取或保存银行卡等付款信息。
+
 系统权限：
 · Face ID / Touch ID：仅用于 App 本地解锁验证，生物特征数据由系统安全模块处理，App 无法读取。
-· 导出功能：仅在用户主动触发时生成 Excel 或完整备份文件并保存至设备。
+· 导出功能：仅在用户主动触发时生成 Excel 或完整备份文件并保存至设备。导出文件不会自动加密，请只保存到可信位置。
 · 通知：仅在用户主动开启后，由 iPhone 在设备本地安排送礼或回礼提醒。
 
 如你对隐私保护有任何疑问，欢迎通过 App Store 评论区联系我们。
@@ -609,10 +737,13 @@ private let termsContent = """
 二、数据安全
 请妥善保管你的设备。我们建议开启 Face ID / Touch ID 解锁以保护你的隐私。如设备丢失或损坏，存在数据丢失风险，建议定期导出完整备份。
 
-三、免责声明
+三、免费功能与 Pro
+App 可免费下载，基础入簿、查询、提醒、Face ID / Touch ID 隐私锁以及完整备份与恢复可免费使用。礼往来 Pro 为一次性购买项目，用于永久解锁礼台模式、Excel 工具、智能去重和高级主题；实际价格以 App Store 购买页显示为准。使用同一 Apple 账户，可在 iPhone 与 iPad 通过“恢复购买”恢复权益。
+
+四、免责声明
 本 App 仅提供记录与管理功能，不对任何因使用本 App 而产生的争议或损失承担责任。礼金金额、回礼建议等仅供参考，不构成任何建议。
 
-四、适用法律
+五、适用法律
 本协议适用中华人民共和国法律。如本协议任何条款无效，不影响其余条款的效力。
 
 如有疑问，欢迎通过 App Store 联系我们。

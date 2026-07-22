@@ -8,6 +8,7 @@ struct AddRecordView: View {
 
     var editingRecord: GiftRecord?
     var presetName: String = ""
+    var presetContact: String = ""
     var presetType: GiftRecordType = .received
     var presetEventType: GiftEventType?
     var presetDate: Date?
@@ -20,13 +21,26 @@ struct AddRecordView: View {
     @State private var showPostSave = false
     @State private var previousRecordBeforeSave: GiftRecord?
     @State private var saveErrorMessage: String?
+    @State private var notificationNotice: String?
+    @State private var showsPersonPicker = false
+    @FocusState private var focusedField: RecordInputField?
     @Query(sort: \GiftRecord.date, order: .reverse) private var allRecords: [GiftRecord]
     @Query(sort: \HostedGiftEvent.date, order: .reverse) private var hostedEvents: [HostedGiftEvent]
+
+    /// 当前归属的一场事；非 nil 时日期与事件类型以场次为准，表单锁定
+    private var attachedHostedEvent: HostedGiftEvent? {
+        guard let eventID = draft.hostedEventID else { return nil }
+        return hostedEvents.first(where: { $0.id == eventID })
+    }
+
+    private var isHostedEventLocked: Bool {
+        attachedHostedEvent != nil
+    }
 
     private var lastRecordForPerson: GiftRecord? {
         allRecords
             .filter {
-                $0.personName == draft.personName
+                PersonIdentity.matches($0, name: draft.personName, contact: draft.contact)
                     && $0.personName != ""
                     && $0.id != editingRecord?.id
             }
@@ -37,6 +51,8 @@ struct AddRecordView: View {
     init(
         editingRecord: GiftRecord? = nil,
         presetName: String = "",
+        presetContact: String = "",
+        presetPersonID: UUID? = nil,
         presetType: GiftRecordType = .received,
         presetEventType: GiftEventType? = nil,
         presetDate: Date? = nil,
@@ -46,13 +62,14 @@ struct AddRecordView: View {
     ) {
         self.editingRecord = editingRecord
         self.presetName = presetName
+        self.presetContact = presetContact
         self.presetType = presetType
         self.presetEventType = presetEventType
         self.presetDate = presetDate
         self.presetNote = presetNote
         self.presetEventID = presetEventID
         self.returningRecord = returningRecord
-        _draft = State(initialValue: GiftRecordDraft(
+        var initialDraft = GiftRecordDraft(
             record: editingRecord,
             personName: presetName,
             type: presetType,
@@ -60,7 +77,22 @@ struct AddRecordView: View {
             date: presetDate,
             note: presetNote,
             hostedEventID: presetEventID
-        ))
+        )
+        if editingRecord == nil, !presetContact.isEmpty {
+            initialDraft.contact = presetContact
+        }
+        if editingRecord == nil {
+            initialDraft.personID = presetPersonID
+        }
+        if editingRecord == nil, let returningRecord {
+            initialDraft.personID = returningRecord.personID
+            initialDraft.eventType = presetEventType ?? returningRecord.eventType
+            initialDraft.relationship = returningRecord.relationship
+            if initialDraft.contact.isEmpty {
+                initialDraft.contact = returningRecord.contact
+            }
+        }
+        _draft = State(initialValue: initialDraft)
     }
 
     var body: some View {
@@ -109,12 +141,19 @@ struct AddRecordView: View {
                     .foregroundStyle(LWColors.cinnabar)
                 }
             }
+            ToolbarItemGroup(placement: .keyboard) {
+                Spacer()
+                Button("完成") {
+                    focusedField = nil
+                }
+            }
         }
         .onChange(of: draft.type) { _, type in
             if type == .given {
                 draft.isReturned = false
                 draft.hostedEventID = nil
                 draft.hostedEventTitle = ""
+                draft.createsHostedEvent = false
             }
         }
         .onChange(of: draft.isReturned) { _, isReturned in
@@ -125,6 +164,14 @@ struct AddRecordView: View {
         .onChange(of: draft.hostedEventID) { _, eventID in
             applyHostedEvent(eventID)
         }
+        .sheet(isPresented: $showsPersonPicker) {
+            PersonPickerSheet { person in
+                selectPerson(person)
+                showsPersonPicker = false
+            }
+            .presentationDetents([.medium, .large])
+            .presentationDragIndicator(.visible)
+        }
         .alert("保存失败", isPresented: Binding(
             get: { saveErrorMessage != nil },
             set: { if !$0 { saveErrorMessage = nil } }
@@ -132,6 +179,14 @@ struct AddRecordView: View {
             Button("知道了", role: .cancel) {}
         } message: {
             Text(saveErrorMessage ?? "请稍后再试。")
+        }
+        .alert("通知未开启", isPresented: Binding(
+            get: { notificationNotice != nil },
+            set: { if !$0 { notificationNotice = nil } }
+        )) {
+            Button("知道了", role: .cancel) {}
+        } message: {
+            Text(notificationNotice ?? "仍会保留 App 内提醒。")
         }
     }
 
@@ -158,7 +213,7 @@ struct AddRecordView: View {
                 .padding(.top, 18)
             }
         }
-        .frame(height: 124)
+        .frame(minHeight: 124, alignment: .top)
     }
 
     private var typePicker: some View {
@@ -186,17 +241,28 @@ struct AddRecordView: View {
                 .fill(Color.white.opacity(0.58))
                 .overlay(RoundedRectangle(cornerRadius: 12).stroke(LWColors.cardStroke.opacity(0.4)))
         )
+        // 已归属场次时先由“归属一场事”菜单显式解除，再允许切换收/送类型，
+        // 避免类型变化时静默清掉 hostedEventID。
+        .disabled(isHostedEventLocked)
+        .opacity(isHostedEventLocked ? 0.72 : 1)
+        .accessibilityHint(isHostedEventLocked ? "请先解除一场事归属，再修改收送类型" : "")
     }
 
     private var mainForm: some View {
         PaperCard(padding: 14, spacing: 10) {
             // 姓名输入
             VStack(alignment: .leading, spacing: 6) {
-                fieldRow(title: "姓名", icon: "person") {
+                fieldRow(title: "姓名", icon: "person.crop.circle", iconAction: {
+                    focusedField = nil
+                    showsPersonPicker = true
+                }) {
                     TextField("请输入姓名", text: $draft.personName)
                         .font(.bodyKai(14))
                         .foregroundStyle(LWColors.ink)
-                    .textInputAutocapitalization(.never)
+                        .textInputAutocapitalization(.never)
+                        .submitLabel(.next)
+                        .focused($focusedField, equals: .name)
+                        .onSubmit { focusedField = .amount }
                 }
                 nameSuggestions
             }
@@ -214,7 +280,17 @@ struct AddRecordView: View {
                         .font(.system(size: 14, weight: .medium))
                         .foregroundStyle(LWColors.warmGold)
                 }
-                AmountTextField(amountText: $draft.amountText, currencySize: 24, amountSize: 36)
+                AmountTextField(
+                    amountText: $draft.amountText,
+                    currencySize: 24,
+                    amountSize: 36,
+                    focusedField: $focusedField
+                )
+                if let amountError = MoneyAmount.validationMessage(for: draft.amountText) {
+                    Label(amountError, systemImage: "exclamationmark.circle")
+                        .font(.bodySong(11))
+                        .foregroundStyle(LWColors.cinnabar)
+                }
                 amountChips
             }
 
@@ -222,9 +298,16 @@ struct AddRecordView: View {
 
             // 事件选择 - 横向标签
             VStack(alignment: .leading, spacing: 8) {
-                Text("事件")
-                    .font(.titleSong(15))
-                    .foregroundStyle(LWColors.ink)
+                HStack(spacing: 5) {
+                    Text("事件")
+                        .font(.titleSong(15))
+                        .foregroundStyle(LWColors.ink)
+                    if isHostedEventLocked {
+                        Image(systemName: "lock.fill")
+                            .font(.system(size: 10, weight: .medium))
+                            .foregroundStyle(LWColors.muted)
+                    }
+                }
                 eventChipWrap
             }
 
@@ -242,15 +325,28 @@ struct AddRecordView: View {
                         .font(.titleSong(15))
                         .foregroundStyle(LWColors.ink)
                     Spacer()
-                    ChineseDatePickerButton(date: Binding(
-                        get: { draft.date },
-                        set: { date in
-                            draft.hostedEventID = nil
-                            draft.date = date
+                    if isHostedEventLocked {
+                        // 归属场次：日期以一场事为准，锁定展示
+                        HStack(spacing: 6) {
+                            VStack(alignment: .trailing, spacing: 2) {
+                                Text(draft.date.lwDayText)
+                                    .font(.bodySong(13))
+                                    .foregroundStyle(LWColors.ink)
+                                Text(draft.date.lwLunarText)
+                                    .font(.bodySong(10))
+                                    .foregroundStyle(LWColors.warmGold)
+                            }
+                            Image(systemName: "lock.fill")
+                                .font(.system(size: 12, weight: .medium))
+                                .foregroundStyle(LWColors.muted)
                         }
-                    ))
+                    } else {
+                        ChineseDatePickerButton(date: $draft.date)
+                    }
                 }
-                quickDateButtons
+                if !isHostedEventLocked {
+                    quickDateButtons
+                }
             }
         }
     }
@@ -259,9 +355,7 @@ struct AddRecordView: View {
         LazyVGrid(columns: [GridItem(.adaptive(minimum: 52), spacing: 8)], alignment: .leading, spacing: 8) {
             ForEach(GiftEventType.allCases) { event in
                 Button {
-                    if hostedEvents.first(where: { $0.id == draft.hostedEventID })?.eventType != event {
-                        draft.hostedEventID = nil
-                    }
+                    guard !isHostedEventLocked else { return }
                     draft.eventType = event
                 } label: {
                     Text(event.title)
@@ -274,6 +368,7 @@ struct AddRecordView: View {
                                 .fill(draft.eventType == event ? LWColors.cinnabar : LWColors.card.opacity(0.85))
                                 .overlay(Capsule().stroke(draft.eventType == event ? LWColors.cinnabarDark.opacity(0.2) : LWColors.cardStroke.opacity(0.4), lineWidth: 0.8))
                         )
+                        .opacity(isHostedEventLocked && draft.eventType != event ? 0.45 : 1)
                 }
                 .buttonStyle(.plain)
             }
@@ -294,15 +389,27 @@ struct AddRecordView: View {
                 Menu {
                     Button {
                         draft.hostedEventID = nil
+                        draft.hostedEventTitle = ""
+                        draft.createsHostedEvent = false
                     } label: {
                         hostedEventMenuItem(
-                            "自动新建 · \(HostedEventService.defaultTitle(for: draft.eventType))",
-                            isSelected: draft.hostedEventID == nil
+                            "不归属一场事",
+                            isSelected: draft.hostedEventID == nil && !draft.createsHostedEvent
+                        )
+                    }
+                    Button {
+                        draft.hostedEventID = nil
+                        draft.createsHostedEvent = true
+                    } label: {
+                        hostedEventMenuItem(
+                            "新建 · \(HostedEventService.defaultTitle(for: draft.eventType))",
+                            isSelected: draft.hostedEventID == nil && draft.createsHostedEvent
                         )
                     }
                     ForEach(hostedEvents) { event in
                         Button {
                             draft.hostedEventID = event.id
+                            draft.createsHostedEvent = false
                         } label: {
                             hostedEventMenuItem(
                                 "\(event.title) · \(event.date.lwDayText)",
@@ -327,7 +434,7 @@ struct AddRecordView: View {
                 .accessibilityLabel("归属一场事")
                 .accessibilityValue(selectedHostedEventLabel)
             }
-            if draft.hostedEventID == nil {
+            if draft.hostedEventID == nil && draft.createsHostedEvent {
                 HStack(spacing: 10) {
                     Text("场次名称")
                         .font(.titleSong(13))
@@ -341,7 +448,7 @@ struct AddRecordView: View {
                     .textInputAutocapitalization(.never)
                 }
             }
-            Text(draft.hostedEventID == nil ? "名称可修改；留空则使用上方默认名称。" : "已选择已有场次，事件类型和日期将跟随该场次。")
+            Text(hostedEventHelpText)
                 .font(.bodySong(11))
                 .foregroundStyle(LWColors.muted)
         }
@@ -350,9 +457,24 @@ struct AddRecordView: View {
     private var selectedHostedEventLabel: String {
         guard let eventID = draft.hostedEventID,
               let event = hostedEvents.first(where: { $0.id == eventID }) else {
-            return "自动新建 · \(HostedEventService.defaultTitle(for: draft.eventType))"
+            return draft.createsHostedEvent
+                ? "新建 · \(HostedEventService.defaultTitle(for: draft.eventType))"
+                : "不归属一场事"
         }
         return "\(event.title) · \(event.date.lwDayText)"
+    }
+
+    private var hostedEventHelpText: String {
+        if let event = attachedHostedEvent {
+            return "归属「\(event.title)」，日期与类型以一场事为准；如需修改请先到一场事中调整，或在上方选择「不归属一场事」。"
+        }
+        if draft.hostedEventID != nil {
+            return "已选择已有场次，事件类型和日期将跟随该场次。"
+        }
+        if draft.createsHostedEvent {
+            return "名称可修改；留空则使用默认名称。"
+        }
+        return "普通往来不会自动新建场次，需要时可从上方选择。"
     }
 
     private func hostedEventMenuItem(_ title: String, isSelected: Bool) -> some View {
@@ -372,12 +494,12 @@ struct AddRecordView: View {
                 } label: {
                     Text("\(amount)")
                         .font(.bodySong(13))
-                        .foregroundStyle(draft.amountYuan == amount ? .white : LWColors.ink)
+                        .foregroundStyle(draft.amountFen == amount * 100 ? .white : LWColors.ink)
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 7)
                         .background(
                             Capsule()
-                                .fill(draft.amountYuan == amount ? LWColors.cinnabar : Color.white.opacity(0.65))
+                                .fill(draft.amountFen == amount * 100 ? LWColors.cinnabar : Color.white.opacity(0.65))
                                 .overlay(Capsule().stroke(LWColors.cardStroke.opacity(0.4)))
                         )
                 }
@@ -424,19 +546,11 @@ struct AddRecordView: View {
                     TextField("可选填", text: $draft.location)
                         .font(.bodySong(12))
                 }
-                if draft.type == .received {
-                    Toggle(isOn: $draft.isReturned) {
-                        Text("是否已回礼")
-                            .font(.titleSong(13))
-                            .foregroundStyle(LWColors.ink)
-                    }
-                    .tint(LWColors.cinnabar)
-                }
                 if !draft.isReturned {
                     Toggle(isOn: Binding(
                         get: { draft.returnReminderDate != nil },
                         set: { enabled in
-                            draft.returnReminderDate = enabled ? defaultReminderDate() : nil
+                            updateReminder(enabled)
                         }
                     )) {
                         Text(draft.type == .received ? "设置回礼提醒" : "设置送礼提醒")
@@ -462,7 +576,7 @@ struct AddRecordView: View {
 
     private var postSaveCard: some View {
         let lastRecord = previousRecordBeforeSave
-        let suggestionBase = max(100, (lastRecord?.amountYuan ?? draft.amountYuan) / 100 * 100)
+        let suggestionBaseFen = max(100 * 100, (lastRecord?.amountFenValue ?? draft.amountFen) / 10_000 * 10_000)
 
         return VStack(alignment: .leading, spacing: 14) {
             HStack {
@@ -479,7 +593,7 @@ struct AddRecordView: View {
                         .foregroundStyle(LWColors.warmGold)
                 }
                 Spacer()
-                Text(draft.amountYuan.yuanText)
+                Text(draft.amountFen.fenCurrencyText)
                     .font(.custom("SourceHanSerifSC-Regular", size: 26))
                     .foregroundStyle(LWColors.cinnabar)
             }
@@ -490,10 +604,10 @@ struct AddRecordView: View {
                     Text("上次往来")
                         .font(.custom("SourceHanSerifSC-Regular", size: 12))
                         .foregroundStyle(LWColors.muted)
-                    Text("\(lastRecord.date.lwCompactMonthText) \(lastRecord.eventType.title) · \(lastRecord.type.narrativeTitle) \(lastRecord.amountYuan.yuanText)")
+                    Text("\(lastRecord.date.lwDayText) \(lastRecord.eventType.title) · \(lastRecord.type.narrativeTitle) \(lastRecord.amountFenValue.fenCurrencyText)")
                         .font(.custom("SourceHanSerifSC-Regular", size: 14))
                         .foregroundStyle(LWColors.ink)
-                    Text("建议：下次回礼可参考 \(suggestionBase.yuanText) - \((suggestionBase + 200).yuanText)")
+                    Text("按上次金额参考：\(suggestionBaseFen.fenCurrencyText) - \((suggestionBaseFen + 200 * 100).fenCurrencyText)")
                         .font(.custom("SourceHanSerifSC-Regular", size: 14))
                         .foregroundStyle(LWColors.cinnabar)
                 }
@@ -508,8 +622,10 @@ struct AddRecordView: View {
                         type: draft.type,
                         eventType: draft.eventType,
                         date: draft.date,
-                        hostedEventID: draft.hostedEventID
+                        hostedEventID: draft.hostedEventID,
+                        hostedEventTitle: ""
                     )
+                    draft.createsHostedEvent = false
                 } label: {
                     Label("再记一笔", systemImage: "pencil")
                         .font(.custom("SourceHanSerifSC-Regular", size: 13).weight(.semibold))
@@ -570,21 +686,28 @@ struct AddRecordView: View {
     private var nameSuggestions: some View {
         let trimmed = draft.personName.trimmingCharacters(in: .whitespacesAndNewlines)
         if !trimmed.isEmpty {
-            let uniqueNames = suggestedNames(matching: trimmed)
-            if !uniqueNames.isEmpty {
+            let people = suggestedPeople(matching: trimmed)
+            if !people.isEmpty {
                 VStack(alignment: .leading, spacing: 0) {
-                    ForEach(uniqueNames, id: \.self) { name in
-                        if let matchingRecord = allRecords.first(where: { $0.personName == name }) {
+                    ForEach(Array(people.enumerated()), id: \.element.id) { index, person in
+                        if let matchingRecord = person.latestRecord {
                             Button {
-                                draft.personName = name
-                                draft.relationship = matchingRecord.relationship
+                                selectPerson(person)
+                                focusedField = .amount
                             } label: {
                                 HStack {
                                     VStack(alignment: .leading, spacing: 2) {
-                                        Text(name)
+                                        HStack(spacing: 6) {
+                                            Text(person.name)
+                                            if let hint = person.identityHint {
+                                                Text(hint)
+                                                    .font(.bodySong(10))
+                                                    .foregroundStyle(LWColors.warmGold)
+                                            }
+                                        }
                                             .font(.custom("SourceHanSerifSC-Regular", size: 14))
                                             .foregroundStyle(LWColors.ink)
-                                        Text("上次：\(matchingRecord.date.lwCompactMonthText) \(matchingRecord.eventType.title) · \(matchingRecord.type.title) \(matchingRecord.amountYuan.yuanText)")
+                                        Text("上次：\(matchingRecord.date.lwDayText) \(matchingRecord.eventType.title) · \(matchingRecord.type.title) \(matchingRecord.amountFenValue.fenCurrencyText)")
                                             .font(.custom("SourceHanSerifSC-Regular", size: 11))
                                             .foregroundStyle(LWColors.muted)
                                             .lineLimit(1)
@@ -598,7 +721,7 @@ struct AddRecordView: View {
                                 .padding(.vertical, 8)
                             }
                             .buttonStyle(.plain)
-                            if name != uniqueNames.last {
+                            if index < people.count - 1 {
                                 GoldLineDivider()
                             }
                         }
@@ -613,28 +736,50 @@ struct AddRecordView: View {
         }
     }
 
-    private func suggestedNames(matching query: String) -> [String] {
-        var seen = Set<String>()
-        return Array(allRecords.lazy
-            .map(\.personName)
-            .filter { name in
-                name != query
-                    && name.localizedCaseInsensitiveContains(query)
-                    && seen.insert(name).inserted
+    private func suggestedPeople(matching query: String) -> [PersonSummary] {
+        Array(RecordService.people(from: allRecords)
+            .filter {
+                PersonIdentity.normalizedName($0.name)
+                    .localizedCaseInsensitiveContains(PersonIdentity.normalizedName(query))
             }
             .prefix(3))
     }
 
-    private func fieldRow<Content: View>(title: String, icon: String, @ViewBuilder content: () -> Content) -> some View {
+    private func selectPerson(_ person: PersonSummary) {
+        draft.personName = person.name
+        draft.relationship = person.relationship
+        draft.contact = person.primaryContact
+        draft.personID = person.personID
+    }
+
+    private func fieldRow<Content: View>(
+        title: String,
+        icon: String,
+        iconAction: (() -> Void)? = nil,
+        @ViewBuilder content: () -> Content
+    ) -> some View {
         HStack(spacing: 12) {
             Text(title)
                 .font(.titleSong(13))
                 .foregroundStyle(LWColors.ink)
                 .frame(width: 42, alignment: .leading)
             content()
-            Image(systemName: icon)
-                .font(.system(size: 13, weight: .medium))
-                .foregroundStyle(LWColors.warmGold)
+            if let iconAction {
+                Button(action: iconAction) {
+                    Image(systemName: icon)
+                        .font(.system(size: 19, weight: .medium))
+                        .foregroundStyle(LWColors.cinnabar)
+                        .frame(width: 34, height: 34)
+                        .background(LWColors.cinnabar.opacity(0.08), in: Circle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("选择往来人")
+                .accessibilityHint("打开姓名搜索列表，选择后自动填入")
+            } else {
+                Image(systemName: icon)
+                    .font(.system(size: 13, weight: .medium))
+                    .foregroundStyle(LWColors.warmGold)
+            }
         }
     }
 
@@ -646,14 +791,16 @@ struct AddRecordView: View {
         return HStack(spacing: 8) {
             quickDate("今天", date: now, selection: selection == .today)
             quickDate("昨天", date: yesterday, selection: selection == .yesterday)
-            quickDate("自定义", date: nil, selection: selection == .custom)
+            Text("点右侧日期可自定义")
+                .font(.bodySong(11))
+                .foregroundStyle(selection == .custom ? LWColors.cinnabar : LWColors.muted)
+                .frame(maxWidth: .infinity, alignment: .trailing)
         }
     }
 
     private func quickDate(_ title: String, date: Date?, selection: Bool) -> some View {
         Button {
             if let date {
-                draft.hostedEventID = nil
                 draft.date = date
             }
         } label: {
@@ -672,7 +819,7 @@ struct AddRecordView: View {
     }
 
     private func lastRecordHint(_ record: GiftRecord) -> some View {
-        let suggestionBase = max(100, record.amountYuan / 100 * 100)
+        let suggestionBaseFen = max(100 * 100, record.amountFenValue / 10_000 * 10_000)
 
         return PaperCard(padding: 12) {
             HStack(spacing: 10) {
@@ -681,10 +828,10 @@ struct AddRecordView: View {
                     .foregroundStyle(LWColors.warmGold)
                     .frame(width: 24)
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("上次往来：\(record.date.lwCompactMonthText) \(record.type.title) \(record.amountYuan.yuanText)")
+                    Text("上次往来：\(record.date.lwDayText) \(record.type.title) \(record.amountFenValue.fenCurrencyText)")
                         .font(.bodySong(13))
                         .foregroundStyle(LWColors.ink)
-                    Text("建议：下次回礼可参考 \(suggestionBase.yuanText) - \((suggestionBase + 200).yuanText)")
+                    Text("按上次金额参考：\(suggestionBaseFen.fenCurrencyText) - \((suggestionBaseFen + 200 * 100).fenCurrencyText)")
                         .font(.bodySong(13))
                         .foregroundStyle(LWColors.cinnabar)
                 }
@@ -723,6 +870,7 @@ struct AddRecordView: View {
         guard let eventID,
               let event = hostedEvents.first(where: { $0.id == eventID }) else { return }
         draft.hostedEventTitle = ""
+        draft.createsHostedEvent = false
         draft.eventType = event.eventType
         draft.date = event.date
     }
@@ -730,6 +878,25 @@ struct AddRecordView: View {
     private func defaultReminderDate(now: Date = .now) -> Date {
         let tomorrow = Calendar.current.date(byAdding: .day, value: 1, to: now) ?? now
         return Calendar.current.date(bySettingHour: 9, minute: 0, second: 0, of: tomorrow) ?? tomorrow
+    }
+
+    private func updateReminder(_ enabled: Bool) {
+        guard enabled else {
+            draft.returnReminderDate = nil
+            return
+        }
+        draft.returnReminderDate = defaultReminderDate()
+        guard !LocalNotificationService.isEnabled else { return }
+        Task { @MainActor in
+            do {
+                let granted = try await LocalNotificationService.requestAndEnable(records: allRecords)
+                if !granted {
+                    notificationNotice = "提醒已保存在 App 内，但系统通知权限未开启。可稍后前往“我的 → 系统通知”开启。"
+                }
+            } catch {
+                notificationNotice = "提醒已保存在 App 内，但暂时无法开启系统通知。可稍后前往“我的 → 系统通知”重试。"
+            }
+        }
     }
 
     private func save() {
@@ -756,6 +923,115 @@ struct AddRecordView: View {
         } catch {
             saveErrorMessage = error.localizedDescription
         }
+    }
+}
+
+private struct PersonPickerSheet: View {
+    @Environment(\.dismiss) private var dismiss
+    @Query(sort: \GiftRecord.date, order: .reverse) private var records: [GiftRecord]
+    @State private var searchText = ""
+
+    let onSelect: (PersonSummary) -> Void
+
+    private var people: [PersonSummary] {
+        let nameQuery = PersonIdentity.normalizedName(searchText)
+        let plainQuery = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
+        return RecordService.people(from: records).filter { person in
+            guard !nameQuery.isEmpty else { return true }
+            return PersonIdentity.normalizedName(person.name).contains(nameQuery)
+                || person.primaryContact.localizedCaseInsensitiveContains(plainQuery)
+                || (person.identityHint?.localizedCaseInsensitiveContains(plainQuery) ?? false)
+        }
+    }
+
+    var body: some View {
+        NavigationStack {
+            ZStack {
+                PaperTexture()
+                VStack(spacing: 12) {
+                    SearchField(
+                        placeholder: "搜索姓名或联系方式",
+                        text: $searchText,
+                        fontSize: 14,
+                        iconSize: 17,
+                        verticalPadding: 10
+                    )
+
+                    if people.isEmpty {
+                        Spacer()
+                        EmptyStateView(
+                            title: records.isEmpty ? "还没有往来人" : "没有找到这个人",
+                            message: records.isEmpty ? "先手动填写姓名并保存一笔，下次就能直接选择。" : "换个姓名或联系方式再试。"
+                        )
+                        Spacer()
+                    } else {
+                        ScrollView {
+                            LazyVStack(spacing: 9) {
+                                ForEach(people) { person in
+                                    personRow(person)
+                                }
+                            }
+                            .padding(.bottom, 12)
+                        }
+                    }
+                }
+                .padding(.horizontal, LWSpacing.page)
+                .padding(.top, 12)
+            }
+            .navigationTitle("选择往来人")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("取消") { dismiss() }
+                        .foregroundStyle(LWColors.cinnabar)
+                }
+            }
+        }
+    }
+
+    private func personRow(_ person: PersonSummary) -> some View {
+        Button {
+            onSelect(person)
+            dismiss()
+        } label: {
+            PaperCard(padding: 12) {
+                HStack(spacing: 11) {
+                    SealStamp(
+                        text: String(person.name.prefix(1)),
+                        size: 42,
+                        color: person.pendingReturnCount > 0 ? LWColors.cinnabar : LWColors.warmGold
+                    )
+                    VStack(alignment: .leading, spacing: 4) {
+                        HStack(spacing: 7) {
+                            Text(person.name)
+                                .font(.bodyKai(16))
+                                .foregroundStyle(LWColors.ink)
+                            Text(person.relationship.title)
+                                .font(.bodySong(10))
+                                .foregroundStyle(LWColors.warmGold)
+                        }
+                        if let latest = person.latestRecord {
+                            Text("上次：\(latest.date.lwDayText) · \(latest.eventType.title) · \(latest.amountFenValue.fenCurrencyText)")
+                                .font(.bodySong(11))
+                                .foregroundStyle(LWColors.muted)
+                                .lineLimit(1)
+                        }
+                        if !person.primaryContact.isEmpty {
+                            Text(person.primaryContact)
+                                .font(.bodySong(10))
+                                .foregroundStyle(LWColors.inkSoft)
+                                .lineLimit(1)
+                        }
+                    }
+                    Spacer(minLength: 0)
+                    Image(systemName: "checkmark.circle")
+                        .font(.system(size: 18, weight: .medium))
+                        .foregroundStyle(LWColors.cinnabar)
+                }
+            }
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("选择\(person.name)")
     }
 }
 

@@ -4,6 +4,8 @@ import UserNotifications
 enum LocalNotificationService {
     static let enabledKey = "liwanglai.giftNotificationsEnabled"
     private static let identifierPrefix = "liwanglai.gift-reminder."
+    /// iOS pending 通知上限 64 条，超出会被系统静默丢弃。
+    private static let maxPendingRequests = 64
 
     struct Plan: Equatable, Identifiable {
         let recordID: UUID
@@ -65,7 +67,8 @@ enum LocalNotificationService {
         }
 
         await removeGiftNotifications()
-        for plan in plans(from: records, now: now) {
+        // plans 已按时间升序，截断到系统上限以内，保留最近的提醒。
+        for plan in plans(from: records, now: now).prefix(maxPendingRequests) {
             let content = UNMutableNotificationContent()
             content.title = plan.title
             content.body = plan.body
@@ -76,7 +79,8 @@ enum LocalNotificationService {
                 from: plan.date
             )
             let trigger = UNCalendarNotificationTrigger(dateMatching: components, repeats: false)
-            try await center.add(UNNotificationRequest(identifier: plan.id, content: content, trigger: trigger))
+            // 单条失败不影响其余提醒，避免留下半同步状态。
+            try? await center.add(UNNotificationRequest(identifier: plan.id, content: content, trigger: trigger))
         }
     }
 
@@ -96,9 +100,14 @@ enum LocalNotificationService {
     @MainActor
     private static func removeGiftNotifications() async {
         let center = UNUserNotificationCenter.current()
-        let identifiers = await center.pendingNotificationRequests()
+        let pendingIdentifiers = await center.pendingNotificationRequests()
             .map(\.identifier)
             .filter { $0.hasPrefix(identifierPrefix) }
-        center.removePendingNotificationRequests(withIdentifiers: identifiers)
+        center.removePendingNotificationRequests(withIdentifiers: pendingIdentifiers)
+        // 已送达的旧提醒也要清掉，否则删除/改期后通知中心仍有残留。
+        let deliveredIdentifiers = await center.deliveredNotifications()
+            .map(\.request.identifier)
+            .filter { $0.hasPrefix(identifierPrefix) }
+        center.removeDeliveredNotifications(withIdentifiers: deliveredIdentifiers)
     }
 }

@@ -293,6 +293,142 @@ struct HostedEventServiceTests {
     }
 
     @MainActor
+    @Test func updateSyncsAllLinkedRecordsEvenIfPassedListIsIncomplete() throws {
+        let container = try makeContainer()
+        let event = HostedGiftEvent(title: "旧婚礼", eventType: .wedding)
+        let recordA = GiftRecord(
+            personName: "张三",
+            type: .received,
+            amountYuan: 600,
+            eventType: .wedding,
+            relationship: .friend,
+            hostedEventID: event.id
+        )
+        let recordB = GiftRecord(
+            personName: "李四",
+            type: .received,
+            amountYuan: 800,
+            eventType: .wedding,
+            relationship: .relative,
+            hostedEventID: event.id
+        )
+        container.mainContext.insert(event)
+        container.mainContext.insert(recordA)
+        container.mainContext.insert(recordB)
+        try container.mainContext.save()
+        let newDate = Date(timeIntervalSince1970: 5_000_000)
+
+        // 故意只传入部分关联记录，未传入的 recordB 也应被同步
+        try HostedEventService.update(
+            event,
+            title: "新生日宴",
+            eventType: .birthday,
+            date: newDate,
+            note: "",
+            linkedRecords: [recordA],
+            in: container.mainContext
+        )
+
+        #expect(recordA.eventType == .birthday)
+        #expect(recordA.date == newDate)
+        #expect(recordB.eventType == .birthday)
+        #expect(recordB.date == newDate)
+    }
+
+    @MainActor
+    @Test func deleteUnlinksAllLinkedRecordsEvenIfPassedListIsIncomplete() throws {
+        let container = try makeContainer()
+        let event = HostedGiftEvent(title: "我家婚礼", eventType: .wedding)
+        let recordA = GiftRecord(
+            personName: "张三",
+            type: .received,
+            amountYuan: 600,
+            eventType: .wedding,
+            relationship: .friend,
+            hostedEventID: event.id
+        )
+        let recordB = GiftRecord(
+            personName: "李四",
+            type: .received,
+            amountYuan: 800,
+            eventType: .wedding,
+            relationship: .relative,
+            hostedEventID: event.id
+        )
+        container.mainContext.insert(event)
+        container.mainContext.insert(recordA)
+        container.mainContext.insert(recordB)
+        try container.mainContext.save()
+
+        // 故意只传入部分关联记录，未传入的 recordB 也应被解绑
+        try HostedEventService.delete(
+            event,
+            linkedRecords: [recordA],
+            in: container.mainContext
+        )
+
+        #expect(recordA.hostedEventID == nil)
+        #expect(recordB.hostedEventID == nil)
+        let savedEvents = try container.mainContext.fetch(FetchDescriptor<HostedGiftEvent>())
+        #expect(savedEvents.isEmpty)
+    }
+
+    @Test func givenTotalForGuestsMatchesNormalizedNamesAndExcludesHostedEvent() {
+        let eventID = UUID()
+        let received = GiftRecord(
+            personName: "张 三",
+            type: .received,
+            amountYuan: 600,
+            eventType: .wedding,
+            relationship: .friend,
+            hostedEventID: eventID
+        )
+        let historicalGiven = GiftRecord(
+            personName: "张三",
+            type: .given,
+            amountYuan: 500,
+            eventType: .baby,
+            relationship: .friend
+        )
+        let givenInsideEvent = GiftRecord(
+            personName: "张三",
+            type: .given,
+            amountYuan: 900,
+            eventType: .wedding,
+            relationship: .friend,
+            hostedEventID: eventID
+        )
+        let strangerGiven = GiftRecord(
+            personName: "李四",
+            type: .given,
+            amountYuan: 700,
+            eventType: .baby,
+            relationship: .friend
+        )
+
+        let total = HostedEventService.givenTotalForGuests(
+            of: [received],
+            excludingHostedEventID: eventID,
+            in: [received, historicalGiven, givenInsideEvent, strangerGiven]
+        )
+
+        // 规范化姓名命中「张 三」；归属本场的送礼记录被排除；无关宾客不计入
+        #expect(total == 500)
+    }
+
+    @Test func givenTotalForGuestsIsZeroWithoutGuests() {
+        let given = GiftRecord(
+            personName: "张三",
+            type: .given,
+            amountYuan: 500,
+            eventType: .baby,
+            relationship: .friend
+        )
+
+        #expect(HostedEventService.givenTotalForGuests(of: [], excludingHostedEventID: nil, in: [given]) == 0)
+    }
+
+    @MainActor
     private func makeContainer() throws -> ModelContainer {
         let schema = Schema([HostedGiftEvent.self, GiftRecord.self])
         let configuration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: true)

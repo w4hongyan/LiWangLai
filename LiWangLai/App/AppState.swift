@@ -8,7 +8,7 @@ final class AppState {
     var ledgerSearchText = ""
     var peopleSearchText = ""
     var addPresetType: GiftRecordType = .received
-    var ipadDeskRequest: IPadDeskRequest?
+    var deskRequest: DeskRequest?
     var selectedTheme: AppTheme = .paper {
         didSet {
             UserDefaults.standard.set(selectedTheme.rawValue, forKey: Self.themeKey)
@@ -29,11 +29,23 @@ final class AppState {
            let storedTheme = AppTheme(rawValue: rawValue) {
             selectedTheme = storedTheme
         }
+#if DEBUG
+        let arguments = ProcessInfo.processInfo.arguments
+        if arguments.contains("-liwanglaiScreenshotLedger") {
+            selectedTab = .ledger
+        } else if arguments.contains("-liwanglaiScreenshotAdd") {
+            selectedTab = .add
+        } else if arguments.contains("-liwanglaiScreenshotPeople") {
+            selectedTab = .people
+        } else if arguments.contains("-liwanglaiScreenshotSettings") {
+            selectedTab = .settings
+        }
+#endif
         LWThemeStore.current = selectedTheme
     }
 }
 
-struct IPadDeskRequest: Equatable {
+struct DeskRequest: Equatable {
     let id = UUID()
     let hostedEventID: UUID?
 }

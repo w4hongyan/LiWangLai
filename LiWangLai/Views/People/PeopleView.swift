@@ -4,14 +4,18 @@ struct PeopleView: View {
     @Environment(AppState.self) private var appState
     let records: [GiftRecord]
     @State private var relationshipFilter: RelationshipType?
+    @State private var sortOrder: PeopleSortOrder = .recent
 
     private var people: [PersonSummary] {
-        RecordService.people(from: records)
+        let normalizedQuery = PersonIdentity.normalizedName(appState.peopleSearchText)
+        return RecordService.people(from: records)
             .filter { summary in
-                let matchesSearch = appState.peopleSearchText.isEmpty || summary.name.localizedCaseInsensitiveContains(appState.peopleSearchText)
+                let matchesSearch = normalizedQuery.isEmpty
+                    || PersonIdentity.normalizedName(summary.name).contains(normalizedQuery)
                 let matchesRelationship = relationshipFilter == nil || summary.relationship == relationshipFilter
                 return matchesSearch && matchesRelationship
             }
+            .sorted(by: sortOrder.areInIncreasingOrder)
     }
 
     var body: some View {
@@ -83,11 +87,14 @@ struct PeopleView: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(.top, 18)
 
-                filterBadge
+                HStack(spacing: 8) {
+                    sortBadge
+                    filterBadge
+                }
                     .padding(.top, 20)
             }
         }
-        .frame(height: 124)
+        .frame(minHeight: 124, alignment: .top)
     }
 
     private var filterBadge: some View {
@@ -134,6 +141,34 @@ struct PeopleView: View {
         .buttonStyle(.plain)
         .accessibilityLabel("按关系筛选")
         .accessibilityValue(relationshipFilter?.title ?? "全部关系")
+    }
+
+    private var sortBadge: some View {
+        Menu {
+            ForEach(PeopleSortOrder.allCases) { order in
+                Button {
+                    sortOrder = order
+                } label: {
+                    if sortOrder == order {
+                        Label(order.title, systemImage: "checkmark")
+                    } else {
+                        Text(order.title)
+                    }
+                }
+            }
+        } label: {
+            Label(sortOrder.shortTitle, systemImage: "arrow.up.arrow.down")
+                .font(.bodySong(12))
+                .foregroundStyle(sortOrder == .recent ? LWColors.ink : LWColors.cinnabar)
+                .padding(.horizontal, 10)
+                .padding(.vertical, 6)
+                .background(
+                    Capsule()
+                        .fill(Color.white.opacity(0.56))
+                        .overlay(Capsule().stroke(LWColors.cardStroke.opacity(0.35)))
+                )
+        }
+        .buttonStyle(.plain)
     }
 
     private var relationshipFilters: some View {
@@ -183,16 +218,16 @@ struct PeopleView: View {
                             .foregroundStyle(summary.pendingReturnCount > 0 ? LWColors.cinnabar : LWColors.warmGold)
                             .lineLimit(1)
                     }
-                    Text("\(summary.relationship.title) · 往来 \(summary.records.count) 次 · 最近：\(summary.latestRecord?.date.lwCompactMonthText ?? "-") \(summary.latestRecord?.eventType.title ?? "")")
+                    Text(personMeta(summary))
                         .font(.bodySong(11))
                         .foregroundStyle(LWColors.muted)
-                        .lineLimit(1)
+                        .lineLimit(2)
                     GoldLineDivider()
                     HStack {
                         Text("我送：")
                             .font(.bodySong(12))
                             .foregroundStyle(LWColors.ink)
-                        Text(summary.totalGiven.yuanText)
+                        Text(summary.totalGivenFen.fenCurrencyText)
                             .font(.bodySong(12))
                             .foregroundStyle(LWColors.cinnabar)
                         Spacer()
@@ -203,7 +238,7 @@ struct PeopleView: View {
                         Text("我收：")
                             .font(.bodySong(12))
                             .foregroundStyle(LWColors.ink)
-                        Text(summary.totalReceived.yuanText)
+                        Text(summary.totalReceivedFen.fenCurrencyText)
                             .font(.bodySong(12))
                             .foregroundStyle(LWColors.cinnabar)
                         Image(systemName: "chevron.right")
@@ -223,6 +258,11 @@ struct PeopleView: View {
         }
     }
 
+    private func personMeta(_ summary: PersonSummary) -> String {
+        let hint = summary.identityHint.map { " · \($0)" } ?? ""
+        return "\(summary.relationship.title)\(hint) · 往来 \(summary.records.count) 次 · 最近：\(summary.latestRecord?.date.lwDayText ?? "-") \(summary.latestRecord?.eventType.title ?? "")"
+    }
+
     private func peopleFilterTag(_ title: String, isSelected: Bool) -> some View {
         Text(title)
             .font(.bodySong(14))
@@ -235,5 +275,46 @@ struct PeopleView: View {
                     .overlay(Capsule().stroke(isSelected ? LWColors.cinnabarDark.opacity(0.2) : LWColors.cardStroke.opacity(0.5), lineWidth: 0.8))
                     .shadow(color: isSelected ? LWColors.cinnabar.opacity(0.18) : .clear, radius: 8, x: 0, y: 4)
             )
+    }
+}
+
+private enum PeopleSortOrder: String, CaseIterable, Identifiable {
+    case recent
+    case pendingAmount
+    case receivedAmount
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .recent: "按最近往来"
+        case .pendingAmount: "按待回金额"
+        case .receivedAmount: "按累计收礼"
+        }
+    }
+
+    var shortTitle: String {
+        switch self {
+        case .recent: "排序"
+        case .pendingAmount: "待回金额"
+        case .receivedAmount: "累计收礼"
+        }
+    }
+
+    func areInIncreasingOrder(_ lhs: PersonSummary, _ rhs: PersonSummary) -> Bool {
+        switch self {
+        case .recent:
+            return (lhs.latestRecord?.date ?? .distantPast) > (rhs.latestRecord?.date ?? .distantPast)
+        case .pendingAmount:
+            if lhs.pendingReturnAmountFen == rhs.pendingReturnAmountFen {
+                return (lhs.latestRecord?.date ?? .distantPast) > (rhs.latestRecord?.date ?? .distantPast)
+            }
+            return lhs.pendingReturnAmountFen > rhs.pendingReturnAmountFen
+        case .receivedAmount:
+            if lhs.totalReceivedFen == rhs.totalReceivedFen {
+                return (lhs.latestRecord?.date ?? .distantPast) > (rhs.latestRecord?.date ?? .distantPast)
+            }
+            return lhs.totalReceivedFen > rhs.totalReceivedFen
+        }
     }
 }

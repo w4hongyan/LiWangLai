@@ -91,11 +91,13 @@ enum BackupService {
         existingRecords.forEach(context.delete)
         existingEvents.forEach(context.delete)
 
+        // 手工编辑过的备份可能带悬空 hostedEventID，恢复前按备份内的场次集合校验，悬空一律置 nil。
+        let validEventIDs = Set(backup.envelope.events.map(\.id))
         for snapshot in backup.envelope.events {
             context.insert(snapshot.model)
         }
         for snapshot in backup.envelope.records {
-            context.insert(snapshot.model)
+            context.insert(snapshot.model(validEventIDs: validEventIDs))
         }
 
         do {
@@ -121,6 +123,8 @@ private extension BackupService {
         let personName: String
         let type: GiftRecordType
         let amountYuan: Int
+        let amountFen: Int?
+        let personID: UUID?
         let eventType: GiftEventType
         let relationship: RelationshipType
         let date: Date
@@ -139,6 +143,8 @@ private extension BackupService {
             personName = record.personName
             type = record.type
             amountYuan = record.amountYuan
+            amountFen = record.amountFenValue
+            personID = record.personID
             eventType = record.eventType
             relationship = record.relationship
             date = record.date
@@ -153,12 +159,15 @@ private extension BackupService {
             hostedEventID = record.hostedEventID
         }
 
-        var model: GiftRecord {
-            GiftRecord(
+        func model(validEventIDs: Set<UUID>) -> GiftRecord {
+            let resolvedHostedEventID = hostedEventID.flatMap { validEventIDs.contains($0) ? $0 : nil }
+            return GiftRecord(
                 id: id,
                 personName: personName,
                 type: type,
                 amountYuan: amountYuan,
+                amountFen: amountFen ?? amountYuan * 100,
+                personID: personID,
                 eventType: eventType,
                 relationship: relationship,
                 date: date,
@@ -170,7 +179,7 @@ private extension BackupService {
                 contact: contact,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
-                hostedEventID: hostedEventID
+                hostedEventID: resolvedHostedEventID
             )
         }
     }

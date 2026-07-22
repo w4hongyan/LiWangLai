@@ -6,15 +6,56 @@ struct PersonDetailView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
 
-    let summary: PersonSummary?
+    /// 只保留值类型身份信息，避免视图长期持有包含 SwiftData 对象的聚合快照。
+    private let summaryID: String?
+    private let initialName: String
+    private let initialContact: String
+    private let initialPersonID: UUID?
+    private let initialRelationship: RelationshipType
+    private let initialIdentityHint: String?
+
+    /// 视图自持实时查询：页内删除/新增后列表与统计自动刷新，
+    /// 避免重算时访问已删除的快照对象导致崩溃
+    @Query(sort: \GiftRecord.date, order: .reverse) private var allRecords: [GiftRecord]
+
     @State private var editingRecord: GiftRecord?
     @State private var quickAddType: GiftRecordType?
     @State private var pendingDelete: GiftRecord?
     @State private var showDeleteConfirm = false
     @State private var dataErrorMessage: String?
 
+    init(summary: PersonSummary?) {
+        summaryID = summary?.id
+        initialName = summary?.name ?? ""
+        initialContact = summary?.primaryContact ?? ""
+        initialPersonID = summary?.personID
+        initialRelationship = summary?.relationship ?? .other
+        initialIdentityHint = summary?.identityHint
+    }
+
+    /// 基于实时记录重建人物聚合，过滤口径与 RecordService.people 的 PersonIdentity 分组一致
+    private var liveSummary: PersonSummary? {
+        guard let summaryID else { return nil }
+        if let regenerated = RecordService.people(from: allRecords).first(where: { $0.id == summaryID }) {
+            return regenerated
+        }
+        // 分组身份发生变化（如补录联系方式后重新拆分/合并）时，按同一套 PersonIdentity 语义兜底
+        let fallbackRecords = allRecords.filter {
+            PersonIdentity.matches($0, name: initialName, contact: initialContact)
+        }
+        guard !fallbackRecords.isEmpty else { return nil }
+        let latest = fallbackRecords.sorted { $0.date > $1.date }.first
+        return PersonSummary(
+            id: summaryID,
+            name: latest?.personName ?? initialName,
+            relationship: latest?.relationship ?? initialRelationship,
+            records: fallbackRecords,
+            identityHint: initialIdentityHint
+        )
+    }
+
     private var records: [GiftRecord] {
-        summary?.records.sorted { $0.date > $1.date } ?? []
+        liveSummary?.records.sorted { $0.date > $1.date } ?? []
     }
 
     var body: some View {
@@ -22,11 +63,11 @@ struct PersonDetailView: View {
             VStack(alignment: .leading, spacing: 12) {
                 detailHeader
 
-                if let summary {
-                    overviewCard(summary)
-                    suggestionCard(summary)
-                    timelineCard(summary)
-                    quickButtons(summary)
+                if let liveSummary {
+                    overviewCard(liveSummary)
+                    suggestionCard(liveSummary)
+                    timelineCard(liveSummary)
+                    quickButtons(liveSummary)
                 } else {
                     EmptyStateView(title: "没有找到这位往来人", message: "记录可能已被删除，回到礼簿看看其他往来。")
                 }
@@ -45,7 +86,12 @@ struct PersonDetailView: View {
         }
         .sheet(item: $quickAddType) { type in
             NavigationStack {
-                AddRecordView(presetName: summary?.name ?? "", presetType: type)
+                AddRecordView(
+                    presetName: liveSummary?.name ?? initialName,
+                    presetContact: liveSummary?.primaryContact ?? initialContact,
+                    presetPersonID: liveSummary?.personID ?? initialPersonID,
+                    presetType: type
+                )
             }
         }
         .confirmationDialog("确认删除这条往来记录？", isPresented: $showDeleteConfirm, titleVisibility: .visible) {
@@ -85,10 +131,10 @@ struct PersonDetailView: View {
 
             HStack(alignment: .top) {
                 VStack(alignment: .leading, spacing: 6) {
-                    Text(summary?.name ?? "往来详情")
+                    Text(liveSummary?.name ?? (initialName.isEmpty ? "往来详情" : initialName))
                         .font(.titleSong(40))
                         .foregroundStyle(LWColors.ink)
-                    Text("\(summary?.relationship.title ?? "") · 往来 \(summary?.records.count ?? 0) 次")
+                    Text(detailSubtitle)
                         .font(.bodySong(17))
                         .foregroundStyle(LWColors.warmGold)
                 }
@@ -96,16 +142,22 @@ struct PersonDetailView: View {
                 .padding(.top, 18)
             }
         }
-        .frame(height: 124)
+        .frame(minHeight: 124, alignment: .top)
+    }
+
+    private var detailSubtitle: String {
+        let relationship = liveSummary?.relationship.title ?? initialRelationship.title
+        let hint = (liveSummary?.identityHint ?? initialIdentityHint).map { " · \($0)" } ?? ""
+        return "\(relationship)\(hint) · 往来 \(records.count) 次"
     }
 
     private func overviewCard(_ summary: PersonSummary) -> some View {
         PaperCard(padding: 14, spacing: 10) {
-            overviewRow(icon: "gift", title: "我送出：", value: summary.totalGiven.yuanText, color: LWColors.cinnabar)
+            overviewRow(icon: "gift", title: "我送出：", value: summary.totalGivenFen.fenCurrencyText, color: LWColors.cinnabar)
             GoldLineDivider()
-            overviewRow(icon: "tray.and.arrow.down", title: "我收到：", value: summary.totalReceived.yuanText, color: LWColors.cinnabar)
+            overviewRow(icon: "tray.and.arrow.down", title: "我收到：", value: summary.totalReceivedFen.fenCurrencyText, color: LWColors.cinnabar)
             GoldLineDivider()
-            overviewRow(icon: "clock", title: "最近一次：", value: "\(summary.latestRecord?.date.lwCompactMonthText ?? "-") \(summary.latestRecord?.eventType.title ?? "")", color: LWColors.ink)
+            overviewRow(icon: "clock", title: "最近一次：", value: "\(summary.latestRecord?.date.lwDayText ?? "-") \(summary.latestRecord?.eventType.title ?? "")", color: LWColors.ink)
             GoldLineDivider()
             overviewRow(icon: "checkmark.circle", title: "状态：", value: summary.statusText, color: summary.pendingReturnCount > 0 ? LWColors.cinnabar : LWColors.warmGold)
         }
@@ -130,7 +182,7 @@ struct PersonDetailView: View {
     private func suggestionCard(_ summary: PersonSummary) -> some View {
         let lastReceived = records.first { $0.type == .received }
         let lastGiven = records.first { $0.type == .given }
-        let base = lastReceived?.amountYuan ?? lastGiven?.amountYuan ?? 600
+        let baseFen = lastReceived?.amountFenValue ?? lastGiven?.amountFenValue ?? 600 * 100
 
         return PaperCard(padding: 14, spacing: 10) {
             HStack {
@@ -147,15 +199,15 @@ struct PersonDetailView: View {
                     .frame(width: 50)
                     .opacity(0.6)
             }
-            adviceRow("上次他家给你：", value: lastReceived?.amountYuan.yuanText ?? "暂无")
-            adviceRow("你上次给他：", value: lastGiven?.amountYuan.yuanText ?? "暂无")
-            adviceRow("本地常见区间：", value: "\(max(100, base - 100).yuanText) - \((base + 200).yuanText)")
+            adviceRow("上次他家给你：", value: lastReceived?.amountFenValue.fenCurrencyText ?? "暂无")
+            adviceRow("你上次给他：", value: lastGiven?.amountFenValue.fenCurrencyText ?? "暂无")
+            adviceRow("按上次金额参考：", value: "\(max(100 * 100, baseFen - 100 * 100).fenCurrencyText) - \((baseFen + 200 * 100).fenCurrencyText)")
             GoldLineDivider()
             HStack {
                 Image(systemName: "star.fill")
                     .font(.system(size: 14))
                     .foregroundStyle(LWColors.warmGold)
-                Text("建议： \(base.yuanText) 左右较稳妥")
+                Text("参考：可从 \(baseFen.fenCurrencyText) 左右考虑")
                     .font(.titleSong(15))
                     .foregroundStyle(LWColors.cinnabar)
             }
@@ -192,7 +244,7 @@ struct PersonDetailView: View {
                     }
                     SealStamp(text: record.type.shortTitle, size: 32, color: record.type.accentColor)
                     VStack(alignment: .leading, spacing: 3) {
-                        Text(record.date.lwCompactMonthText)
+                        Text(record.date.lwDayText)
                             .font(.bodySong(11))
                             .foregroundStyle(LWColors.muted)
                         Text(record.type == .given ? "他家\(record.eventType.title)，我送礼" : "我家\(record.eventType.title)，他送礼")
@@ -205,7 +257,7 @@ struct PersonDetailView: View {
                         }
                     }
                     Spacer()
-                    Text(record.amountYuan.yuanText)
+                    Text(record.amountFenValue.fenCurrencyText)
                         .font(.amountKai(13))
                         .foregroundStyle(record.type == .received ? LWColors.cinnabar : LWColors.ink)
                     Menu {

@@ -5,6 +5,7 @@ import UserNotifications
 @main
 struct LiWangLaiApp: App {
     @State private var appState = AppState()
+    @State private var purchases = PurchaseManager()
     private let modelBootstrap = ModelContainerBootstrap.make()
     private let notificationDelegate = AppNotificationDelegate()
 
@@ -31,6 +32,7 @@ struct LiWangLaiApp: App {
                 }
             }
             .environment(appState)
+            .environment(purchases)
             .environment(\.locale, Locale(identifier: "zh_Hans_CN"))
         }
         .modelContainer(modelBootstrap.container)
@@ -75,7 +77,7 @@ struct ModelContainerBootstrap {
 
     @MainActor
     private static func makePersistentStore() throws -> ModelContainer {
-        let schema = Schema(versionedSchema: LiWangLaiSchemaV1.self)
+        let schema = Schema(versionedSchema: LiWangLaiSchemaV2.self)
         let configuration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
         return try ModelContainer(
             for: schema,
@@ -86,7 +88,7 @@ struct ModelContainerBootstrap {
 
     @MainActor
     private static func makeFallbackStore() throws -> ModelContainer {
-        let schema = Schema(versionedSchema: LiWangLaiSchemaV1.self)
+        let schema = Schema(versionedSchema: LiWangLaiSchemaV2.self)
         let configuration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: true)
         return try ModelContainer(
             for: schema,

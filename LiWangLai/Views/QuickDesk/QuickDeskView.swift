@@ -12,7 +12,13 @@ struct IPadRootView: View {
     }
 }
 
-struct IPadPortraitPrompt: View {
+struct DeskPortraitPrompt: View {
+    var onExit: (() -> Void)?
+
+    init(onExit: (() -> Void)? = nil) {
+        self.onExit = onExit
+    }
+
     var body: some View {
         VStack(spacing: 18) {
             Image("ceremony_table_badge")
@@ -22,31 +28,17 @@ struct IPadPortraitPrompt: View {
             Text("横过来，更好记")
                 .font(.titleSong(30))
                 .foregroundStyle(LWColors.ink)
-            Text("iPad 礼台模式为横屏现场登记设计")
+            Text("手机与 iPad 礼台模式均为横屏现场登记设计")
                 .font(.bodySong(16))
                 .foregroundStyle(LWColors.muted)
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(PaperTexture())
-    }
-}
-
-// Kept as a compatibility entry point for any existing navigation links.
-struct QuickDeskView: View {
-    @Query(sort: \GiftRecord.date, order: .reverse) private var records: [GiftRecord]
-    @Query(sort: \HostedGiftEvent.date, order: .reverse) private var hostedEvents: [HostedGiftEvent]
-
-    var body: some View {
-        GeometryReader { geometry in
-            if geometry.size.width > geometry.size.height {
-                VStack(spacing: 0) {
-                    IPadQuickDeskView(records: records, hostedEvents: hostedEvents, openSettings: {})
-                    Spacer(minLength: 0)
-                }
-            } else {
-                IPadPortraitPrompt()
+            if let onExit {
+                Button("返回普通模式", action: onExit)
+                    .font(.bodySong(14).weight(.semibold))
+                    .foregroundStyle(LWColors.cinnabar)
+                    .buttonStyle(.plain)
             }
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(PaperTexture())
     }
 }
@@ -67,6 +59,8 @@ struct IPadQuickDeskView: View {
     @State private var saveErrorMessage: String?
     @State private var showSaved = false
     @State private var showCreateEvent = false
+    @State private var toastText = "已记入礼簿"
+    @State private var reminderDate = Calendar.current.date(byAdding: .day, value: 30, to: .now) ?? .now
     @FocusState private var nameFocused: Bool
 
     init(
@@ -105,6 +99,22 @@ struct IPadQuickDeskView: View {
         return Array(currentEventRecords.prefix(10))
     }
 
+    /// 当前场次未回礼收礼记录中最近使用的提醒日期，作为新登记记录的继承值。
+    private var eventReminderDate: Date? {
+        currentEventRecords.first { !$0.isReturned && $0.returnReminderDate != nil }?.returnReminderDate
+    }
+
+    private var reminderCoveredCount: Int {
+        currentEventRecords.filter { !$0.isReturned && $0.returnReminderDate != nil }.count
+    }
+
+    private var reminderStatusText: String {
+        if let eventReminderDate {
+            return "已设 \(eventReminderDate.lwDualDateText) · 覆盖 \(reminderCoveredCount) 笔"
+        }
+        return "未设置 · 新登记暂不提醒"
+    }
+
     private var uniquePeople: [GiftRecord] {
         var names = Set<String>()
         return records
@@ -116,33 +126,55 @@ struct IPadQuickDeskView: View {
 
     var body: some View {
         GeometryReader { geometry in
-            let compact = geometry.size.height < 760
+            let phone = geometry.size.width < 1000
+            let compact = geometry.size.height < 760 || phone
             VStack(spacing: 0) {
                 IPadBrandHeader(
                     style: .desk,
                     searchText: nil,
                     openSettings: openSettings
                 )
-                .frame(height: compact ? 116 : 150)
+                .frame(height: phone ? 76 : (compact ? 116 : 150))
 
-                HStack(spacing: compact ? 10 : 14) {
-                    sceneColumn(compact: compact)
-                        .frame(width: geometry.size.width * 0.255)
-                    ZStack {
-                        entryColumn(compact: compact)
+                if phone {
+                    HStack(spacing: 8) {
+                        phoneSceneColumn
+                            .frame(width: geometry.size.width * 0.22)
+                        phoneEntryColumn
                             .disabled(currentEvent == nil)
                             .opacity(currentEvent == nil ? 0.30 : 1)
-
-                        if currentEvent == nil {
-                            eventRequiredOverlay(compact: compact)
+                        .overlay {
+                            if currentEvent == nil {
+                                eventRequiredOverlay(compact: true)
+                                    .scaleEffect(0.82)
+                            }
                         }
-                    }
                         .frame(maxWidth: .infinity)
-                    recentColumn(compact: compact)
-                        .frame(width: geometry.size.width * 0.295)
+                        recentColumn(compact: true)
+                            .frame(width: geometry.size.width * 0.255)
+                    }
+                    .padding(.horizontal, 8)
+                    .padding(.bottom, 7)
+                } else {
+                    HStack(spacing: compact ? 10 : 14) {
+                        sceneColumn(compact: compact)
+                            .frame(width: geometry.size.width * 0.255)
+                        ZStack {
+                            entryColumn(compact: compact)
+                                .disabled(currentEvent == nil)
+                                .opacity(currentEvent == nil ? 0.30 : 1)
+
+                            if currentEvent == nil {
+                                eventRequiredOverlay(compact: compact)
+                            }
+                        }
+                            .frame(maxWidth: .infinity)
+                        recentColumn(compact: compact)
+                            .frame(width: geometry.size.width * 0.295)
+                    }
+                    .padding(.horizontal, compact ? 16 : 22)
+                    .padding(.bottom, compact ? 10 : 14)
                 }
-                .padding(.horizontal, compact ? 16 : 22)
-                .padding(.bottom, compact ? 10 : 14)
             }
         }
         .alert("保存失败", isPresented: Binding(
@@ -161,7 +193,7 @@ struct IPadQuickDeskView: View {
         }
         .overlay(alignment: .top) {
             if showSaved {
-                Label("已记入礼簿", systemImage: "checkmark.seal.fill")
+                Label(toastText, systemImage: "checkmark.seal.fill")
                     .font(.bodySong(14).weight(.semibold))
                     .foregroundStyle(.white)
                     .padding(.horizontal, 18)
@@ -177,18 +209,212 @@ struct IPadQuickDeskView: View {
                let event = hostedEvents.first(where: { $0.id == initialHostedEventID }) {
                 selectedHostedEventID = event.id
                 eventType = event.eventType
+            } else if initialHostedEventID != nil {
+                // 初始场次已被删除时回到待选择状态，避免悬空 eventID。
+                selectedHostedEventID = nil
             }
+            syncReminderDateWithEvent()
         }
         .onChange(of: hostedEvents.map(\.id)) { _, eventIDs in
             guard let selectedHostedEventID else { return }
             if !eventIDs.contains(selectedHostedEventID) {
                 self.selectedHostedEventID = nil
+                syncReminderDateWithEvent()
             }
         }
         .onChange(of: selectedHostedEventID) { _, eventID in
-            guard let eventID,
-                  let event = hostedEvents.first(where: { $0.id == eventID }) else { return }
-            eventType = event.eventType
+            if let eventID,
+               let event = hostedEvents.first(where: { $0.id == eventID }) {
+                eventType = event.eventType
+            }
+            syncReminderDateWithEvent()
+        }
+    }
+
+    private var phoneSceneColumn: some View {
+        IPadPanel(padding: 9, fillsHeight: true) {
+            Text("当前场次")
+                .font(.titleSong(14))
+                .foregroundStyle(LWColors.ink)
+
+            Menu {
+                Button {
+                    showCreateEvent = true
+                } label: {
+                    Label("新建一场事", systemImage: "plus")
+                }
+                ForEach(hostedEvents) { event in
+                    Button("\(event.title) · \(event.date.lwDayText)") {
+                        selectedHostedEventID = event.id
+                    }
+                }
+            } label: {
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(currentEvent?.title ?? "请选择一场事")
+                        .font(.titleSong(13))
+                        .foregroundStyle(LWColors.ink)
+                        .lineLimit(1)
+                    Text(currentEvent == nil ? "选择或新建" : "今日 \(todayRecords.count) 笔")
+                        .font(.bodySong(9))
+                        .foregroundStyle(LWColors.muted)
+                    Image(systemName: "chevron.down")
+                        .font(.caption2.weight(.bold))
+                        .foregroundStyle(LWColors.warmGold)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(9)
+                .background(fieldBackground)
+            }
+            .buttonStyle(.plain)
+
+            VStack(alignment: .leading, spacing: 6) {
+                Text("现场统计")
+                    .font(.titleSong(12))
+                    .foregroundStyle(LWColors.ink)
+                phoneStat("今日登记", value: "\(todayRecords.count) 笔")
+                phoneStat("今日收礼", value: todayReceivedAmountFen.fenCurrencyText)
+                phoneStat("本场合计", value: currentEventRecords.reduce(0) { $0 + $1.amountFenValue }.fenCurrencyText)
+            }
+            .padding(9)
+            .background(fieldBackground)
+
+            VStack(alignment: .leading, spacing: 5) {
+                Text("回礼提醒")
+                    .font(.titleSong(11))
+                    .foregroundStyle(LWColors.ink)
+                DatePicker("", selection: $reminderDate, displayedComponents: .date)
+                    .labelsHidden()
+                    .tint(LWColors.cinnabar)
+                Text(reminderStatusText)
+                    .font(.bodySong(8))
+                    .foregroundStyle(LWColors.muted)
+                    .lineLimit(2)
+                Button {
+                    applyReturnReminder()
+                } label: {
+                    Text("一键设置")
+                        .font(.titleSong(10))
+                        .foregroundStyle(.white)
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 26)
+                        .background(LWColors.cinnabar, in: RoundedRectangle(cornerRadius: 7))
+                }
+                .buttonStyle(.plain)
+                .disabled(currentEvent == nil)
+                .opacity(currentEvent == nil ? 0.5 : 1)
+            }
+            .padding(9)
+            .background(fieldBackground)
+
+            Spacer(minLength: 0)
+
+            Button {
+                showCreateEvent = true
+            } label: {
+                Label("新建场次", systemImage: "plus.circle")
+                    .font(.titleSong(11))
+                    .foregroundStyle(LWColors.cinnabar)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 8)
+            }
+            .buttonStyle(.plain)
+        }
+    }
+
+    private var phoneEntryColumn: some View {
+        IPadPanel(padding: 10, fillsHeight: true) {
+            HStack {
+                Text("礼台 · 快速登记")
+                    .font(.titleSong(16))
+                    .foregroundStyle(LWColors.ink)
+                Spacer()
+                Text("保存后继续下一位")
+                    .font(.bodySong(8))
+                    .foregroundStyle(LWColors.muted)
+            }
+
+            HStack(spacing: 8) {
+                TextField("来宾姓名", text: $name)
+                    .font(.bodySong(13))
+                    .textInputAutocapitalization(.never)
+                    .focused($nameFocused)
+                    .padding(.horizontal, 10)
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 38)
+                    .background(fieldBackground)
+
+                HStack(spacing: 4) {
+                    TextField("金额", text: $amount)
+                        .keyboardType(.decimalPad)
+                        .font(.amountKai(16))
+                    Text("元")
+                        .font(.titleSong(10))
+                        .foregroundStyle(LWColors.inkSoft)
+                }
+                .padding(.horizontal, 10)
+                .frame(width: 116, height: 38)
+                .background(fieldBackground)
+            }
+
+            HStack(spacing: 6) {
+                ForEach([200, 500, 600, 1000], id: \.self) { value in
+                    Button {
+                        amount = "\(value)"
+                        HapticsManager.lightTap()
+                    } label: {
+                        Text(value.formatted())
+                            .font(.amountKai(13))
+                            .foregroundStyle(amount == "\(value)" ? LWColors.cinnabar : LWColors.ink)
+                            .frame(maxWidth: .infinity)
+                            .frame(height: 30)
+                            .background(
+                                RoundedRectangle(cornerRadius: 7)
+                                    .fill(LWColors.card.opacity(0.62))
+                                    .overlay(RoundedRectangle(cornerRadius: 7).stroke(amount == "\(value)" ? LWColors.cinnabar.opacity(0.7) : LWColors.cardStroke.opacity(0.6)))
+                            )
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+
+            TextField("备注（选填）：关系、桌号等", text: $note)
+                .font(.bodySong(11))
+                .onChange(of: note) { _, value in
+                    if value.count > 50 { note = String(value.prefix(50)) }
+                }
+                .padding(.horizontal, 10)
+                .frame(height: 34)
+                .background(fieldBackground)
+
+            Spacer(minLength: 0)
+
+            Button {
+                saveAndContinue()
+            } label: {
+                Label("记入并继续", systemImage: "checkmark.seal.fill")
+                    .font(.titleSong(15))
+                    .foregroundStyle(.white)
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 42)
+                    .background(LWColors.cinnabar, in: RoundedRectangle(cornerRadius: 10))
+            }
+            .buttonStyle(.plain)
+            .disabled(!canSaveDraft)
+            .opacity(canSaveDraft ? 1 : 0.55)
+        }
+    }
+
+    private func phoneStat(_ title: String, value: String) -> some View {
+        HStack {
+            Text(title)
+                .font(.bodySong(9))
+                .foregroundStyle(LWColors.inkSoft)
+            Spacer(minLength: 3)
+            Text(value)
+                .font(.amountKai(11))
+                .foregroundStyle(LWColors.cinnabar)
+                .lineLimit(1)
+                .minimumScaleFactor(0.65)
         }
     }
 
@@ -265,13 +491,52 @@ struct IPadQuickDeskView: View {
                 Divider()
                     .overlay(LWColors.cardStroke.opacity(0.38))
                     .frame(height: compact ? 54 : 64)
-                statItem(icon: "tray.and.arrow.down", title: "今日收礼", value: todayReceivedAmount.yuanText, compact: compact)
+                statItem(icon: "tray.and.arrow.down", title: "今日收礼", value: todayReceivedAmountFen.fenCurrencyText, compact: compact)
                 Divider()
                     .overlay(LWColors.cardStroke.opacity(0.38))
                     .frame(height: compact ? 54 : 64)
                 statItem(icon: "person.2", title: "来宾人数", value: "\(Set(todayRecords.map(\.personName)).count) 人", compact: compact)
             }
             .padding(.vertical, compact ? 8 : 10)
+            .background(
+                RoundedRectangle(cornerRadius: 10)
+                    .fill(Color.white.opacity(0.20))
+                    .overlay(RoundedRectangle(cornerRadius: 10).stroke(LWColors.cardStroke.opacity(0.34)))
+            )
+
+            GoldLineDivider()
+            Text("回礼提醒")
+                .font(.titleSong(compact ? 15 : 17))
+                .foregroundStyle(LWColors.ink)
+
+            VStack(alignment: .leading, spacing: compact ? 6 : 8) {
+                DatePicker("提醒日期", selection: $reminderDate, displayedComponents: .date)
+                    .font(.bodySong(compact ? 11 : 13))
+                    .foregroundStyle(LWColors.inkSoft)
+                    .tint(LWColors.cinnabar)
+                HStack(spacing: 8) {
+                    Text(reminderStatusText)
+                        .font(.bodySong(compact ? 9 : 10))
+                        .foregroundStyle(LWColors.muted)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.8)
+                    Spacer(minLength: 4)
+                    Button {
+                        applyReturnReminder()
+                    } label: {
+                        Text("一键设置")
+                            .font(.titleSong(compact ? 11 : 13))
+                            .foregroundStyle(.white)
+                            .padding(.horizontal, compact ? 11 : 15)
+                            .frame(height: compact ? 28 : 32)
+                            .background(LWColors.cinnabar, in: RoundedRectangle(cornerRadius: 8))
+                    }
+                    .buttonStyle(.plain)
+                    .disabled(currentEvent == nil)
+                    .opacity(currentEvent == nil ? 0.5 : 1)
+                }
+            }
+            .padding(compact ? 10 : 12)
             .background(
                 RoundedRectangle(cornerRadius: 10)
                     .fill(Color.white.opacity(0.20))
@@ -393,12 +658,9 @@ struct IPadQuickDeskView: View {
             fieldTitle("礼金金额", compact: compact)
             HStack(alignment: .firstTextBaseline, spacing: 7) {
                 TextField("请输入礼金金额", text: $amount)
-                    .keyboardType(.numberPad)
+                    .keyboardType(.decimalPad)
                     .font(.amountKai(compact ? 19 : 22))
                     .foregroundStyle(LWColors.ink)
-                    .onChange(of: amount) { _, value in
-                        amount = String(value.filter(\.isNumber).prefix(7))
-                    }
                 Text("元")
                     .font(.titleSong(compact ? 13 : 15))
                     .foregroundStyle(LWColors.inkSoft)
@@ -480,8 +742,8 @@ struct IPadQuickDeskView: View {
                 .overlay(RoundedRectangle(cornerRadius: 11).stroke(LWColors.warmGold.opacity(0.75), lineWidth: 1.2))
             }
             .buttonStyle(.plain)
-            .disabled(currentEvent == nil || name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || (Int(amount) ?? 0) == 0)
-            .opacity(currentEvent == nil || name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || (Int(amount) ?? 0) == 0 ? 0.55 : 1)
+            .disabled(!canSaveDraft)
+            .opacity(canSaveDraft ? 1 : 0.55)
 
             Label("保存后自动清空，继续登记下一位", systemImage: "checkmark.square.fill")
                 .font(.bodySong(compact ? 9 : 10))
@@ -525,7 +787,7 @@ struct IPadQuickDeskView: View {
                                     .foregroundStyle(LWColors.ink)
                                     .lineLimit(1)
                                 Spacer(minLength: 4)
-                                Text(record.amountYuan.yuanText)
+                                Text(record.amountFenValue.fenCurrencyText)
                                     .font(.amountKai(compact ? 14 : 16))
                                     .foregroundStyle(record.type.accentColor)
                                 Text(record.createdAt.lwTimeText)
@@ -635,7 +897,7 @@ struct IPadQuickDeskView: View {
     private func totalItem(_ title: String, value: Int, compact: Bool) -> some View {
         VStack(spacing: 2) {
             Text(title).font(.bodySong(compact ? 8 : 9))
-            Text(value.yuanText)
+            Text(value.fenCurrencyText)
                 .font(.amountKai(compact ? 12 : 15))
                 .lineLimit(1)
                 .minimumScaleFactor(0.65)
@@ -643,16 +905,22 @@ struct IPadQuickDeskView: View {
         .frame(maxWidth: .infinity)
     }
 
-    private var todayReceivedAmount: Int {
-        todayRecords.filter { $0.type == .received }.reduce(0) { $0 + $1.amountYuan }
+    private var todayReceivedAmountFen: Int {
+        todayRecords.filter { $0.type == .received }.reduce(0) { $0 + $1.amountFenValue }
     }
 
     private var receivedAmount: Int {
-        records.filter { $0.type == .received }.reduce(0) { $0 + $1.amountYuan }
+        records.filter { $0.type == .received }.reduce(0) { $0 + $1.amountFenValue }
     }
 
     private var givenAmount: Int {
-        records.filter { $0.type == .given }.reduce(0) { $0 + $1.amountYuan }
+        records.filter { $0.type == .given }.reduce(0) { $0 + $1.amountFenValue }
+    }
+
+    private var canSaveDraft: Bool {
+        currentEvent != nil
+            && !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            && (MoneyAmount.parseFen(amount) ?? 0) > 0
     }
 
     private func saveAndContinue() {
@@ -661,7 +929,8 @@ struct IPadQuickDeskView: View {
         draft.amountText = amount
         draft.note = note
         draft.eventType = currentEvent.eventType
-        draft.relationship = records.first(where: { $0.personName == name })?.relationship ?? .friend
+        draft.relationship = inheritedRelationship(for: name)
+        draft.returnReminderDate = eventReminderDate
         draft.hostedEventID = currentEvent.id
         guard draft.isValid else { return }
 
@@ -671,6 +940,7 @@ struct IPadQuickDeskView: View {
             eventType = record.eventType
             name = ""
             note = ""
+            toastText = "已记入礼簿"
             showSaved = true
             nameFocused = true
             HapticsManager.success()
@@ -681,6 +951,43 @@ struct IPadQuickDeskView: View {
         } catch {
             saveErrorMessage = error.localizedDescription
         }
+    }
+
+    /// 按规范化姓名匹配最近一条历史记录并继承其关系（“张 三”与“张三”视为同一人）。
+    private func inheritedRelationship(for personName: String) -> RelationshipType {
+        let normalized = PersonIdentity.normalizedName(personName)
+        return records
+            .filter { PersonIdentity.normalizedName($0.personName) == normalized }
+            .max { $0.date < $1.date }?
+            .relationship ?? .friend
+    }
+
+    /// 一键为当前场次所有「收礼且未回礼」的记录设置回礼提醒日期。
+    private func applyReturnReminder() {
+        guard let currentEvent else { return }
+        do {
+            let count = try QuickDeskReminderService.setReturnReminder(
+                forEventID: currentEvent.id,
+                date: reminderDate,
+                in: modelContext
+            )
+            toastText = count > 0 ? "已为 \(count) 笔收礼设置回礼提醒" : "本场暂无待回礼的收礼"
+            showSaved = true
+            HapticsManager.success()
+            Task { @MainActor in
+                try? await Task.sleep(for: .seconds(1.6))
+                withAnimation { showSaved = false }
+            }
+        } catch {
+            saveErrorMessage = error.localizedDescription
+        }
+    }
+
+    /// 切换/进入场次时，将日期选择器对齐到该场次已设提醒日期，缺省为 30 天后。
+    private func syncReminderDateWithEvent() {
+        reminderDate = eventReminderDate
+            ?? Calendar.current.date(byAdding: .day, value: 30, to: .now)
+            ?? .now
     }
 }
 
@@ -975,7 +1282,7 @@ private struct IPadLedgerView: View {
                 detailRow("事件类型", value: record.eventType.title, compact: compact)
                 detailRow("往来类型", value: record.type.title, compact: compact)
                 detailRow("日期时间", value: "\(record.date.lwDayText)  \(record.date.lwTimeText)", compact: compact)
-                detailRow("礼金金额", value: record.amountYuan.yuanText, valueColor: record.type.accentColor, compact: compact)
+                detailRow("礼金金额", value: record.amountFenValue.fenCurrencyText, valueColor: record.type.accentColor, compact: compact)
                 detailRow("关系", value: record.relationship.title, compact: compact)
 
                 VStack(alignment: .leading, spacing: 6) {
@@ -1184,7 +1491,7 @@ private struct IPadLedgerView: View {
     }
 
     private func signedAmount(_ record: GiftRecord) -> String {
-        "\(record.type == .received ? "+" : "−")\(record.amountYuan.formatted()) 元"
+        "\(record.type == .received ? "+" : "−")\(MoneyAmount.inputText(fromFen: record.amountFenValue)) 元"
     }
 
     private func exportRecords() {

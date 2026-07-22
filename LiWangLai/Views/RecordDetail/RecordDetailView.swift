@@ -35,16 +35,16 @@ struct RecordDetailView: View {
                         .padding(.top, 18)
                     }
                 }
-                .frame(height: 124)
+                .frame(minHeight: 124, alignment: .top)
 
                 PaperCard(padding: 14, spacing: 10) {
-                    detailLine("金额", value: record.amountYuan.yuanText, isAmount: true)
+                    detailLine("金额", value: record.amountFenValue.fenCurrencyText, isAmount: true)
                     GoldLineDivider()
                     detailLine("事件", value: record.eventType.title)
                     GoldLineDivider()
                     detailLine("日期", value: record.date.lwDualDateText)
                     GoldLineDivider()
-                    detailLine("回礼", value: record.isReturned ? "已回礼" : (record.type == .received ? "未回礼" : "已记录"))
+                    detailLine("状态", value: record.type == .given ? "已记录" : (record.isReturned ? "已回礼" : (record.needsReturn ? "已设置回礼提醒" : "未设置回礼提醒")))
                     if let reminder = record.returnReminderDate {
                         GoldLineDivider()
                         detailLine(record.type == .received ? "回礼提醒" : "送礼提醒", value: reminder.lwDateTimeText)
@@ -77,7 +77,7 @@ struct RecordDetailView: View {
                         Image(systemName: "star.fill")
                             .font(.system(size: 14))
                             .foregroundStyle(LWColors.warmGold)
-                        Text("\(record.amountYuan.yuanText) 左右较稳妥")
+                        Text("\(record.amountFenValue.fenCurrencyText) 左右较稳妥")
                             .font(.titleSong(16))
                             .foregroundStyle(LWColors.cinnabar)
                     }
