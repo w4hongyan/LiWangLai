@@ -56,44 +56,17 @@ enum PaywallSource: Identifiable, Equatable, Sendable {
 }
 
 enum PremiumAccessPolicy {
-    static let firstPremiumVersion = "1.1"
-
-    static func isFounderVersion(_ originalVersion: String) -> Bool {
-        compare(originalVersion, firstPremiumVersion) == .orderedAscending
-    }
-
-    static func compare(_ lhs: String, _ rhs: String) -> ComparisonResult {
-        let left = numericComponents(lhs)
-        let right = numericComponents(rhs)
-        let count = max(left.count, right.count)
-        for index in 0..<count {
-            let leftValue = index < left.count ? left[index] : 0
-            let rightValue = index < right.count ? right[index] : 0
-            if leftValue < rightValue { return .orderedAscending }
-            if leftValue > rightValue { return .orderedDescending }
-        }
-        return .orderedSame
-    }
-
-    private static func numericComponents(_ value: String) -> [Int] {
-        value
-            .split(separator: ".")
-            .map { component in
-                Int(component.prefix { $0.isNumber }) ?? 0
-            }
-    }
-
     /// Pro 门禁放行判定：只认 StoreKit 校验通过的结果（调用方需已完成 revocation 检查）。
     /// UserDefaults 明文缓存永不参与放行；未完成首次校验前一律不放行（调试开关除外）。
+    /// 所有用户（含历史版本）都必须完成购买或恢复购买，不存在任何自动解锁的特殊人群。
     static func allowsProAccess(
         hasLoadedEntitlements: Bool,
         storeKitVerified: Bool,
-        founderVerified: Bool,
         debugUnlocked: Bool
     ) -> Bool {
         if debugUnlocked { return true }
         guard hasLoadedEntitlements else { return false }
-        return storeKitVerified || founderVerified
+        return storeKitVerified
     }
 
     /// 「加载中」过渡展示态：首次校验完成前可依据缓存乐观展示；完成后以真实校验结果为准。
@@ -114,7 +87,6 @@ final class PurchaseManager {
 
     private(set) var proProduct: Product?
     private(set) var isProUnlocked: Bool
-    private(set) var isFounderUnlocked = false
     private(set) var hasLoadedEntitlements = false
     /// 明文缓存派生的「加载中」过渡展示态；不得作为 Pro 功能放行依据
     private(set) var showsCachedProHint: Bool
@@ -130,7 +102,6 @@ final class PurchaseManager {
     private var hasStarted = false
 
     private static let entitlementCacheKey = "liwanglai.pro.entitlementCache"
-    private static let founderKey = "liwanglai.pro.founderUnlocked"
 
     init(
         defaults: UserDefaults = .standard,
@@ -140,11 +111,9 @@ final class PurchaseManager {
         self.debugUnlocked = debugUnlocked
         // 缓存仅用于首次校验完成前的过渡展示，不参与 Pro 放行
         let cachedEntitlement = defaults.bool(forKey: Self.entitlementCacheKey)
-            || defaults.bool(forKey: Self.founderKey)
         let initialUnlocked = PremiumAccessPolicy.allowsProAccess(
             hasLoadedEntitlements: false,
             storeKitVerified: false,
-            founderVerified: false,
             debugUnlocked: debugUnlocked
         )
         isProUnlocked = initialUnlocked
@@ -257,34 +226,19 @@ final class PurchaseManager {
             ownsPro = true
         }
 
-        let founder = await founderEntitlement()
-        isFounderUnlocked = founder
         isProUnlocked = PremiumAccessPolicy.allowsProAccess(
             hasLoadedEntitlements: true,
             storeKitVerified: ownsPro,
-            founderVerified: founder,
             debugUnlocked: debugUnlocked
         )
         hasLoadedEntitlements = true
         // 校验完成后以真实结果覆盖缓存与展示态
         defaults.set(ownsPro, forKey: Self.entitlementCacheKey)
-        defaults.set(founder, forKey: Self.founderKey)
         showsCachedProHint = PremiumAccessPolicy.proDisplayHint(
             hasLoadedEntitlements: true,
-            cachedEntitlement: ownsPro || founder,
+            cachedEntitlement: ownsPro,
             isProUnlocked: isProUnlocked
         )
-    }
-
-    /// 创始版本权益只认 AppTransaction 校验结果，不信明文缓存
-    private func founderEntitlement() async -> Bool {
-        do {
-            let result = try await AppTransaction.shared
-            let transaction = try Self.verified(result)
-            return PremiumAccessPolicy.isFounderVersion(transaction.originalAppVersion)
-        } catch {
-            return false
-        }
     }
 
     private nonisolated static func verified<T>(_ result: VerificationResult<T>) throws -> T {

@@ -357,9 +357,6 @@ struct SettingsView: View {
     }
 
     private var proStatusSubtitle: String {
-        if purchases.isFounderUnlocked {
-            return "创始用户礼遇 · 已永久解锁全部付费功能"
-        }
         if purchases.isProUnlocked {
             return "永久版 · 手机与 iPad 通用"
         }
